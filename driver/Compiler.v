@@ -72,6 +72,8 @@ Require Stackingproof.
 Require Asmgenproof.
 (** Command-line flags. *)
 Require Import Compopts.
+(** Probabilistic runtime *)
+
 
 (** Pretty-printers (defined in Caml). *)
 Parameter print_Clight: Clight.program -> unit.
