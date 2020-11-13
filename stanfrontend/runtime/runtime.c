@@ -36,7 +36,7 @@ double randn (double mu, double sigma)
 
 void runtime(int n, int p_size) {
 
-  double parameters[p_size];
+  double* parameters = malloc(p_size * sizeof(double));
 
   for (int j = 0; j < p_size; ++j) {
 
@@ -44,7 +44,7 @@ void runtime(int n, int p_size) {
 
   }
   
-  double candidate[p_size];
+  double* candidate = malloc(p_size * sizeof(double));;
   
   for (int i = 0; i < n; ++i) {
 
