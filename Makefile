@@ -124,6 +124,10 @@ CFRONTEND=Ctypes.v Cop.v Csyntax.v Csem.v Ctyping.v Cstrategy.v Cexec.v \
 
 PARSER=Cabs.v Parser.v
 
+# Stan front-end
+
+STANFRONTEND=runtime.v
+
 # MenhirLib
 
 ifeq ($(LIBRARY_MENHIRLIB),local)
@@ -140,8 +144,8 @@ DRIVER=Compopts.v Compiler.v Complements.v
 
 # All source files
 
-FILES=$(VLIB) $(COMMON) $(BACKEND) $(CFRONTEND) $(DRIVER) $(FLOCQ) \
-  $(MENHIRLIB) $(PARSER) 
+FILES=$(VLIB) $(COMMON) $(BACKEND) $(CFRONTEND) $(STANFRONTEND) $(DRIVER) $(FLOCQ) \
+  $(MENHIRLIB) $(PARSER)
 
 # Generated source files
 

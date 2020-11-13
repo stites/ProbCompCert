@@ -784,6 +784,7 @@ S common
 S $arch
 S backend
 S cfrontend
+S stanfrontend
 S driver
 S debug
 S exportclight
@@ -795,6 +796,7 @@ B common
 B $arch
 B backend
 B cfrontend
+B stanfrontend
 B driver
 B debug
 B exportclight
