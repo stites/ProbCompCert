@@ -7,7 +7,7 @@ Require Import List.
 Import ListNotations.
 Require Import Nat.
 
-From stanfrontend.Parser Require Import Sast.
+Require Import Stan.
 
 (* Takes a sized_basic_type and a list of sizes and repeatedly applies then
    SArray constructor, taking sizes off the list *)

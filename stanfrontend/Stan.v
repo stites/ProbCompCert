@@ -1,3 +1,7 @@
+Require Import Globalenvs.
+Require Import Events.
+Require Import Integers.
+
 Parameter string : Type.
 
 Parameter literal_T : string.
@@ -183,3 +187,7 @@ Record program := {
   modelblock : option (list statement);
   generatedquantitiesblock: option (list statement)
 }.
+
+Require Import Smallstep.
+
+Parameter semantics: program -> semantics.

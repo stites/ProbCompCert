@@ -126,7 +126,7 @@ PARSER=Cabs.v Parser.v
 
 # Stan front-end
 
-STANFRONTEND=Sast.v Runtime.v
+STANFRONTEND=Stan.v Parser.v Scompiler.v Runtime.v
 
 # MenhirLib
 
