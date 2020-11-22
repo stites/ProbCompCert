@@ -41,6 +41,11 @@ DIRS += MenhirLib
 COQINCLUDES += -R MenhirLib MenhirLib
 endif
 
+ifeq ($(LIBRARY_COQPROBA),local)
+DIRS += coq-proba/theories/basic coq-proba/theories/measure coq-proba/theories/monad coq-proba/theories/prob coq-proba/theories/rec
+COQINCLUDES += -R coq-proba/theories discprob
+endif
+
 COQCOPTS ?= -w -undeclared-scope -w -omega-is-deprecated
 COQC="$(COQBIN)coqc" -q $(COQINCLUDES) $(COQCOPTS)
 COQDEP="$(COQBIN)coqdep" $(COQINCLUDES)

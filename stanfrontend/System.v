@@ -13,6 +13,7 @@ Require Import Rbase.
 Require Import Events.
 From Coquelicot Require Import Lim_seq.
 From Coquelicot Require Import Rbar.
+Require Import borel.
 
 
 Parameter from_trace: Events.traceinf -> (nat -> R). 
@@ -35,6 +36,8 @@ Theorem convergence:
   forall path, path = from_trace t ->
   forall r, is_lim_seq path (Finite r) ->
   is_distributed_as r (denotational_semantics p).
+Proof. 
+Admitted.
 
 
 

@@ -29,6 +29,7 @@ responsefile="gnu"
 ignore_coq_version=false
 library_Flocq=local
 library_MenhirLib=local
+library_CoqProba=local
 
 usage='Usage: ./configure [options] target
 For help on options and targets, do: ./configure -help
@@ -676,6 +677,7 @@ SYSTEM=$system
 RESPONSEFILE=$responsefile
 LIBRARY_FLOCQ=$library_Flocq
 LIBRARY_MENHIRLIB=$library_MenhirLib
+LIBRARY_COQPROBA=$library_CoqProba
 EOF
 else
 cat >> Makefile.config <<'EOF'
@@ -772,6 +774,7 @@ RESPONSEFILE="none"
 # Whether to use the local copies of Flocq and MenhirLib
 LIBRARY_FLOCQ=local      # external
 LIBRARY_MENHIRLIB=local  # external
+LIBRARY_COQPROBA=local
 EOF
 fi
 
