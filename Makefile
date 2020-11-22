@@ -160,6 +160,7 @@ GENERATED=\
   cparser/Parser.v stanfrontend/Parser.v
 
 all:
+	cd coq-proba && $(MAKE)
 	@test -f .depend || $(MAKE) depend
 	$(MAKE) proof
 	$(MAKE) extraction
