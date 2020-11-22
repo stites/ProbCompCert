@@ -14,6 +14,7 @@ Require Import Events.
 From Coquelicot Require Import Lim_seq.
 From Coquelicot Require Import Rbar.
 
+
 Parameter from_trace: Events.traceinf -> (nat -> R). 
 
 Parameter distribution: Type. 
