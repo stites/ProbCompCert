@@ -82,7 +82,7 @@ MODORDER=tools/modorder .depend.extr
 COPY=cp
 
 PARSERS=cparser/pre_parser.mly
-LEXERS=cparser/Lexer.mll lib/Tokenize.mll \
+LEXERS=cparser/Lexer.mll stanfrontend/Slexer.mll lib/Tokenize.mll \
 	     lib/Readconfig.mll lib/Responsefile.mll
 
 LIBS=str.cmxa unix.cmxa $(MENHIR_LIBS)

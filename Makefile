@@ -131,7 +131,7 @@ PARSER=Cabs.v Parser.v
 
 # Stan front-end
 
-STANFRONTEND=Stan.v Parser.v Scompiler.v Runtime.v System.v
+STANFRONTEND=Stan.v Sparser.v Scompiler.v Runtime.v System.v
 
 # MenhirLib
 
@@ -157,7 +157,7 @@ FILES=$(VLIB) $(COMMON) $(BACKEND) $(CFRONTEND) $(STANFRONTEND) $(DRIVER) $(FLOC
 GENERATED=\
   $(ARCH)/ConstpropOp.v $(ARCH)/SelectOp.v $(ARCH)/SelectLong.v \
   backend/SelectDiv.v backend/SplitLong.v \
-  cparser/Parser.v stanfrontend/Parser.v
+  cparser/Parser.v stanfrontend/Sparser.v
 
 all:
 	cd coq-proba && $(MAKE)
@@ -285,9 +285,9 @@ cparser/Parser.v: cparser/Parser.vy
 	$(MENHIR) --coq --coq-no-version-check cparser/Parser.vy
 	@chmod a-w $@
 
-stanfrontend/Parser.v: stanfrontend/Parser.vy
+stanfrontend/Sparser.v: stanfrontend/Sparser.vy
 	@rm -f $@
-	$(MENHIR) --coq --coq-no-version-check stanfrontend/Parser.vy
+	$(MENHIR) --coq --coq-no-version-check stanfrontend/Sparser.vy
 	@chmod a-w $@
 
 depend: $(GENERATED) depend1

@@ -94,6 +94,26 @@ let compile_i_file sourcename preproname =
     objname
   end
 
+(* From Stan to asm *)
+
+let compile_stan_file sourcename ifile ofile =
+  (* Parse the ast *)
+  let csyntax = Sparse.parse_stan_file sourcename ifile in
+  (* Convert to Asm *)
+  let asm =
+    match SCompiler.transf_stan_program csyntax with
+    | Errors.OK asm ->
+        asm
+    | Errors.Error msg ->
+      let loc = file_loc sourcename in
+        fatal_error loc "%a"  print_error msg in
+  (* Dump Asm in binary and JSON format *)
+  AsmToJSON.print_if asm sourcename;
+  (* Print Asm in text form *)
+  let oc = open_out ofile in
+  PrintAsm.print_program oc asm;
+  close_out oc
+  
 (* Processing of a .c file *)
 
 let process_c_file sourcename =
@@ -116,6 +136,12 @@ let process_i_file sourcename =
   ensure_inputfile_exists sourcename;
   compile_i_file sourcename sourcename
 
+(* Processing of a .stan file (Stan) *)
+
+let process_stan_file sourcename =
+  ensure_inputfile_exists sourcename;
+  compile_stan_file sourcename
+  
 (* Processing of .S and .s files *)
 
 let process_s_file sourcename =
@@ -396,6 +422,8 @@ let cmdline_actions =
   (* GCC compatibility: .h files can be preprocessed with -E *)
   Suffix ".h", Self (fun s ->
       push_action process_h_file s; incr num_source_files; incr num_input_files);
+  Suffix ".h", Self (fun s ->
+      push_action process_stan_file s; incr num_source_files; incr num_input_files);
   ]
 
 let _ =
