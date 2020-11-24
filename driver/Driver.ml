@@ -423,7 +423,7 @@ let cmdline_actions =
   (* GCC compatibility: .h files can be preprocessed with -E *)
   Suffix ".h", Self (fun s ->
       push_action process_h_file s; incr num_source_files; incr num_input_files);
-  Suffix ".h", Self (fun s ->
+  Suffix ".stan", Self (fun s ->
       push_action process_stan_file s; incr num_source_files; incr num_input_files);
   ]
 

@@ -10,8 +10,13 @@ let read_file sourcefile =
   text
 
 let tokens_stream text: buffer =
-  raise (SNIY "tokens")
-  
+  let lexbuf = Lexing.from_string text in
+  let rec compute_buffer () =
+    let loop t = Buf_cons (t, Lazy.from_fun compute_buffer) in
+    loop (Slexer.token lexbuf)
+  in
+  Lazy.from_fun compute_buffer
+         
 let parse_stan_file sourcefile ifile =
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
