@@ -36,6 +36,7 @@ Require Parser.
 Require Initializers.
 Require Scompiler.
 Require Sparser.
+Require Stan.
 
 (* Standard lib *)
 Require Import ExtrOcamlBasic.
@@ -138,6 +139,9 @@ Extract Constant Cabs.loc =>
 Extract Inlined Constant Cabs.string => "String.t".
 Extract Constant Cabs.char_code => "int64".
 
+(* Stan parser *)
+Extract Inlined Constant Stan.string => "String.t".
+
 (* Processor-specific extraction directives *)
 
 Load extractionMachdep.
@@ -160,7 +164,7 @@ Set Extraction AccessOpaque.
 Cd "extraction".
 
 Separate Extraction
-   Scompiler.transf_stan_program Sparser.program
+   Scompiler.transf_stan_program_complete Sparser.program
    Compiler.transf_c_program Compiler.transf_cminor_program
    Cexec.do_initial_state Cexec.do_step Cexec.at_final_state
    Ctypes.merge_attributes Ctypes.remove_attributes Ctypes.build_composite_env

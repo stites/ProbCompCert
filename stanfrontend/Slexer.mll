@@ -64,120 +64,120 @@ rule token = parse
                                 singleline_comment lexbuf; token lexbuf } (* deprecated *)
 (* Program blocks *)
   | "functions"               { lexer_logger "functions" ;
-                                Parser.FUNCTIONBLOCK }
-  | "data"                    { lexer_logger "data" ; Parser.DATABLOCK }
+                                Sparser.FUNCTIONBLOCK () }
+  | "data"                    { lexer_logger "data" ; Sparser.DATABLOCK () }
   | "transformed"
       ( space+ )
       "data"                  { lexer_logger "transformed data" ;
-                                Parser.TRANSFORMEDDATABLOCK }
+                                Sparser.TRANSFORMEDDATABLOCK () }
   | "parameters"              { lexer_logger "parameters" ;
-                                Parser.PARAMETERSBLOCK }
+                                Sparser.PARAMETERSBLOCK () }
   | "transformed"
       ( space+ )
       "parameters"            { lexer_logger "transformed parameters" ;
-                                Parser.TRANSFORMEDPARAMETERSBLOCK }
-  | "model"                   { lexer_logger "model" ; Parser.MODELBLOCK }
+                                Sparser.TRANSFORMEDPARAMETERSBLOCK () }
+  | "model"                   { lexer_logger "model" ; Sparser.MODELBLOCK () }
   | "generated"
       ( space+ )
       "quantities"    { lexer_logger "generated quantities" ;
-                                Parser.GENERATEDQUANTITIESBLOCK }
+                                Sparser.GENERATEDQUANTITIESBLOCK () }
 (* Punctuation *)
-  | '{'                       { lexer_logger "{" ; Parser.LBRACE }
-  | '}'                       { lexer_logger "}" ; Parser.RBRACE }
-  | '('                       { lexer_logger "(" ; Parser.LPAREN }
-  | ')'                       { lexer_logger ")" ; Parser.RPAREN }
-  | '['                       { lexer_logger "[" ; Parser.LBRACK }
-  | ']'                       { lexer_logger "]" ; Parser.RBRACK }
-  | '<'                       { lexer_logger "<" ; Parser.LABRACK }
-  | '>'                       { lexer_logger ">" ; Parser.RABRACK }
-  | ','                       { lexer_logger "," ; Parser.COMMA }
-  | ';'                       { lexer_logger ";" ; Parser.SEMICOLON }
-  | '|'                       { lexer_logger "|" ; Parser.BAR }
+  | '{'                       { lexer_logger "{" ; Sparser.LBRACE () }
+  | '}'                       { lexer_logger "}" ; Sparser.RBRACE () }
+  | '('                       { lexer_logger "(" ; Sparser.LPAREN () }
+  | ')'                       { lexer_logger ")" ; Sparser.RPAREN () }
+  | '['                       { lexer_logger "[" ; Sparser.LBRACK () }
+  | ']'                       { lexer_logger "]" ; Sparser.RBRACK () }
+  | '<'                       { lexer_logger "<" ; Sparser.LABRACK () }
+  | '>'                       { lexer_logger ">" ; Sparser.RABRACK () }
+  | ','                       { lexer_logger "," ; Sparser.COMMA () }
+  | ';'                       { lexer_logger ";" ; Sparser.SEMICOLON () }
+  | '|'                       { lexer_logger "|" ; Sparser.BAR () }
 (* Control flow keywords *)
-  | "return"                  { lexer_logger "return" ; Parser.RETURN }
-  | "if"                      { lexer_logger "if" ; Parser.IF }
-  | "else"                    { lexer_logger "else" ; Parser.ELSE }
-  | "while"                   { lexer_logger "while" ; Parser.WHILE }
-  | "for"                     { lexer_logger "for" ; Parser.FOR }
-  | "in"                      { lexer_logger "in" ; Parser.IN }
-  | "break"                   { lexer_logger "break" ; Parser.BREAK }
-  | "continue"                { lexer_logger "continue" ; Parser.CONTINUE }
+  | "return"                  { lexer_logger "return" ; Sparser.RETURN () }
+  | "if"                      { lexer_logger "if" ; Sparser.IF_ () }
+  | "else"                    { lexer_logger "else" ; Sparser.ELSE () }
+  | "while"                   { lexer_logger "while" ; Sparser.WHILE () }
+  | "for"                     { lexer_logger "for" ; Sparser.FOR () }
+  | "in"                      { lexer_logger "in" ; Sparser.IN () }
+  | "break"                   { lexer_logger "break" ; Sparser.BREAK () }
+  | "continue"                { lexer_logger "continue" ; Sparser.CONTINUE () }
 (* Types *)
-  | "void"                    { lexer_logger "void" ; Parser.VOID }
-  | "int"                     { lexer_logger "int" ; Parser.INT }
-  | "real"                    { lexer_logger "real" ; Parser.REAL }
-  | "vector"                  { lexer_logger "vector" ; Parser.VECTOR }
-  | "row_vector"              { lexer_logger "row_vector" ; Parser.ROWVECTOR }
-  | "matrix"                  { lexer_logger "matrix" ; Parser.MATRIX }
-  | "ordered"                 { lexer_logger "ordered" ; Parser.ORDERED }
+  | "void"                    { lexer_logger "void" ; Sparser.VOID () }
+  | "int"                     { lexer_logger "int" ; Sparser.INT () }
+  | "real"                    { lexer_logger "real" ; Sparser.REAL () }
+  | "vector"                  { lexer_logger "vector" ; Sparser.VECTOR () }
+  | "row_vector"              { lexer_logger "row_vector" ; Sparser.ROWVECTOR () }
+  | "matrix"                  { lexer_logger "matrix" ; Sparser.MATRIX () }
+  | "ordered"                 { lexer_logger "ordered" ; Sparser.ORDERED () }
   | "positive_ordered"        { lexer_logger "positive_ordered" ;
-                                Parser.POSITIVEORDERED }
-  | "simplex"                 { lexer_logger "simplex" ; Parser.SIMPLEX }
-  | "unit_vector"             { lexer_logger "unit_vector" ; Parser.UNITVECTOR }
+                                Sparser.POSITIVEORDERED () }
+  | "simplex"                 { lexer_logger "simplex" ; Sparser.SIMPLEX () }
+  | "unit_vector"             { lexer_logger "unit_vector" ; Sparser.UNITVECTOR () }
   | "cholesky_factor_corr"    { lexer_logger "cholesky_factor_corr" ;
-                                Parser.CHOLESKYFACTORCORR }
+                                Sparser.CHOLESKYFACTORCORR () }
   | "cholesky_factor_cov"     { lexer_logger "cholesky_factor_cov" ;
-                                Parser.CHOLESKYFACTORCOV }
-  | "corr_matrix"             { lexer_logger "corr_matrix" ; Parser.CORRMATRIX }
-  | "cov_matrix"              { lexer_logger "cov_matrix" ; Parser.COVMATRIX }
+                                Sparser.CHOLESKYFACTORCOV () }
+  | "corr_matrix"             { lexer_logger "corr_matrix" ; Sparser.CORRMATRIX () }
+  | "cov_matrix"              { lexer_logger "cov_matrix" ; Sparser.COVMATRIX () }
 (* Transformation keywords *)
-  | "lower"                   { lexer_logger "lower" ; Parser.LOWER }
-  | "upper"                   { lexer_logger "upper" ; Parser.UPPER }
-  | "offset"                  { lexer_logger "offset" ; Parser.OFFSET }
-  | "multiplier"              { lexer_logger "multiplier" ; Parser.MULTIPLIER }
+  | "lower"                   { lexer_logger "lower" ; Sparser.LOWER () }
+  | "upper"                   { lexer_logger "upper" ; Sparser.UPPER () }
+  | "offset"                  { lexer_logger "offset" ; Sparser.OFFSET () }
+  | "multiplier"              { lexer_logger "multiplier" ; Sparser.MULTIPLIER () }
 (* Operators *)
-  | '?'                       { lexer_logger "?" ; Parser.QMARK }
-  | ':'                       { lexer_logger ":" ; Parser.COLON }
-  | '!'                       { lexer_logger "!" ; Parser.BANG }
-  | '-'                       { lexer_logger "-" ; Parser.MINUS }
-  | '+'                       { lexer_logger "+" ; Parser.PLUS }
-  | '^'                       { lexer_logger "^" ; Parser.HAT }
-  | '\''                      { lexer_logger "\'" ; Parser.TRANSPOSE }
-  | '*'                       { lexer_logger "*" ; Parser.TIMES }
-  | '/'                       { lexer_logger "/" ; Parser.DIVIDE }
-  | '%'                       { lexer_logger "%" ; Parser.MODULO }
-  | "%/%"                     { lexer_logger "%/%" ; Parser.IDIVIDE }
-  | "\\"                      { lexer_logger "\\" ; Parser.LDIVIDE }
-  | ".*"                      { lexer_logger ".*" ; Parser.ELTTIMES }
-  | ".^"                      { lexer_logger ".^" ; Parser.ELTPOW }
-  | "./"                      { lexer_logger "./" ; Parser.ELTDIVIDE }
-  | "||"                      { lexer_logger "||" ; Parser.OR }
-  | "&&"                      { lexer_logger "&&" ; Parser.AND }
-  | "=="                      { lexer_logger "==" ; Parser.EQUALS }
-  | "!="                      { lexer_logger "!=" ; Parser.NEQUALS }
-  | "<="                      { lexer_logger "<=" ; Parser.LEQ }
-  | ">="                      { lexer_logger ">=" ; Parser.GEQ }
-  | "~"                       { lexer_logger "~" ; Parser.TILDE }
+  | '?'                       { lexer_logger "?" ; Sparser.QMARK () }
+  | ':'                       { lexer_logger ":" ; Sparser.COLON () }
+  | '!'                       { lexer_logger "!" ; Sparser.BANG () }
+  | '-'                       { lexer_logger "-" ; Sparser.MINUS () }
+  | '+'                       { lexer_logger "+" ; Sparser.PLUS () }
+  | '^'                       { lexer_logger "^" ; Sparser.HAT () }
+  | '\''                      { lexer_logger "\'" ; Sparser.TRANSPOSE () }
+  | '*'                       { lexer_logger "*" ; Sparser.TIMES () }
+  | '/'                       { lexer_logger "/" ; Sparser.DIVIDE () }
+  | '%'                       { lexer_logger "%" ; Sparser.MODULO () }
+  | "%/%"                     { lexer_logger "%/%" ; Sparser.IDIVIDE () }
+  | "\\"                      { lexer_logger "\\" ; Sparser.LDIVIDE () }
+  | ".*"                      { lexer_logger ".*" ; Sparser.ELTTIMES () }
+  | ".^"                      { lexer_logger ".^" ; Sparser.ELTPOW () }
+  | "./"                      { lexer_logger "./" ; Sparser.ELTDIVIDE () }
+  | "||"                      { lexer_logger "||" ; Sparser.OR () }
+  | "&&"                      { lexer_logger "&&" ; Sparser.AND () }
+  | "=="                      { lexer_logger "==" ; Sparser.EQUALS () }
+  | "!="                      { lexer_logger "!=" ; Sparser.NEQUALS () }
+  | "<="                      { lexer_logger "<=" ; Sparser.LEQ () }
+  | ">="                      { lexer_logger ">=" ; Sparser.GEQ () }
+  | "~"                       { lexer_logger "~" ; Sparser.TILDE () }
 (* Assignments *)
-  | '='                       { lexer_logger "=" ; Parser.ASSIGN }
-  | "+="                      { lexer_logger "+=" ; Parser.PLUSASSIGN }
-  | "-="                      { lexer_logger "-=" ; Parser.MINUSASSIGN }
-  | "*="                      { lexer_logger "*=" ; Parser.TIMESASSIGN }
-  | "/="                      { lexer_logger "/=" ; Parser.DIVIDEASSIGN }
-  | ".*="                     { lexer_logger ".*=" ; Parser.ELTTIMESASSIGN }
-  | "./="                     { lexer_logger "./=" ; Parser.ELTDIVIDEASSIGN }
+  | '='                       { lexer_logger "=" ; Sparser.ASSIGN () }
+  | "+="                      { lexer_logger "+=" ; Sparser.PLUSASSIGN () }
+  | "-="                      { lexer_logger "-=" ; Sparser.MINUSASSIGN () }
+  | "*="                      { lexer_logger "*=" ; Sparser.TIMESASSIGN () }
+  | "/="                      { lexer_logger "/=" ; Sparser.DIVIDEASSIGN () }
+  | ".*="                     { lexer_logger ".*=" ; Sparser.ELTTIMESASSIGN () }
+  | "./="                     { lexer_logger "./=" ; Sparser.ELTDIVIDEASSIGN () }
   | "<-"                      { lexer_logger "<-" ;
-                                Parser.ARROWASSIGN } (* deprecated *)
+                                Sparser.ARROWASSIGN () } (* deprecated *)
   | "increment_log_prob"      { lexer_logger "increment_log_prob" ;
-                                Parser.INCREMENTLOGPROB } (* deprecated *)
+                                Sparser.INCREMENTLOGPROB () } (* deprecated *)
 (* Effects *)
-  | "print"                   { lexer_logger "print" ; Parser.PRINT }
-  | "reject"                  { lexer_logger "reject" ; Parser.REJECT }
-  | 'T'                       { lexer_logger "T" ; Parser.TRUNCATE } (* TODO: this is a hack; we should change to something like truncate and make it a reserved keyword *)
+  | "print"                   { lexer_logger "print" ; Sparser.PRINT () }
+  | "reject"                  { lexer_logger "reject" ; Sparser.REJECT () }
+  | 'T'                       { lexer_logger "T" ; Sparser.TRUNCATE () } (* TODO: this is a hack; we should change to something like truncate and make it a reserved keyword *)
 (* Constants and identifiers *)
   | integer_constant as i     { lexer_logger ("int_constant " ^ i) ;
-                                Parser.INTNUMERAL (lexeme lexbuf) }
+                                Sparser.INTNUMERAL (lexeme lexbuf) }
   | real_constant as r        { lexer_logger ("real_constant " ^ r) ;
-                                Parser.REALNUMERAL (lexeme lexbuf) }
-  | "target"                  { lexer_logger "target" ; Parser.TARGET } (* NB: the stanc2 parser allows variables to be named target. I think it's a bad idea and have disallowed it. *)
+                                Sparser.REALNUMERAL (lexeme lexbuf) }
+  | "target"                  { lexer_logger "target" ; Sparser.TARGET () } (* NB: the stanc2 parser allows variables to be named target. I think it's a bad idea and have disallowed it. *)
   | "get_lp"                  { lexer_logger "get_lp" ;
-                                Parser.GETLP } (* deprecated *)
+                                Sparser.GETLP () } (* deprecated *)
   | string_literal as s       { lexer_logger ("string_literal " ^ s) ;
-                                Parser.STRINGLITERAL (lexeme lexbuf) }
+                                Sparser.STRINGLITERAL (lexeme lexbuf) }
   | identifier as id          { lexer_logger ("identifier " ^ id) ;
-                                Parser.IDENTIFIER (lexeme lexbuf) }
+                                Sparser.IDENTIFIER (lexeme lexbuf) }
 (* End of file *)
-  | eof                       { lexer_logger "eof" ; Parser.EOF }
+  | eof                       { lexer_logger "eof" ; Sparser.EOF () }
 
   | _                         { raise (SyntaxError "Unidentified pattern") }
 

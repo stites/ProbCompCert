@@ -95,13 +95,13 @@ let compile_i_file sourcename preproname =
   end
 
 (* From Stan to asm *)
-
+  
 let compile_stan_file sourcename ifile ofile =
   (* Parse the ast *)
   let csyntax = Sparse.parse_stan_file sourcename ifile in
   (* Convert to Asm *)
   let asm =
-    match SCompiler.transf_stan_program csyntax with
+    match Scompiler.transf_stan_program_complete csyntax with
     | Errors.OK asm ->
         asm
     | Errors.Error msg ->
@@ -112,7 +112,8 @@ let compile_stan_file sourcename ifile ofile =
   (* Print Asm in text form *)
   let oc = open_out ofile in
   PrintAsm.print_program oc asm;
-  close_out oc
+  close_out oc;
+  ""
   
 (* Processing of a .c file *)
 
@@ -140,7 +141,7 @@ let process_i_file sourcename =
 
 let process_stan_file sourcename =
   ensure_inputfile_exists sourcename;
-  compile_stan_file sourcename
+  compile_stan_file sourcename sourcename sourcename
   
 (* Processing of .S and .s files *)
 
