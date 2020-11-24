@@ -139,8 +139,13 @@ Extract Constant Cabs.loc =>
 Extract Inlined Constant Cabs.string => "String.t".
 Extract Constant Cabs.char_code => "int64".
 
-(* Stan parser *)
+(* Stan *)
 Extract Inlined Constant Stan.string => "String.t".
+Extract Constant Scompiler.transf_stan_program_complete => "fun x -> assert false".
+Extract Inlined Constant Stan.literal_T => "(String.make 1 'a')".
+Extract Inlined Constant Stan.literal_lpdf => "(String.make 1 'a')".
+Extract Inlined Constant Stan.literal_lpmf => "(String.make 1 'a')".
+Extract Inlined Constant Stan.is_suffix => "(fun x -> fun y -> assert false)".
 
 (* Processor-specific extraction directives *)
 
