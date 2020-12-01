@@ -36,156 +36,138 @@ Inductive operator :=
   | Greater
   | Geq
   | PNot
-  | Transpose
-                                                                                       
- with expression :=
-  | TernaryIf: expression * expression * expression -> expression
-  | BinOp: expression * operator * expression -> expression
-  | PrefixOp: operator * expression -> expression
-  | PostfixOp: expression * operator -> expression
-  | Var: identifier -> expression
-  | IntNumeral: string -> expression
-  | RealNumeral: string -> expression
-  | FunApp: identifier * (list expression) -> expression
-  | CondDistApp: identifier * (list expression) -> expression
-  (* GetLP is deprecated *)
-  | GetLP
-  | GetTarget
-  | ArrayExpr: (list expression) -> expression
-  | RowVectorExpr: (list expression) -> expression
-  | Indexed: expression * (list index) -> expression
+  | Transpose.
+
+Inductive expr :=
+  (* Classical expressions that exist in C *)
+  | Econst_int: string -> expr
+  | Econst_float: string -> expr
+  | Evar: identifier -> expr
+  | Eunop_prefix: operator -> expr -> expr
+  | Eunop_postfix: expr -> operator -> expr
+  | Ebinop: expr -> operator -> expr -> expr
+  | Ecall: identifier -> list expr -> expr
+  | Econdition: expr -> expr -> expr -> expr
+  (* Classical expresions that differ from C *)
+  | Earray: list expr -> expr
+  | Erow: list expr -> expr
+  | Eindexed: expr -> list index -> expr
+  (* Probabilistic expressions *)
+  | Edist: identifier -> list expr -> expr
+  | Etarget
 
 with index :=
-  | All
-  | Single: expression -> index
-  | Upfrom: expression -> index
-  | Downfrom: expression -> index
-  | Between: expression * expression -> index. 
+  | Iall
+  | Isingle: expr -> index
+  | Iupfrom: expr -> index
+  | Idownfrom: expr -> index
+  | Ibetween: expr * expr -> index. 
 
 Inductive transformation :=
-  | Identity
-  | Lower: expression -> transformation
-  | Upper: expression -> transformation
-  | LowerUpper: expression * expression -> transformation
-  | Offset: expression -> transformation
-  | Multiplier: expression -> transformation
-  | OffsetMultiplier: expression * expression -> transformation
-  | Ordered
-  | PositiveOrdered
-  | Simplex
-  | UnitVector
-  | CholeskyCorr
-  | CholeskyCov
-  | Correlation
-  | Covariance.
+  | Tidentity
+  | Tlower: expr -> transformation
+  | Tppper: expr -> transformation
+  | Tlower_upper: expr * expr -> transformation
+  | Toffset: expr -> transformation
+  | Tmultiplier: expr -> transformation
+  | Toffset_multiplier: expr * expr -> transformation
+  | Tordered
+  | Tpositive_ordered
+  | Tsimplex
+  | Tunit_vector
+  | Tcholesky_corr
+  | Tcholesky_cov
+  | Tcorrelation
+  | Tcovariance.
 
 Inductive sizedtype :=
-  | SInt
-  | SReal
-  | SVector: expression -> sizedtype
-  | SRowVector: expression -> sizedtype
-  | SMatrix: expression * expression -> sizedtype
-  | SArray: sizedtype * expression -> sizedtype.
+  | Sint
+  | Sreal
+  | Svector: expr -> sizedtype
+  | Srow_vector: expr -> sizedtype
+  | Smatrix: expr * expr -> sizedtype
+  | Sarray: sizedtype * expr -> sizedtype.
 
 Inductive unsizedtype :=
-  | UInt
-  | UReal
-  | UVector
-  | URowVector
-  | UMatrix
-  | UArray: unsizedtype -> unsizedtype
-  | UFun: (list (autodifftype * unsizedtype)) * returntype -> unsizedtype
-  | UMathLibraryFunction
+  | Uint
+  | Ureal
+  | Uvector
+  | Urow_vector
+  | Umatrix
+  | Uarray: unsizedtype -> unsizedtype
+  | Ufun: (list (autodifftype * unsizedtype)) * returntype -> unsizedtype
+  | Umath_library_function
 
-with autodifftype := DataOnly | AutoDiffable
+with autodifftype := 
+  | Adata_only 
+  | Aauto_diffable
 
-with returntype := Void | ReturnType: unsizedtype -> returntype.
+with returntype := 
+  | Rvoid 
+  | Rtype: unsizedtype -> returntype.
 
-Inductive stantype := Sized: sizedtype -> stantype | Unsized: unsizedtype -> stantype .
+Inductive type := 
+  | Tsized: sizedtype -> type 
+  | Tunsized: unsizedtype -> type.
 
 Inductive assignmentoperator :=
-  | Assign
-  (* ArrowAssign is deprecated *)
-  | ArrowAssign
-  | OperatorAssign: operator -> assignmentoperator.
+  | Asimple
+  | Aoperator: operator -> assignmentoperator.
 
 Inductive truncation :=
-  | NoTruncate
-  | TruncateUpFrom: expression -> truncation
-  | TruncateDownFrom: expression -> truncation
-  | TruncateBetween: expression * expression -> truncation.
+  | Tnone
+  | Tup_from: expr -> truncation
+  | Tdown_fom: expr -> truncation
+  | Tbetween: expr * expr -> truncation.
 
-Inductive printable := PString: string -> printable | PExpr: expression -> printable.
+Inductive printable := 
+  | Pstring: string -> printable 
+  | Pexpr: expr -> printable.
 
-(*
-Inductive lvalue :=
-  | LVariable: identifier -> lvalue
-  | LIndexed: lvalue * (list index) -> lvalue.
-*)
-
-Record vardecl := mkVarDecl {
-    decl_transform : transformation;
-    decl_type : stantype;
-    decl_identifier : identifier;
-    initial_value: option expression;
-    is_global : bool
-  }.
-
-Record assign_record := { assign_lhs : expression; (* CHANGE - why? *)
-                          assign_op : assignmentoperator;
-                          assign_rhs : expression }.
-
-Record tilde_record := {
-  tilde_arg : expression;
-  tilde_distribution : identifier;
-  tilde_args : list expression;
-  tilde_truncation : truncation
-}.
-
-Record for_record := {
-  loop_variable: identifier;
-  lower_bound: expression;
-  upper_bound: expression;
+Record vardecl := mkvardecl {
+  vd_transform: transformation;
+  vd_type: type;
+  vd_id: identifier;
+  vd_init: option expr;
+  vd_global: bool
 }.
 
 Inductive statement :=
-  | Assignment : assign_record -> statement
-  | TargetPE : expression -> statement
-  | Tilde : tilde_record -> statement
-  | IfThenElse :  expression * statement * option statement -> statement
-  | For (FR: for_record) (loop_body: statement) : statement
-  | Block : list statement -> statement
-  | VarDecl : vardecl -> statement
-  | NRFunApp: identifier * (list expression)  -> statement
-  (* IncrementLogProb is deprecated *)
-  | IncrementLogProb: expression -> statement
-  | Break
-  | Continue
-  | Return: expression -> statement
-  | ReturnVoid
-  | PrintStmt: list printable -> statement
-  | Reject: list printable -> statement
-  | Skip
-  | While: expression * statement -> statement
-  | ForEach: identifier * expression * statement -> statement.
+  (* Classical statements that exist in C *)
+  | Sskip : statement
+  | Sassign : expr -> assignmentoperator -> expr -> statement
+  | Sblock: list statement -> statement
+  | Sifthenelse: expr -> statement -> option statement -> statement
+  | Swhile: expr -> statement -> statement
+  | Sfor: identifier -> expr -> expr -> statement -> statement
+  | Sbreak: statement
+  | Scontinue: statement
+  | Sreturn: option expr -> statement
+  | Svar_decl: vardecl -> statement
+  | Scall: identifier -> list expr -> statement
+  (* Classical statements that differ C *)
+  | Sprint: list printable -> statement
+  | Sreject: list printable -> statement
+  | Sforeach: identifier -> expr -> statement -> statement
+  (* Probabilistic statements *)
+  | Starget: expr -> statement
+  | Stilde: expr -> identifier -> list expr -> truncation -> statement.
 
-
-Record fundecl := { 
-      funreturntype : returntype; 
-      funname : identifier; 
-      arguments : (list (autodifftype * unsizedtype * identifier));
-      body: statement 
+Record function := mkfunction { 
+  fn_return: returntype; 
+  fn_name: identifier; 
+  fn_params: (list (autodifftype * unsizedtype * identifier));
+  fn_body: statement 
 }.
 
-
-Record program := {
-  functionblock: option (list fundecl);
-  datablock : option (list vardecl);
-  transformeddatablock: option (list statement);
-  parametersblock : option (list vardecl);
-  transformedparametersblock: option (list statement);
-  modelblock : option (list statement);
-  generatedquantitiesblock: option (list statement)
+Record program := mkprogram {
+  pr_functions: option (list function);
+  pr_data: option (list vardecl);
+  pr_transformed_data: option (list statement);
+  pr_parameters : option (list vardecl);
+  pr_transformed_parameters: option (list statement);
+  pr_model : option (list statement);
+  pr_generated: option (list statement)
 }.
 
 Require Import Smallstep.
