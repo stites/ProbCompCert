@@ -85,8 +85,8 @@ Inductive sizedtype :=
   | Sreal
   | Svector: expr -> sizedtype
   | Srow_vector: expr -> sizedtype
-  | Smatrix: expr * expr -> sizedtype
-  | Sarray: sizedtype * expr -> sizedtype.
+  | Smatrix: expr -> expr -> sizedtype
+  | Sarray: sizedtype -> expr -> sizedtype.
 
 Inductive unsizedtype :=
   | Uint
@@ -95,7 +95,7 @@ Inductive unsizedtype :=
   | Urow_vector
   | Umatrix
   | Uarray: unsizedtype -> unsizedtype
-  | Ufun: (list (autodifftype * unsizedtype)) * returntype -> unsizedtype
+  | Ufun: (list (autodifftype * unsizedtype)) -> returntype -> unsizedtype
   | Umath_library_function
 
 with autodifftype := 
@@ -118,13 +118,13 @@ Inductive truncation :=
   | Tnone
   | Tup_from: expr -> truncation
   | Tdown_fom: expr -> truncation
-  | Tbetween: expr * expr -> truncation.
+  | Tbetween: expr -> expr -> truncation.
 
 Inductive printable := 
   | Pstring: string -> printable 
   | Pexpr: expr -> printable.
 
-Record vardecl := mkvardecl {
+Record variable := mkvariable {
   vd_transform: transformation;
   vd_type: type;
   vd_id: identifier;
@@ -143,7 +143,7 @@ Inductive statement :=
   | Sbreak: statement
   | Scontinue: statement
   | Sreturn: option expr -> statement
-  | Svar_decl: vardecl -> statement
+  | Svar: variable -> statement
   | Scall: identifier -> list expr -> statement
   (* Classical statements that differ C *)
   | Sprint: list printable -> statement
@@ -156,17 +156,17 @@ Inductive statement :=
 Record function := mkfunction { 
   fn_return: returntype; 
   fn_name: identifier; 
-  fn_params: (list (autodifftype * unsizedtype * identifier));
+  fn_params: list (autodifftype * unsizedtype * identifier);
   fn_body: statement 
 }.
 
 Record program := mkprogram {
   pr_functions: option (list function);
-  pr_data: option (list vardecl);
+  pr_data: option (list variable);
   pr_transformed_data: option (list statement);
-  pr_parameters : option (list vardecl);
+  pr_parameters: option (list variable);
   pr_transformed_parameters: option (list statement);
-  pr_model : option (list statement);
+  pr_model: option (list statement);
   pr_generated: option (list statement)
 }.
 
