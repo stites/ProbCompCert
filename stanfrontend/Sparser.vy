@@ -10,20 +10,26 @@ Require Import Nat.
 Require Import Stan.
 
 (* Takes a sized_basic_type and a list of sizes and repeatedly applies then
-   SArray constructor, taking sizes off the list *)
-Definition reducearray (sbt:sizedtype) (l:list expression) : sizedtype :=
-  List.fold_right (fun z y => SArray (y, z)) sbt l.
+   Sarray constructor, taking sizes off the list *)
+Definition reducearray (sbt:sizedtype) (l:list expr) : sizedtype :=
+  List.fold_right (fun z y => Sarray y z) sbt l.
 
 Fixpoint reparray (n:nat) (x:unsizedtype) : unsizedtype :=
   match n with
   | O => x
-  | S n' => reparray n' (UArray x)
+  | S n' => reparray n' (Uarray x)
   end.
 
 Definition omap {A:Type} {B:Type} (f:A->B) (x:option A): option B :=
   match x with
   | None => None
   | Some a => Some (f a)
+  end.
+
+Definition sizes d : list expr :=
+  match d with
+  | None => []
+  | Some l => l
   end.
 
 %}
@@ -46,25 +52,24 @@ Definition omap {A:Type} {B:Type} (f:A->B) (x:option A): option B :=
        LDIVIDE ELTTIMES ELTDIVIDE OR AND EQUALS NEQUALS LEQ GEQ TILDE
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN
    ELTDIVIDEASSIGN ELTTIMESASSIGN
-%token ARROWASSIGN INCREMENTLOGPROB GETLP (* all of these are deprecated *)
 %token PRINT REJECT
 %token TRUNCATE
 %token EOF
 
 (* type declarations for nonterminals *)
 
-%type <expression> lhs expression or_expression and_expression equal_expression comparison_expression additive_expression multiplicative_expression leftdivide_expression prefix_expression exponentiation_expression postfix_expression common_expression basic_expression constr_expression index_expression
-%type <list expression> dims
+%type <expr> lhs expr or_expr and_expr equal_expr comparison_expr additive_expr multiplicative_expr leftdivide_expr prefix_expr exponentiation_expr postfix_expr common_expr basic_expr constr_expr index_expr
+%type <list expr> dims
 %type <list index> index indexes
 %type <list printable> printable printables
 %type <string> string_literal, identifier, decl_identifier
-%type <assignmentoperator> assignment_op
+%type <option operator> assignment_op
 %type <statement> statement atomic_statement open_statement closed_statement simple_statement top_vardecl_or_statement vardecl_or_statement var_decl top_var_decl
-%type <vardecl> top_var_decl_no_assign
+%type <variable> top_var_decl_no_assign
 %type <list statement> transformed_data_block transformed_parameters_block model_block generated_quantities_block
-%type <list vardecl> data_block parameters_block
-%type <list fundecl> function_block
-%type <truncation> truncation
+%type <list variable> data_block parameters_block
+%type <list function> function_block
+%type <option expr * option expr> truncation
 %type <transformation> range offset_mult range_constraint type_constraint
 %type <sizedtype * transformation> top_var_type
 %type <sizedtype> sized_basic_type
@@ -72,23 +77,22 @@ Definition omap {A:Type} {B:Type} (f:A->B) (x:option A): option B :=
 %type <nat> unsized_dims (* questionable *)
 %type <autodifftype * unsizedtype * string> arg_decl
 %type <returntype> return_type
-%type <fundecl> function_def
+%type <function> function_def
 
-(* turns out you can apply %type to _fully applied_ parameterized things *) 
-%type <option (list vardecl)> option(data_block) option(parameters_block) 
-%type <option (list fundecl)> option(function_block)
+%type <option (list variable)> option(data_block) option(parameters_block) 
+%type <option (list function)> option(function_block)
 %type <option (list statement)> option(transformed_data_block) option(transformed_parameters_block) option(model_block) option(generated_quantities_block)
 
-%type <list expression> separated_nonempty_list(COMMA,expression) separated_list(COMMA,expression)
+%type <list expr> separated_nonempty_list(COMMA,expr) separated_list(COMMA,expr)
 %type <list (autodifftype * unsizedtype * string) > separated_nonempty_list(COMMA,arg_decl) separated_list(COMMA,arg_decl)
-%type <unit * expression> pair(COMMA,expression)  pair(ASSIGN,expression)
-%type <option expression> option(expression)
-%type <option (list expression)> option(dims)
-%type <option (unit * expression)> option(pair(COMMA,expression)) option(pair(ASSIGN,expression))
-%type <option truncation> option(truncation)
+%type <unit * expr> pair(COMMA,expr)  pair(ASSIGN,expr)
+%type <option expr> option(expr)
+%type <option (list expr)> option(dims)
+%type <option (unit * expr)> option(pair(COMMA,expr)) option(pair(ASSIGN,expr))
+%type <option (option expr * option expr)> option(truncation)
 %type <list statement> list(vardecl_or_statement) list(top_vardecl_or_statement) 
-%type <list vardecl> list(top_var_decl_no_assign)
-%type <list fundecl> list(function_def)
+%type <list variable> list(top_var_decl_no_assign)
+%type <list function> list(function_def)
 %type <list unit> list(COMMA)
 (* Grammar *)
 
@@ -126,16 +130,7 @@ program:
     otpb=option(transformed_parameters_block)
     omb=option(model_block)
     ogb=option(generated_quantities_block)
-    EOF
-    {
-      {| functionblock := ofb
-      ; datablock := odb
-      ; transformeddatablock := otdb
-      ; parametersblock := opb
-      ; transformedparametersblock := otpb
-      ; modelblock := omb
-      ; generatedquantitiesblock := ogb |}
-    }
+    EOF { mkprogram ofb odb otdb opb otpb omb ogb }
 
 function_block:
   | FUNCTIONBLOCK LBRACE fd=list(function_def) RBRACE {fd}
@@ -167,238 +162,203 @@ decl_identifier:
 
 function_def:
   | rt=return_type name=decl_identifier LPAREN args=separated_list(COMMA, arg_decl) RPAREN b=statement
-    { {| funreturntype := rt; funname := name; arguments := args; body := b |} }
+    { mkfunction rt name args b }
 
 return_type:
-  | VOID { Void }
-  | ut=unsized_type { ReturnType ut }
+  | VOID { Rvoid }
+  | ut=unsized_type { Rtype ut }
 
 arg_decl:
-  | ut=unsized_type id=decl_identifier { (AutoDiffable, ut, id) }
-  | DATABLOCK ut=unsized_type id=decl_identifier { (DataOnly, ut, id) }
+  | ut=unsized_type id=decl_identifier { (Aauto_diffable, ut, id) }
+  | DATABLOCK ut=unsized_type id=decl_identifier { (Adata_only, ut, id) }
 
 unsized_type:
   | bt=basic_type { reparray 0 bt    }
   | bt=basic_type d=unsized_dims { reparray (1+d) bt    }
 
 basic_type:
-  | INT { UInt }
-  | REAL { UReal }
-  | VECTOR { UVector }
-  | ROWVECTOR { URowVector }
-  | MATRIX { UMatrix }
+  | INT { Uint }
+  | REAL { Ureal }
+  | VECTOR { Uvector }
+  | ROWVECTOR { Urow_vector }
+  | MATRIX { Umatrix }
 
 unsized_dims:
   | LBRACK cs=list(COMMA) RBRACK { length cs }
 
 (* declarations *)
 var_decl:
-  | sbt=sized_basic_type id=decl_identifier d=option(dims)
-    ae=option(pair(ASSIGN, expression)) SEMICOLON
-    { 
-      let sizes := 
-      (match d with None => [] | Some l => l end)
-      in
-      VarDecl {| decl_type := Sized (reducearray sbt sizes);
-              decl_transform := Identity;
-              decl_identifier := id;
-              initial_value := omap snd ae;
-              is_global := false |}
-    }
+  | sbt=sized_basic_type id=decl_identifier d=option(dims) ae=option(pair(ASSIGN, expr)) SEMICOLON
+    { Svar (mkvariable Tidentity (Tsized (reducearray sbt (sizes d))) id (omap snd ae) false) }
 
 sized_basic_type:
-  | INT { SInt }
-  | REAL { SReal }
-  | VECTOR LBRACK e=expression RBRACK { SVector e }
-  | ROWVECTOR LBRACK e=expression RBRACK { SRowVector e  }
-  | MATRIX LBRACK e1=expression COMMA e2=expression RBRACK { SMatrix (e1, e2) }
+  | INT { Sint }
+  | REAL { Sreal }
+  | VECTOR LBRACK e=expr RBRACK { Svector e }
+  | ROWVECTOR LBRACK e=expr RBRACK { Srow_vector e  }
+  | MATRIX LBRACK e1=expr COMMA e2=expr RBRACK { Smatrix e1 e2 }
 
 top_var_decl_no_assign:
   | tvt=top_var_type id=decl_identifier d=option(dims) SEMICOLON
-    {
-      let sizes := 
-      (match d with None => [] | Some l => l end)
-      in
-      {| decl_type := Sized (reducearray (fst tvt) sizes);
-                  decl_transform :=  snd tvt;
-                  decl_identifier := id;
-                  initial_value := None;
-                  is_global := true |}
-    }
+    { mkvariable (snd tvt) (Tsized (reducearray (fst tvt) (sizes d))) id None true }
 
 top_var_decl:
-  | tvt=top_var_type id=decl_identifier d=option(dims)
-    ass=option(pair(ASSIGN, expression)) SEMICOLON
-    { 
-      let sizes := 
-      (match d with None => [] | Some l => l end) 
-      in
-      VarDecl {| decl_type := Sized (reducearray (fst tvt) sizes);
-                    decl_transform := snd tvt;
-                    decl_identifier := id;
-                    initial_value := omap snd ass;
-                    is_global := true |}
-    }
+  | tvt=top_var_type id=decl_identifier d=option(dims) ass=option(pair(ASSIGN, expr)) SEMICOLON
+    { Svar (mkvariable (snd tvt) (Tsized (reducearray (fst tvt) (sizes d))) id (omap snd ass) true) }
 
 top_var_type:
-  | INT r=range_constraint { (SInt, r) }
-  | REAL c=type_constraint { (SReal, c) }
-  | VECTOR c=type_constraint LBRACK e=expression RBRACK { (SVector e, c) }
-  | ROWVECTOR c=type_constraint LBRACK e=expression RBRACK { (SRowVector e, c) }
-  | MATRIX c=type_constraint LBRACK e1=expression COMMA e2=expression RBRACK { (SMatrix (e1, e2), c) }
-  | ORDERED LBRACK e=expression RBRACK { (SVector e, Ordered) }
-  | POSITIVEORDERED LBRACK e=expression RBRACK { (SVector e, PositiveOrdered) }
-  | SIMPLEX LBRACK e=expression RBRACK { (SVector e, Simplex) }
-  | UNITVECTOR LBRACK e=expression RBRACK { (SVector e, UnitVector) }
-  | CHOLESKYFACTORCORR LBRACK e=expression RBRACK { (SMatrix (e, e), CholeskyCorr) }
-  | CHOLESKYFACTORCOV LBRACK e1=expression oe2=option(pair(COMMA, expression))
-    RBRACK
+  | INT r=range_constraint { (Sint, r) }
+  | REAL c=type_constraint { (Sreal, c) }
+  | VECTOR c=type_constraint LBRACK e=expr RBRACK { (Svector e, c) }
+  | ROWVECTOR c=type_constraint LBRACK e=expr RBRACK { (Srow_vector e, c) }
+  | MATRIX c=type_constraint LBRACK e1=expr COMMA e2=expr RBRACK { (Smatrix e1 e2, c) }
+  | ORDERED LBRACK e=expr RBRACK { (Svector e, Tordered) }
+  | POSITIVEORDERED LBRACK e=expr RBRACK { (Svector e, Tpositive_ordered) }
+  | SIMPLEX LBRACK e=expr RBRACK { (Svector e, Tsimplex) }
+  | UNITVECTOR LBRACK e=expr RBRACK { (Svector e, Tunit_vector) }
+  | CHOLESKYFACTORCORR LBRACK e=expr RBRACK { (Smatrix e e, Tcholesky_corr) }
+  | CHOLESKYFACTORCOV LBRACK e1=expr oe2=option(pair(COMMA, expr)) RBRACK
     { 
       match oe2 with 
-      | Some (_,e2) => ( SMatrix (e1, e2), CholeskyCov)
-      | _           =>  (SMatrix (e1, e1),  CholeskyCov)
+      | Some (_,e2) => ( Smatrix e1 e2, Tcholesky_cov)
+      | _           =>  (Smatrix e1 e1, Tcholesky_cov)
       end
     }
-  | CORRMATRIX LBRACK e=expression RBRACK { (SMatrix (e, e), Correlation) }
-  | COVMATRIX LBRACK e=expression RBRACK { (SMatrix (e, e), Covariance) }
+  | CORRMATRIX LBRACK e=expr RBRACK { (Smatrix e e, Tcorrelation) }
+  | COVMATRIX LBRACK e=expr RBRACK { (Smatrix e e, Tcovariance) }
 
 type_constraint:
   | r=range_constraint { r }
   | LABRACK l=offset_mult RABRACK { l }
 
 range_constraint:
-  | { Identity }
+  | { Tidentity }
   | LABRACK r=range RABRACK { r }
 
 range:
-  | LOWER ASSIGN e1=constr_expression COMMA UPPER ASSIGN e2=constr_expression
-  | UPPER ASSIGN e2=constr_expression COMMA LOWER ASSIGN e1=constr_expression { LowerUpper (e1, e2) }
-  | LOWER ASSIGN e=constr_expression { Lower e }
-  | UPPER ASSIGN e=constr_expression { Upper e }
+  | LOWER ASSIGN e1=constr_expr COMMA UPPER ASSIGN e2=constr_expr
+  | UPPER ASSIGN e2=constr_expr COMMA LOWER ASSIGN e1=constr_expr { Tlower_upper e1 e2 }
+  | LOWER ASSIGN e=constr_expr { Tlower e }
+  | UPPER ASSIGN e=constr_expr { Tupper e }
 
 offset_mult:
-  | OFFSET ASSIGN e1=constr_expression COMMA MULTIPLIER ASSIGN e2=constr_expression
-  | MULTIPLIER ASSIGN e2=constr_expression COMMA OFFSET ASSIGN e1=constr_expression { OffsetMultiplier (e1, e2) }
-  | OFFSET ASSIGN e=constr_expression { Offset e }
-  | MULTIPLIER ASSIGN e=constr_expression { Multiplier e }
+  | OFFSET ASSIGN e1=constr_expr COMMA MULTIPLIER ASSIGN e2=constr_expr
+  | MULTIPLIER ASSIGN e2=constr_expr COMMA OFFSET ASSIGN e1=constr_expr { Toffset_multiplier e1 e2 }
+  | OFFSET ASSIGN e=constr_expr { Toffset e }
+  | MULTIPLIER ASSIGN e=constr_expr { Tmultiplier e }
 
 dims:
-  | LBRACK l=separated_nonempty_list(COMMA, expression) RBRACK { l }
+  | LBRACK l=separated_nonempty_list(COMMA, expr) RBRACK { l }
 
-(* expressions *)
-expression:
-  | e1=or_expression  QMARK e2=expression COLON e3=expression { TernaryIf (e1, e2, e3) }
-  | e=or_expression { e }
+(* exprs *)
+expr:
+  | e1=or_expr  QMARK e2=expr COLON e3=expr { Econdition e1 e2 e3 }
+  | e=or_expr { e }
 
-or_expression:
-  | e1 = or_expression OR e2=and_expression { BinOp (e1, Or, e2) }
-  | e = and_expression { e }
+or_expr:
+  | e1 = or_expr OR e2=and_expr { Ebinop e1 Or e2 }
+  | e = and_expr { e }
 
-and_expression:
-  | e1=and_expression AND e2=equal_expression { BinOp (e1, And, e2) }
-  | e=equal_expression { e }
+and_expr:
+  | e1=and_expr AND e2=equal_expr { Ebinop e1 And e2 }
+  | e=equal_expr { e }
 
-equal_expression:
-  | e1=equal_expression EQUALS e2=comparison_expression { BinOp (e1, Equals, e2) }
-  | e1=equal_expression NEQUALS e2=comparison_expression { BinOp (e1, NEquals, e2) }
-  | e = comparison_expression { e }
+equal_expr:
+  | e1=equal_expr EQUALS e2=comparison_expr { Ebinop e1 Equals e2 }
+  | e1=equal_expr NEQUALS e2=comparison_expr { Ebinop e1 NEquals e2 }
+  | e = comparison_expr { e }
 
-comparison_expression:
-  | e1=comparison_expression LABRACK e2=additive_expression { BinOp (e1, Less, e2) }
-  | e1=comparison_expression LEQ e2=additive_expression { BinOp (e1, Leq, e2) }  
-  | e1=comparison_expression RABRACK e2=additive_expression { BinOp (e1, Greater, e2) }    
-  | e1=comparison_expression GEQ e2=additive_expression { BinOp (e1, Geq, e2) }
-  | e=additive_expression { e }
+comparison_expr:
+  | e1=comparison_expr LABRACK e2=additive_expr { Ebinop e1 Less e2 }
+  | e1=comparison_expr LEQ e2=additive_expr { Ebinop e1 Leq e2 }  
+  | e1=comparison_expr RABRACK e2=additive_expr { Ebinop e1 Greater e2 }    
+  | e1=comparison_expr GEQ e2=additive_expr { Ebinop e1 Geq e2 }
+  | e=additive_expr { e }
 
-additive_expression:
-  | e1=additive_expression PLUS e2=multiplicative_expression { BinOp (e1, Plus, e2) }
-  | e1=additive_expression MINUS e2=multiplicative_expression { BinOp (e1, Minus, e2) }
-  | e=multiplicative_expression { e }
+additive_expr:
+  | e1=additive_expr PLUS e2=multiplicative_expr { Ebinop e1 Plus e2 }
+  | e1=additive_expr MINUS e2=multiplicative_expr { Ebinop e1 Minus e2 }
+  | e=multiplicative_expr { e }
 
-multiplicative_expression:
-  | e1=multiplicative_expression TIMES e2=leftdivide_expression { BinOp (e1, Times, e2) }
-  | e1=multiplicative_expression DIVIDE e2=leftdivide_expression { BinOp (e1, Divide, e2) }  
-  | e1=multiplicative_expression IDIVIDE e2=leftdivide_expression { BinOp (e1, IntDivide, e2) }
-  | e1=multiplicative_expression MODULO e2=leftdivide_expression { BinOp (e1, Modulo, e2) }  
-  | e1=multiplicative_expression ELTTIMES e2=leftdivide_expression { BinOp (e1, EltTimes, e2) }
-  | e1=multiplicative_expression ELTDIVIDE e2=leftdivide_expression { BinOp (e1, EltDivide, e2) }
-  | e=leftdivide_expression { e }
+multiplicative_expr:
+  | e1=multiplicative_expr TIMES e2=leftdivide_expr { Ebinop e1 Times e2 }
+  | e1=multiplicative_expr DIVIDE e2=leftdivide_expr { Ebinop e1 Divide e2 }  
+  | e1=multiplicative_expr IDIVIDE e2=leftdivide_expr { Ebinop e1 IntDivide e2 }
+  | e1=multiplicative_expr MODULO e2=leftdivide_expr { Ebinop e1 Modulo e2 }  
+  | e1=multiplicative_expr ELTTIMES e2=leftdivide_expr { Ebinop e1 EltTimes e2 }
+  | e1=multiplicative_expr ELTDIVIDE e2=leftdivide_expr { Ebinop e1 EltDivide e2 }
+  | e=leftdivide_expr { e }
 
-leftdivide_expression:
-  | e1=leftdivide_expression LDIVIDE e2=prefix_expression { BinOp (e1, LDivide, e2) }
-  | e=prefix_expression { e }
+leftdivide_expr:
+  | e1=leftdivide_expr LDIVIDE e2=prefix_expr { Ebinop e1 LDivide e2 }
+  | e=prefix_expr { e }
 
-prefix_expression:
-  | BANG e=exponentiation_expression { PrefixOp (PNot, e) }
-  | MINUS e=exponentiation_expression { PrefixOp (PMinus, e) }
-  | PLUS e=exponentiation_expression { PrefixOp (PPlus, e) }
-  | e=exponentiation_expression { e }
+prefix_expr:
+  | BANG e=exponentiation_expr { Eunop PNot e }
+  | MINUS e=exponentiation_expr { Eunop PMinus e }
+  | PLUS e=exponentiation_expr { Eunop PPlus e }
+  | e=exponentiation_expr { e }
 
-exponentiation_expression:
-  | e1=postfix_expression HAT e2=exponentiation_expression { BinOp (e1, Pow, e2) }
-  | e1=postfix_expression ELTPOW e2=exponentiation_expression { BinOp (e1, EltPow, e2) }
-  | e=postfix_expression { e }
+exponentiation_expr:
+  | e1=postfix_expr HAT e2=exponentiation_expr { Ebinop e1 Pow e2 }
+  | e1=postfix_expr ELTPOW e2=exponentiation_expr { Ebinop e1 EltPow e2 }
+  | e=postfix_expr { e }
 
-postfix_expression: 
-  | e=postfix_expression TRANSPOSE { PostfixOp (e, Transpose) }
-  | e = index_expression { e }
-  | e=common_expression { e }
+postfix_expr: 
+  | e=postfix_expr TRANSPOSE { Eunop Transpose e }
+  | e = index_expr { e }
+  | e=common_expr { e }
 
-index_expression:
-  | e=basic_expression LBRACK indices=indexes RBRACK { Indexed (e, indices) }
+index_expr:
+  | e=basic_expr LBRACK indices=indexes RBRACK { Eindexed e indices }
 
-common_expression:
-  | e=basic_expression { e}
+common_expr:
+  | e=basic_expr { e}
   | l=lhs { l}
 
-basic_expression:
-  | i=INTNUMERAL { IntNumeral i }
-  | r=REALNUMERAL { RealNumeral r }
-  | LBRACE xs=separated_nonempty_list(COMMA, expression) RBRACE { ArrayExpr xs }
-  | LBRACK xs=separated_list(COMMA, expression) RBRACK { RowVectorExpr xs }
-  | id=identifier LPAREN e=expression BAR args=separated_list(COMMA, expression) RPAREN { CondDistApp (id, e :: args) }
-  | id=identifier LPAREN args=separated_list(COMMA, expression) RPAREN
+basic_expr:
+  | i=INTNUMERAL { Econst_int i }
+  | r=REALNUMERAL { Econst_float r }
+  | LBRACE xs=separated_nonempty_list(COMMA, expr) RBRACE { Earray xs }
+  | LBRACK xs=separated_list(COMMA, expr) RBRACK { Erow xs }
+  | id=identifier LPAREN e=expr BAR args=separated_list(COMMA, expr) RPAREN { Edist id (e :: args) }
+  | id=identifier LPAREN args=separated_list(COMMA, expr) RPAREN
     {  
        if andb ( eqb (List.length args) 1  )
                ( is_suffix literal_lpdf id
                 || is_suffix literal_lpmf id )
-       then 
-       CondDistApp (id, args)
-       else 
-       FunApp (id, args) 
+       then Edist id args else  Ecall id args 
     }
-  | TARGET LPAREN RPAREN { GetTarget }
-  | GETLP LPAREN RPAREN { GetLP } (* deprecated *)
-  | LPAREN e=expression RPAREN { e }
+  | TARGET LPAREN RPAREN { Etarget }
+  | LPAREN e=expr RPAREN { e }
 
-constr_expression:
-  | e=additive_expression { e }
+constr_expr:
+  | e=additive_expr { e }
 
 indexes:
-  | i = index {  i }
+  | i = index { i }
   | i1=index COMMA i2=indexes { List.app i1 i2 }
 
 index:
-  | { [All] }
-  | COLON { [All] }
-  | e=expression { [Single e] }
-  | e=expression COLON { [Upfrom e] }
-  | COLON e=expression { [Downfrom e] }
-  | e1=expression COLON e2=expression { [Between (e1, e2)] }
-
+  | { [Iall] }
+  | COLON { [Iall] }
+  | e=expr { [Isingle e] }
+  | e=expr COLON { [Iupfrom e] }
+  | COLON e=expr { [Idownfrom e] }
+  | e1=expr COLON e2=expr { [Ibetween e1 e2] }
 
 printables:
   | p = printable { p }
   | p1=printable COMMA p2=printables { List.app p1 p2 }
 
 printable:
-  | e=expression { [PExpr e] }
-  | s=string_literal { [PString s] }
+  | e=expr { [Pexpr e] }
+  | s=string_literal { [Pstring s] }
 
 (* L-values *)
 lhs:
-  | id=identifier { Var id }
-  | l=lhs LBRACK indices=indexes RBRACK { Indexed (l, indices) }
+  | id=identifier { Evar id }
+  | l=lhs LBRACK indices=indexes RBRACK { Eindexed l indices }
 
 (* statements *)
 statement:
@@ -406,87 +366,51 @@ statement:
   | s=open_statement { s }
 
 atomic_statement:
-  | l=lhs op=assignment_op e=expression SEMICOLON
-    { Assignment {| assign_lhs := l;
-                   assign_op := op;
-                   assign_rhs := e |} 
-    }
-  | id=identifier LPAREN args=separated_list(COMMA, expression) RPAREN SEMICOLON { NRFunApp (id, args)  }
-  | INCREMENTLOGPROB LPAREN e=expression RPAREN SEMICOLON { IncrementLogProb e } (* deprecated *)
-  | e=expression TILDE id=identifier LPAREN es=separated_list(COMMA, expression)
-    RPAREN ot=option(truncation) SEMICOLON
-    {  
-       let t := 
-       (match ot with | Some tt_ => tt_ | None => NoTruncate end)
-       in
-       Tilde {| tilde_arg := e; tilde_distribution := id; tilde_args := es; tilde_truncation := t |}
-    }
-  | TARGET PLUSASSIGN e=expression SEMICOLON { TargetPE e }
-  | BREAK SEMICOLON { Break }
-  | CONTINUE SEMICOLON { Continue }
-  | PRINT LPAREN l=printables RPAREN SEMICOLON { PrintStmt l }
-  | REJECT LPAREN l=printables RPAREN SEMICOLON { Reject l  }
-  | RETURN e=expression SEMICOLON { Return e }
-  | RETURN SEMICOLON { ReturnVoid }
-  | SEMICOLON { Skip }
+  | l=lhs op=assignment_op e=expr SEMICOLON { Sassign l op e }
+  | id=identifier LPAREN args=separated_list(COMMA, expr) RPAREN SEMICOLON { Scall id args }
+  | e=expr TILDE id=identifier LPAREN es=separated_list(COMMA, expr) RPAREN ot=option(truncation) SEMICOLON
+    { Stilde e id es (match ot with | Some tt_ => tt_ | None => (None,None) end) }
+  | TARGET PLUSASSIGN e=expr SEMICOLON { Starget e }
+  | BREAK SEMICOLON { Sbreak }
+  | CONTINUE SEMICOLON { Scontinue }
+  | PRINT LPAREN l=printables RPAREN SEMICOLON { Sprint l }
+  | REJECT LPAREN l=printables RPAREN SEMICOLON { Sreject l  }
+  | RETURN e=expr SEMICOLON { Sreturn (Some e) }
+  | RETURN SEMICOLON { Sreturn None }
+  | SEMICOLON { Sskip }
 
 assignment_op:
-  | ASSIGN { Assign }
-  | ARROWASSIGN { ArrowAssign  } (* deprecated *)
-  | PLUSASSIGN { OperatorAssign Plus }
-  | MINUSASSIGN { OperatorAssign Minus }
-  | TIMESASSIGN { OperatorAssign Times }
-  | DIVIDEASSIGN { OperatorAssign Divide }
-  | ELTTIMESASSIGN { OperatorAssign EltTimes }
-  | ELTDIVIDEASSIGN { OperatorAssign EltDivide  }
+  | ASSIGN { None }
+  | PLUSASSIGN { Some Plus }
+  | MINUSASSIGN { Some Minus }
+  | TIMESASSIGN { Some Times }
+  | DIVIDEASSIGN { Some Divide }
+  | ELTTIMESASSIGN { Some EltTimes }
+  | ELTDIVIDEASSIGN { Some EltDivide  }
 
 string_literal:
   | s=STRINGLITERAL { s }
 
 truncation:
-  | TRUNCATE LBRACK e1=option(expression) COMMA e2=option(expression)
-    RBRACK
-    {  
-       match e1, e2 with
-       | Some tt1, Some tt2 => TruncateBetween (tt1, tt2)
-       | Some tt1, None => TruncateUpFrom tt1
-       | None, Some tt2 => TruncateDownFrom tt2
-       | None, None => NoTruncate  
-       end
-    }
+  | TRUNCATE LBRACK e1=option(expr) COMMA e2=option(expr) RBRACK { (e1,e2) }
 
 open_statement:
-  | IF_ LPAREN e=expression RPAREN s=simple_statement { IfThenElse(e, s, None)}
-  | IF_ LPAREN e=expression RPAREN s=open_statement { IfThenElse (e, s, None) }
-  | IF_ LPAREN e=expression RPAREN s1=closed_statement ELSE s2=open_statement { IfThenElse (e, s1, Some s2) }
-  | WHILE LPAREN e=expression RPAREN s=open_statement { While (e, s) }
-  | FOR LPAREN id=identifier IN e1=expression COLON e2=expression RPAREN
-    s=open_statement
-    {
-      For {| loop_variable := id;
-             lower_bound := e1;
-             upper_bound := e2 |} 
-          s
-    }
-  | FOR LPAREN id=identifier IN e=expression RPAREN s=open_statement { ForEach (id, e, s) }
+  | IF_ LPAREN e=expr RPAREN s=simple_statement { Sifthenelse e s Sskip }
+  | IF_ LPAREN e=expr RPAREN s=open_statement { Sifthenelse e s Sskip }
+  | IF_ LPAREN e=expr RPAREN s1=closed_statement ELSE s2=open_statement { Sifthenelse e s1 s2 }
+  | WHILE LPAREN e=expr RPAREN s=open_statement { Swhile e s }
+  | FOR LPAREN id=identifier IN e1=expr COLON e2=expr RPAREN s=open_statement { Sfor id e1 e2 s }
+  | FOR LPAREN id=identifier IN e=expr RPAREN s=open_statement { Sforeach id e s }
 
 closed_statement:
-  | IF_ LPAREN e=expression RPAREN s1=closed_statement ELSE s2=closed_statement { IfThenElse (e, s1, Some s2) }
-  | WHILE LPAREN e=expression RPAREN s=closed_statement { While (e, s) }
+  | IF_ LPAREN e=expr RPAREN s1=closed_statement ELSE s2=closed_statement { Sifthenelse e s1 s2 }
+  | WHILE LPAREN e=expr RPAREN s=closed_statement { Swhile e s }
   | s=simple_statement { s }
-  | FOR LPAREN id=identifier IN e1=expression COLON e2=expression RPAREN
-    s=closed_statement
-    {
-      For {| loop_variable := id;
-             lower_bound := e1;
-             upper_bound := e2; |}
-          s
-    }
-  | FOR LPAREN id=identifier IN e=expression RPAREN s=closed_statement { ForEach (id, e, s) }
-
+  | FOR LPAREN id=identifier IN e1=expr COLON e2=expr RPAREN s=closed_statement { Sfor id e1 e2 s }
+  | FOR LPAREN id=identifier IN e=expr RPAREN s=closed_statement { Sforeach id e s }
 
 simple_statement:
-  | LBRACE l=list(vardecl_or_statement)  RBRACE { Block l } 
+  | LBRACE l=list(vardecl_or_statement)  RBRACE { Sblock l } 
   | s=atomic_statement { s }
 
 (* statement or var decls *)

@@ -156,10 +156,6 @@ rule token = parse
   | "/="                      { lexer_logger "/=" ; Sparser.DIVIDEASSIGN () }
   | ".*="                     { lexer_logger ".*=" ; Sparser.ELTTIMESASSIGN () }
   | "./="                     { lexer_logger "./=" ; Sparser.ELTDIVIDEASSIGN () }
-  | "<-"                      { lexer_logger "<-" ;
-                                Sparser.ARROWASSIGN () } (* deprecated *)
-  | "increment_log_prob"      { lexer_logger "increment_log_prob" ;
-                                Sparser.INCREMENTLOGPROB () } (* deprecated *)
 (* Effects *)
   | "print"                   { lexer_logger "print" ; Sparser.PRINT () }
   | "reject"                  { lexer_logger "reject" ; Sparser.REJECT () }
@@ -170,8 +166,6 @@ rule token = parse
   | real_constant as r        { lexer_logger ("real_constant " ^ r) ;
                                 Sparser.REALNUMERAL (lexeme lexbuf) }
   | "target"                  { lexer_logger "target" ; Sparser.TARGET () } (* NB: the stanc2 parser allows variables to be named target. I think it's a bad idea and have disallowed it. *)
-  | "get_lp"                  { lexer_logger "get_lp" ;
-                                Sparser.GETLP () } (* deprecated *)
   | string_literal as s       { lexer_logger ("string_literal " ^ s) ;
                                 Sparser.STRINGLITERAL (lexeme lexbuf) }
   | identifier as id          { lexer_logger ("identifier " ^ id) ;

@@ -14,7 +14,6 @@ Definition identifier := string.
 
 Inductive operator :=
   | Plus
-  | Vector_Plus
   | PPlus
   | Minus
   | PMinus
@@ -43,8 +42,7 @@ Inductive expr :=
   | Econst_int: string -> expr
   | Econst_float: string -> expr
   | Evar: identifier -> expr
-  | Eunop_prefix: operator -> expr -> expr
-  | Eunop_postfix: expr -> operator -> expr
+  | Eunop: operator -> expr -> expr
   | Ebinop: expr -> operator -> expr -> expr
   | Ecall: identifier -> list expr -> expr
   | Econdition: expr -> expr -> expr -> expr
@@ -61,16 +59,16 @@ with index :=
   | Isingle: expr -> index
   | Iupfrom: expr -> index
   | Idownfrom: expr -> index
-  | Ibetween: expr * expr -> index. 
+  | Ibetween: expr -> expr -> index. 
 
 Inductive transformation :=
   | Tidentity
   | Tlower: expr -> transformation
-  | Tppper: expr -> transformation
-  | Tlower_upper: expr * expr -> transformation
+  | Tupper: expr -> transformation
+  | Tlower_upper: expr -> expr -> transformation
   | Toffset: expr -> transformation
   | Tmultiplier: expr -> transformation
-  | Toffset_multiplier: expr * expr -> transformation
+  | Toffset_multiplier: expr -> expr -> transformation
   | Tordered
   | Tpositive_ordered
   | Tsimplex
@@ -110,16 +108,6 @@ Inductive type :=
   | Tsized: sizedtype -> type 
   | Tunsized: unsizedtype -> type.
 
-Inductive assignmentoperator :=
-  | Asimple
-  | Aoperator: operator -> assignmentoperator.
-
-Inductive truncation :=
-  | Tnone
-  | Tup_from: expr -> truncation
-  | Tdown_fom: expr -> truncation
-  | Tbetween: expr -> expr -> truncation.
-
 Inductive printable := 
   | Pstring: string -> printable 
   | Pexpr: expr -> printable.
@@ -135,9 +123,9 @@ Record variable := mkvariable {
 Inductive statement :=
   (* Classical statements that exist in C *)
   | Sskip : statement
-  | Sassign : expr -> assignmentoperator -> expr -> statement
+  | Sassign : expr -> option operator -> expr -> statement
   | Sblock: list statement -> statement
-  | Sifthenelse: expr -> statement -> option statement -> statement
+  | Sifthenelse: expr -> statement -> statement -> statement
   | Swhile: expr -> statement -> statement
   | Sfor: identifier -> expr -> expr -> statement -> statement
   | Sbreak: statement
@@ -151,7 +139,7 @@ Inductive statement :=
   | Sforeach: identifier -> expr -> statement -> statement
   (* Probabilistic statements *)
   | Starget: expr -> statement
-  | Stilde: expr -> identifier -> list expr -> truncation -> statement.
+  | Stilde: expr -> identifier -> list expr -> (option expr * option expr) -> statement.
 
 Record function := mkfunction { 
   fn_return: returntype; 
