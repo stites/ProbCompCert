@@ -76,7 +76,7 @@ Definition sizes d : list expr :=
 %type <unsizedtype> basic_type unsized_type
 %type <nat> unsized_dims (* questionable *)
 %type <autodifftype * unsizedtype * string> arg_decl
-%type <returntype> return_type
+%type <option(unsizedtype)> return_type
 %type <function> function_def
 
 %type <option (list variable)> option(data_block) option(parameters_block) 
@@ -165,8 +165,8 @@ function_def:
     { mkfunction rt name args b }
 
 return_type:
-  | VOID { Rvoid }
-  | ut=unsized_type { Rtype ut }
+  | VOID { None }
+  | ut=unsized_type { Some ut }
 
 arg_decl:
   | ut=unsized_type id=decl_identifier { (Aauto_diffable, ut, id) }
@@ -189,7 +189,7 @@ unsized_dims:
 (* declarations *)
 var_decl:
   | sbt=sized_basic_type id=decl_identifier d=option(dims) ae=option(pair(ASSIGN, expr)) SEMICOLON
-    { Svar (mkvariable Tidentity (Tsized (reducearray sbt (sizes d))) id (omap snd ae) false) }
+    { Svar (mkvariable Tidentity ((reducearray sbt (sizes d))) id (omap snd ae) false) }
 
 sized_basic_type:
   | INT { Sint }
@@ -200,11 +200,11 @@ sized_basic_type:
 
 top_var_decl_no_assign:
   | tvt=top_var_type id=decl_identifier d=option(dims) SEMICOLON
-    { mkvariable (snd tvt) (Tsized (reducearray (fst tvt) (sizes d))) id None true }
+    { mkvariable (snd tvt) ((reducearray (fst tvt) (sizes d))) id None true }
 
 top_var_decl:
   | tvt=top_var_type id=decl_identifier d=option(dims) ass=option(pair(ASSIGN, expr)) SEMICOLON
-    { Svar (mkvariable (snd tvt) (Tsized (reducearray (fst tvt) (sizes d))) id (omap snd ass) true) }
+    { Svar (mkvariable (snd tvt) ((reducearray (fst tvt) (sizes d))) id (omap snd ass) true) }
 
 top_var_type:
   | INT r=range_constraint { (Sint, r) }

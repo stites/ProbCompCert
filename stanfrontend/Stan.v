@@ -86,35 +86,13 @@ Inductive sizedtype :=
   | Smatrix: expr -> expr -> sizedtype
   | Sarray: sizedtype -> expr -> sizedtype.
 
-Inductive unsizedtype :=
-  | Uint
-  | Ureal
-  | Uvector
-  | Urow_vector
-  | Umatrix
-  | Uarray: unsizedtype -> unsizedtype
-  | Ufun: (list (autodifftype * unsizedtype)) -> returntype -> unsizedtype
-  | Umath_library_function
-
-with autodifftype := 
-  | Adata_only 
-  | Aauto_diffable
-
-with returntype := 
-  | Rvoid 
-  | Rtype: unsizedtype -> returntype.
-
-Inductive type := 
-  | Tsized: sizedtype -> type 
-  | Tunsized: unsizedtype -> type.
-
 Inductive printable := 
   | Pstring: string -> printable 
   | Pexpr: expr -> printable.
 
 Record variable := mkvariable {
   vd_transform: transformation;
-  vd_type: type;
+  vd_type: sizedtype;
   vd_id: identifier;
   vd_init: option expr;
   vd_global: bool
@@ -141,8 +119,20 @@ Inductive statement :=
   | Starget: expr -> statement
   | Stilde: expr -> identifier -> list expr -> (option expr * option expr) -> statement.
 
+Inductive unsizedtype :=
+  | Uint
+  | Ureal
+  | Uvector
+  | Urow_vector
+  | Umatrix
+  | Uarray: unsizedtype -> unsizedtype.
+			 
+Inductive autodifftype := 
+  | Adata_only 
+  | Aauto_diffable.
+		      
 Record function := mkfunction { 
-  fn_return: returntype; 
+  fn_return: option(unsizedtype); 
   fn_name: identifier; 
   fn_params: list (autodifftype * unsizedtype * identifier);
   fn_body: statement 
