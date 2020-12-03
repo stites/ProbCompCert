@@ -2,6 +2,9 @@ Require Import Globalenvs.
 Require Import Events.
 Require Import Integers.
 
+Require Import Sops.
+Require Import Stypes.
+
 Parameter string : Type.
 
 Parameter literal_T : string.
@@ -11,31 +14,6 @@ Parameter literal_lpmf : string (* "_lpmf" *).
 Parameter is_suffix: string -> string -> bool.
 
 Definition identifier := string.
-
-Inductive operator :=
-  | Plus
-  | PPlus
-  | Minus
-  | PMinus
-  | Times
-  | Divide
-  | IntDivide
-  | Modulo
-  | LDivide
-  | EltTimes
-  | EltDivide
-  | Pow
-  | EltPow
-  | Or
-  | And
-  | Equals
-  | NEquals
-  | Less
-  | Leq
-  | Greater
-  | Geq
-  | PNot
-  | Transpose.
 
 Inductive expr :=
   (* Classical expressions that exist in C *)
@@ -61,6 +39,41 @@ with index :=
   | Idownfrom: expr -> index
   | Ibetween: expr -> expr -> index. 
 
+
+(* experiment with types *)
+	
+Inductive basic :=
+  | Bint
+  | Breal
+  | Bvector: expr -> basic
+  | Brow: expr -> basic
+  | Bmatrix: expr -> expr -> basic.
+
+Inductive constraint :=
+  | Cidentity
+  | Clower: expr -> constraint
+  | Cupper: expr -> constraint
+  | Clower_upper: expr -> expr -> constraint
+  | Coffset: expr -> constraint
+  | Cmultiplier: expr -> constraint
+  | Coffset_multiplier: expr -> expr -> constraint
+  | Cordered
+  | Cpositive_ordered
+  | Csimplex
+  | Cunit_vector
+  | Ccholesky_corr
+  | Ccholesky_cov
+  | Ccorrelation
+  | Ccovariance. 		       
+
+Record type := mktype {
+  type_basic: basic;
+  type_constraint: constraint;
+   type_dims: list(int);
+}.		       
+			 
+(* end of experiments with types *)
+		 
 Inductive transformation :=
   | Tidentity
   | Tlower: expr -> transformation
@@ -85,7 +98,7 @@ Inductive sizedtype :=
   | Srow_vector: expr -> sizedtype
   | Smatrix: expr -> expr -> sizedtype
   | Sarray: sizedtype -> expr -> sizedtype.
-
+			 
 Inductive printable := 
   | Pstring: string -> printable 
   | Pexpr: expr -> printable.
@@ -118,18 +131,6 @@ Inductive statement :=
   (* Probabilistic statements *)
   | Starget: expr -> statement
   | Stilde: expr -> identifier -> list expr -> (option expr * option expr) -> statement.
-
-Inductive unsizedtype :=
-  | Uint
-  | Ureal
-  | Uvector
-  | Urow_vector
-  | Umatrix
-  | Uarray: unsizedtype -> unsizedtype.
-			 
-Inductive autodifftype := 
-  | Adata_only 
-  | Aauto_diffable.
 		      
 Record function := mkfunction { 
   fn_return: option(unsizedtype); 
@@ -147,7 +148,3 @@ Record program := mkprogram {
   pr_model: option (list statement);
   pr_generated: option (list statement)
 }.
-
-Require Import Smallstep.
-
-Parameter semantics: program -> semantics.

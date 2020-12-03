@@ -7,6 +7,8 @@ Require Import List.
 Import ListNotations.
 Require Import Nat.
 
+Require Import Sops.
+Require Import Stypes.
 Require Import Stan.
 
 (* Takes a sized_basic_type and a list of sizes and repeatedly applies then
