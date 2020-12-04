@@ -13,13 +13,13 @@ Require Import Stan.
 
 (* Takes a sized_basic_type and a list of sizes and repeatedly applies then
    Sarray constructor, taking sizes off the list *)
-Definition reducearray (sbt:sizedtype) (l:list expr) : sizedtype :=
-  List.fold_right (fun z y => Sarray y z) sbt l.
+Definition reducearray (sbt:basic) (l:list expr) : list expr := l.
+  (* List.fold_right (fun z y => Sarray y z) sbt l. *)
 
-Fixpoint reparray (n:nat) (x:unsizedtype) : unsizedtype :=
+Fixpoint reparray (n:nat) (x:type) : type :=
   match n with
   | O => x
-  | S n' => reparray n' (Uarray x)
+  | S n' => reparray n' (Tarray x)
   end.
 
 Definition omap {A:Type} {B:Type} (f:A->B) (x:option A): option B :=
@@ -72,13 +72,13 @@ Definition sizes d : list expr :=
 %type <list variable> data_block parameters_block
 %type <list function> function_block
 %type <option expr * option expr> truncation
-%type <transformation> range offset_mult range_constraint type_constraint
-%type <sizedtype * transformation> top_var_type
-%type <sizedtype> sized_basic_type
-%type <unsizedtype> basic_type unsized_type
+%type <constraint> range offset_mult range_constraint type_constraint
+%type <basic * constraint> top_var_type
+%type <basic> sized_basic_type
+%type <type> basic_type unsized_type
 %type <nat> unsized_dims (* questionable *)
-%type <autodifftype * unsizedtype * string> arg_decl
-%type <option(unsizedtype)> return_type
+%type <autodifftype * type * string> arg_decl
+%type <option(type)> return_type
 %type <function> function_def
 
 %type <option (list variable)> option(data_block) option(parameters_block) 
@@ -86,7 +86,7 @@ Definition sizes d : list expr :=
 %type <option (list statement)> option(transformed_data_block) option(transformed_parameters_block) option(model_block) option(generated_quantities_block)
 
 %type <list expr> separated_nonempty_list(COMMA,expr) separated_list(COMMA,expr)
-%type <list (autodifftype * unsizedtype * string) > separated_nonempty_list(COMMA,arg_decl) separated_list(COMMA,arg_decl)
+%type <list (autodifftype * type * string) > separated_nonempty_list(COMMA,arg_decl) separated_list(COMMA,arg_decl)
 %type <unit * expr> pair(COMMA,expr)  pair(ASSIGN,expr)
 %type <option expr> option(expr)
 %type <option (list expr)> option(dims)
@@ -179,11 +179,11 @@ unsized_type:
   | bt=basic_type d=unsized_dims { reparray (1+d) bt    }
 
 basic_type:
-  | INT { Uint }
-  | REAL { Ureal }
-  | VECTOR { Uvector }
-  | ROWVECTOR { Urow_vector }
-  | MATRIX { Umatrix }
+  | INT { Tint }
+  | REAL { Treal }
+  | VECTOR { Tvector }
+  | ROWVECTOR { Trow }
+  | MATRIX { Tmatrix }
 
 unsized_dims:
   | LBRACK cs=list(COMMA) RBRACK { length cs }
@@ -191,63 +191,63 @@ unsized_dims:
 (* declarations *)
 var_decl:
   | sbt=sized_basic_type id=decl_identifier d=option(dims) ae=option(pair(ASSIGN, expr)) SEMICOLON
-    { Svar (mkvariable Tidentity ((reducearray sbt (sizes d))) id (omap snd ae) false) }
+    { Svar (mkvariable id sbt Cidentity (sizes d) (omap snd ae) false) }
 
 sized_basic_type:
-  | INT { Sint }
-  | REAL { Sreal }
-  | VECTOR LBRACK e=expr RBRACK { Svector e }
-  | ROWVECTOR LBRACK e=expr RBRACK { Srow_vector e  }
-  | MATRIX LBRACK e1=expr COMMA e2=expr RBRACK { Smatrix e1 e2 }
+  | INT { Bint }
+  | REAL { Breal }
+  | VECTOR LBRACK e=expr RBRACK { Bvector e }
+  | ROWVECTOR LBRACK e=expr RBRACK { Brow e  }
+  | MATRIX LBRACK e1=expr COMMA e2=expr RBRACK { Bmatrix e1 e2 }
 
 top_var_decl_no_assign:
   | tvt=top_var_type id=decl_identifier d=option(dims) SEMICOLON
-    { mkvariable (snd tvt) ((reducearray (fst tvt) (sizes d))) id None true }
+    { mkvariable id (fst tvt) (snd tvt) ((reducearray (fst tvt) (sizes d))) None true }
 
 top_var_decl:
   | tvt=top_var_type id=decl_identifier d=option(dims) ass=option(pair(ASSIGN, expr)) SEMICOLON
-    { Svar (mkvariable (snd tvt) ((reducearray (fst tvt) (sizes d))) id (omap snd ass) true) }
+    { Svar (mkvariable id (fst tvt) (snd tvt) ((reducearray (fst tvt) (sizes d))) (omap snd ass) true) }
 
 top_var_type:
-  | INT r=range_constraint { (Sint, r) }
-  | REAL c=type_constraint { (Sreal, c) }
-  | VECTOR c=type_constraint LBRACK e=expr RBRACK { (Svector e, c) }
-  | ROWVECTOR c=type_constraint LBRACK e=expr RBRACK { (Srow_vector e, c) }
-  | MATRIX c=type_constraint LBRACK e1=expr COMMA e2=expr RBRACK { (Smatrix e1 e2, c) }
-  | ORDERED LBRACK e=expr RBRACK { (Svector e, Tordered) }
-  | POSITIVEORDERED LBRACK e=expr RBRACK { (Svector e, Tpositive_ordered) }
-  | SIMPLEX LBRACK e=expr RBRACK { (Svector e, Tsimplex) }
-  | UNITVECTOR LBRACK e=expr RBRACK { (Svector e, Tunit_vector) }
-  | CHOLESKYFACTORCORR LBRACK e=expr RBRACK { (Smatrix e e, Tcholesky_corr) }
+  | INT r=range_constraint { (Bint, r) }
+  | REAL c=type_constraint { (Breal, c) }
+  | VECTOR c=type_constraint LBRACK e=expr RBRACK { (Bvector e, c) }
+  | ROWVECTOR c=type_constraint LBRACK e=expr RBRACK { (Brow e, c) }
+  | MATRIX c=type_constraint LBRACK e1=expr COMMA e2=expr RBRACK { (Bmatrix e1 e2, c) }
+  | ORDERED LBRACK e=expr RBRACK { (Bvector e, Cordered) }
+  | POSITIVEORDERED LBRACK e=expr RBRACK { (Bvector e, Cpositive_ordered) }
+  | SIMPLEX LBRACK e=expr RBRACK { (Bvector e, Csimplex) }
+  | UNITVECTOR LBRACK e=expr RBRACK { (Bvector e, Cunit_vector) }
+  | CHOLESKYFACTORCORR LBRACK e=expr RBRACK { (Bmatrix e e, Ccholesky_corr) }
   | CHOLESKYFACTORCOV LBRACK e1=expr oe2=option(pair(COMMA, expr)) RBRACK
     { 
       match oe2 with 
-      | Some (_,e2) => ( Smatrix e1 e2, Tcholesky_cov)
-      | _           =>  (Smatrix e1 e1, Tcholesky_cov)
+      | Some (_,e2) => ( Bmatrix e1 e2, Ccholesky_cov)
+      | _           =>  (Bmatrix e1 e1, Ccholesky_cov)
       end
     }
-  | CORRMATRIX LBRACK e=expr RBRACK { (Smatrix e e, Tcorrelation) }
-  | COVMATRIX LBRACK e=expr RBRACK { (Smatrix e e, Tcovariance) }
+  | CORRMATRIX LBRACK e=expr RBRACK { (Bmatrix e e, Ccorrelation) }
+  | COVMATRIX LBRACK e=expr RBRACK { (Bmatrix e e, Ccovariance) }
 
 type_constraint:
   | r=range_constraint { r }
   | LABRACK l=offset_mult RABRACK { l }
 
 range_constraint:
-  | { Tidentity }
+  | { Cidentity }
   | LABRACK r=range RABRACK { r }
 
 range:
   | LOWER ASSIGN e1=constr_expr COMMA UPPER ASSIGN e2=constr_expr
-  | UPPER ASSIGN e2=constr_expr COMMA LOWER ASSIGN e1=constr_expr { Tlower_upper e1 e2 }
-  | LOWER ASSIGN e=constr_expr { Tlower e }
-  | UPPER ASSIGN e=constr_expr { Tupper e }
+  | UPPER ASSIGN e2=constr_expr COMMA LOWER ASSIGN e1=constr_expr { Clower_upper e1 e2 }
+  | LOWER ASSIGN e=constr_expr { Clower e }
+  | UPPER ASSIGN e=constr_expr { Cupper e }
 
 offset_mult:
   | OFFSET ASSIGN e1=constr_expr COMMA MULTIPLIER ASSIGN e2=constr_expr
-  | MULTIPLIER ASSIGN e2=constr_expr COMMA OFFSET ASSIGN e1=constr_expr { Toffset_multiplier e1 e2 }
-  | OFFSET ASSIGN e=constr_expr { Toffset e }
-  | MULTIPLIER ASSIGN e=constr_expr { Tmultiplier e }
+  | MULTIPLIER ASSIGN e2=constr_expr COMMA OFFSET ASSIGN e1=constr_expr { Coffset_multiplier e1 e2 }
+  | OFFSET ASSIGN e=constr_expr { Coffset e }
+  | MULTIPLIER ASSIGN e=constr_expr { Cmultiplier e }
 
 dims:
   | LBRACK l=separated_nonempty_list(COMMA, expr) RBRACK { l }

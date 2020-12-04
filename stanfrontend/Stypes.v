@@ -1,10 +1,10 @@
-Inductive unsizedtype :=
-  | Uint
-  | Ureal
-  | Uvector
-  | Urow_vector
-  | Umatrix
-  | Uarray: unsizedtype -> unsizedtype.
+Inductive type :=
+  | Tint
+  | Treal
+  | Tvector
+  | Trow
+  | Tmatrix
+  | Tarray: type -> type.
 			 
 Inductive autodifftype := 
   | Adata_only 

@@ -38,9 +38,6 @@ with index :=
   | Iupfrom: expr -> index
   | Idownfrom: expr -> index
   | Ibetween: expr -> expr -> index. 
-
-
-(* experiment with types *)
 	
 Inductive basic :=
   | Bint
@@ -65,48 +62,16 @@ Inductive constraint :=
   | Ccholesky_cov
   | Ccorrelation
   | Ccovariance. 		       
-
-Record type := mktype {
-  type_basic: basic;
-  type_constraint: constraint;
-   type_dims: list(int);
-}.		       
-			 
-(* end of experiments with types *)
-		 
-Inductive transformation :=
-  | Tidentity
-  | Tlower: expr -> transformation
-  | Tupper: expr -> transformation
-  | Tlower_upper: expr -> expr -> transformation
-  | Toffset: expr -> transformation
-  | Tmultiplier: expr -> transformation
-  | Toffset_multiplier: expr -> expr -> transformation
-  | Tordered
-  | Tpositive_ordered
-  | Tsimplex
-  | Tunit_vector
-  | Tcholesky_corr
-  | Tcholesky_cov
-  | Tcorrelation
-  | Tcovariance.
-
-Inductive sizedtype :=
-  | Sint
-  | Sreal
-  | Svector: expr -> sizedtype
-  | Srow_vector: expr -> sizedtype
-  | Smatrix: expr -> expr -> sizedtype
-  | Sarray: sizedtype -> expr -> sizedtype.
-			 
+		      			 
 Inductive printable := 
   | Pstring: string -> printable 
   | Pexpr: expr -> printable.
 
 Record variable := mkvariable {
-  vd_transform: transformation;
-  vd_type: sizedtype;
   vd_id: identifier;
+  vd_type: basic;
+  vd_constraint: constraint;
+  vd_dims: list(expr);
   vd_init: option expr;
   vd_global: bool
 }.
@@ -133,9 +98,9 @@ Inductive statement :=
   | Stilde: expr -> identifier -> list expr -> (option expr * option expr) -> statement.
 		      
 Record function := mkfunction { 
-  fn_return: option(unsizedtype); 
+  fn_return: option(type); 
   fn_name: identifier; 
-  fn_params: list (autodifftype * unsizedtype * identifier);
+  fn_params: list (autodifftype * type * identifier);
   fn_body: statement 
 }.
 
