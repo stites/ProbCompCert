@@ -63,9 +63,6 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance. 		       
 		      			 
-Inductive printable := 
-  | Pstring: string -> printable 
-  | Pexpr: expr -> printable.
 
 Record variable := mkvariable {
   vd_id: identifier;
@@ -76,6 +73,10 @@ Record variable := mkvariable {
   vd_global: bool
 }.
 
+Inductive printable := 
+  | Pstring: string -> printable 
+  | Pexpr: expr -> printable.
+  
 Inductive statement :=
   (* Classical statements that exist in C *)
   | Sskip : statement
@@ -89,9 +90,8 @@ Inductive statement :=
   | Sreturn: option expr -> statement
   | Svar: variable -> statement
   | Scall: identifier -> list expr -> statement
+  | Sruntime: String.string -> list printable -> statement
   (* Classical statements that differ C *)
-  | Sprint: list printable -> statement
-  | Sreject: list printable -> statement
   | Sforeach: identifier -> expr -> statement -> statement
   (* Probabilistic statements *)
   | Starget: expr -> statement
