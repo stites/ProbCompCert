@@ -63,7 +63,6 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance. 		       
 		      			 
-
 Record variable := mkvariable {
   vd_id: identifier;
   vd_type: basic;

@@ -4,9 +4,12 @@ Require Import Clight.
 Require Import Errors.
 Require Import Smallstep.
 Require Import Asm. 
-
-Parameter transf_stan_program: Stan.program -> res Clight.program.
-
+Require Import Stemplate.
+Require Import Compiler.
+  
+Definition transf_stan_program(p: Stan.program): res Clight.program :=
+  OK (Stemplate.prog).
+  
 Theorem transf_stan_program_correct:
   forall p tp,
   transf_stan_program p = OK tp ->
@@ -14,8 +17,13 @@ Theorem transf_stan_program_correct:
 Proof.
 Admitted.
 
-Parameter transf_stan_program_complete: Stan.program -> res Asm.program.
-
+Definition transf_stan_program_complete(p: Stan.program): res Asm.program :=						 
+  let p := transf_stan_program p in
+  match p with				
+  | OK p => transf_clight_program p
+  | Error s => Error s
+  end.															 
+  
 Theorem transf_stan_program_correct_complete:
   forall p tp,
   transf_stan_program_complete p = OK tp ->

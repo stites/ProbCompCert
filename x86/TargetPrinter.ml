@@ -822,7 +822,7 @@ module Target(System: SYSTEM):TARGET =
           fprintf oc "%a:\n" label (transl_label l)
       | Pallocframe(sz, ofs_ra, ofs_link)
       | Pfreeframe(sz, ofs_ra, ofs_link) ->
-	 assert false
+         assert false
       | Pbuiltin(ef, args, res) ->
           begin match ef with
             | EF_annot(kind,txt, targs) ->

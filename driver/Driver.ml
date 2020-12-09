@@ -141,7 +141,7 @@ let process_i_file sourcename =
 
 let process_stan_file sourcename =
   ensure_inputfile_exists sourcename;
-  compile_stan_file sourcename sourcename sourcename
+  compile_stan_file sourcename sourcename (output_filename sourcename ".stanm" ".s")
   
 (* Processing of .S and .s files *)
 
