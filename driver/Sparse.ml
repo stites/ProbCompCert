@@ -18,6 +18,14 @@ let tokens_stream text: buffer =
   Lazy.from_fun compute_buffer
          
 let parse_stan_file sourcefile ifile =
+  Frontend.init();
+  Hashtbl.clear C2C.decl_atom;
+  Hashtbl.clear C2C.stringTable;
+  Hashtbl.clear C2C.wstringTable;
+  Camlcoq.use_canonical_atoms := true;
+  
+  C2C.decl_stan_function "logdensity";
+  
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
   match Sparser.program log_fuel (tokens_stream text) with

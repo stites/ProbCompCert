@@ -98,10 +98,12 @@ let compile_i_file sourcename preproname =
   
 let compile_stan_file sourcename ifile ofile =
   (* Parse the ast *)
-  let csyntax = Sparse.parse_stan_file sourcename ifile in
+  let stan = Sparse.parse_stan_file sourcename ifile in
   (* Convert to Asm *)
-  let asm =
-    match Scompiler.transf_stan_program_complete csyntax with
+let asm =
+    match Compiler.apply_partial
+               (Scompiler.transf_stan_program_complete stan)
+               Asmexpand.expand_program with
     | Errors.OK asm ->
         asm
     | Errors.Error msg ->
@@ -141,7 +143,7 @@ let process_i_file sourcename =
 
 let process_stan_file sourcename =
   ensure_inputfile_exists sourcename;
-  compile_stan_file sourcename sourcename (output_filename sourcename ".stanm" ".s")
+  compile_stan_file sourcename sourcename (output_filename sourcename ".stan" ".s")
   
 (* Processing of .S and .s files *)
 
