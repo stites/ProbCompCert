@@ -25,6 +25,13 @@ let parse_stan_file sourcefile ifile =
   Camlcoq.use_canonical_atoms := true;
   
   C2C.decl_stan_function "logdensity";
+  C2C.decl_stan_function "get_parameters_size";
+  C2C.decl_stan_function "log";
+
+  let _ = Camlcoq.intern_string "data" in
+  let _ = Camlcoq.intern_string "d_size" in
+  
+  (* C2C.convertGlobvar ("dummy",0) Env.empty (C.Storage_extern,(Camlcoq.intern_string "data"),0,None); *)
   
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
