@@ -1,17 +1,9 @@
 Inductive operator :=
   | Plus
-  | PPlus
   | Minus
-  | PMinus
   | Times
   | Divide
-  | IntDivide
   | Modulo
-  | LDivide
-  | EltTimes
-  | EltDivide
-  | Pow
-  | EltPow
   | Or
   | And
   | Equals
@@ -21,4 +13,13 @@ Inductive operator :=
   | Greater
   | Geq
   | PNot
+		     
+  | PPlus
+  | PMinus
+  | IntDivide
+  | LDivide
+  | EltTimes
+  | EltDivide
+  | Pow
+  | EltPow
   | Transpose.
