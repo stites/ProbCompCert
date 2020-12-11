@@ -122,14 +122,17 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
-  prog_main: ident;
+  prog_model: ident;
+  prog_transformed_parameters: ident;
+  prog_transformed_data: ident;
+  prog_generated_quantities: ident;
   prog_comp_env: composite_env;
 }.
 
 Definition program_of_program (p: program) : AST.program fundef type :=
   {| AST.prog_defs := p.(prog_defs);
      AST.prog_public := p.(prog_public);
-     AST.prog_main := p.(prog_main) |}.
+     AST.prog_main := p.(prog_model) |}.
 
 Coercion program_of_program: program >-> AST.program.
 
@@ -265,6 +268,7 @@ Section EXPR.
 Variable e: env.
 Variable le: temp_env.
 Variable m: mem.
+Variable ta: float.
 
 Inductive eval_expr: expr -> val -> Prop :=
   | eval_Econst_int:   forall i ty,
@@ -295,7 +299,8 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_lvalue a loc ofs ->
       deref_loc (typeof a) m loc ofs v ->
       eval_expr a v
-
+  | eval_Etarget: forall ty,
+      eval_expr (Etarget ty) (Vfloat ta)
 with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
@@ -356,8 +361,6 @@ Definition is_call_cont (k: cont) : Prop :=
   | _ => False
   end.
 
-(** States *)
-
 Inductive state: Type :=
   | State
       (f: function)
@@ -365,16 +368,19 @@ Inductive state: Type :=
       (k: cont)
       (e: env)
       (le: temp_env)
-      (m: mem) : state
+      (m: mem) 
+      (ta: float) : state
   | Callstate
       (fd: fundef)
       (args: list val)
       (k: cont)
-      (m: mem) : state
+      (m: mem) 
+      (ta: float): state
   | Returnstate
       (res: val)
       (k: cont)
-      (m: mem) : state.
+      (m: mem) 
+      (ta: float): state.
 
 (** Find the statement and manufacture the continuation
   corresponding to a label *)
@@ -414,117 +420,118 @@ with find_label_ls (lbl: label) (sl: labeled_statements) (k: cont)
 Variable function_entry: function -> list val -> mem -> env -> temp_env -> mem -> Prop.
 
 Inductive step: state -> trace -> state -> Prop :=
-  | step_assign:   forall f a1 a2 k e le m loc ofs v2 v m',
-      eval_lvalue e le m a1 loc ofs ->
-      eval_expr e le m a2 v2 ->
+  | step_assign:   forall f a1 a2 k e le m ta loc ofs v2 v m',
+      eval_lvalue e le m ta a1 loc ofs ->
+      eval_expr e le m ta a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
       assign_loc ge (typeof a1) m loc ofs v m' ->
-      step (State f (Sassign a1 a2) k e le m)
-        E0 (State f Sskip k e le m')
-  | step_set:   forall f id a k e le m v,
-      eval_expr e le m a v ->
-      step (State f (Sset id a) k e le m)
-        E0 (State f Sskip k e (PTree.set id v le) m)
-  | step_call:   forall f optid a al k e le m tyargs tyres cconv vf vargs fd,
+      step (State f (Sassign a1 a2) k e le m ta)
+        E0 (State f Sskip k e le m' ta)
+  | step_set:   forall f id a k e le m ta v,
+      eval_expr e le m ta a v ->
+      step (State f (Sset id a) k e le m ta)
+        E0 (State f Sskip k e (PTree.set id v le) m ta)
+  | step_call:   forall f optid a al k e le m ta tyargs tyres cconv vf vargs fd,
       classify_fun (typeof a) = fun_case_f tyargs tyres cconv ->
-      eval_expr e le m a vf ->
-      eval_exprlist e le m al tyargs vargs ->
+      eval_expr e le m ta a vf ->
+      eval_exprlist e le m ta al tyargs vargs ->
       Genv.find_funct ge vf = Some fd ->
       type_of_fundef fd = Tfunction tyargs tyres cconv ->
-      step (State f (Scall optid a al) k e le m)
-        E0 (Callstate fd vargs (Kcall optid f e le k) m)
-  | step_builtin:   forall f optid ef tyargs al k e le m vargs t vres m',
-      eval_exprlist e le m al tyargs vargs ->
+      step (State f (Scall optid a al) k e le m ta)
+        E0 (Callstate fd vargs (Kcall optid f e le k) m ta)
+  | step_builtin:   forall f optid ef tyargs al k e le m ta vargs t vres m',
+      eval_exprlist e le m ta al tyargs vargs ->
       external_call ef ge vargs m t vres m' ->
-      step (State f (Sbuiltin optid ef tyargs al) k e le m)
-         t (State f Sskip k e (set_opttemp optid vres le) m')
-
-  | step_seq:  forall f s1 s2 k e le m,
-      step (State f (Ssequence s1 s2) k e le m)
-        E0 (State f s1 (Kseq s2 k) e le m)
-  | step_skip_seq: forall f s k e le m,
-      step (State f Sskip (Kseq s k) e le m)
-        E0 (State f s k e le m)
-  | step_continue_seq: forall f s k e le m,
-      step (State f Scontinue (Kseq s k) e le m)
-        E0 (State f Scontinue k e le m)
-  | step_break_seq: forall f s k e le m,
-      step (State f Sbreak (Kseq s k) e le m)
-        E0 (State f Sbreak k e le m)
-
-  | step_ifthenelse:  forall f a s1 s2 k e le m v1 b,
-      eval_expr e le m a v1 ->
+      step (State f (Sbuiltin optid ef tyargs al) k e le m ta)
+         t (State f Sskip k e (set_opttemp optid vres le) m' ta)
+  | step_seq:  forall f s1 s2 k e le m ta,
+      step (State f (Ssequence s1 s2) k e le m ta)
+        E0 (State f s1 (Kseq s2 k) e le m ta)
+  | step_skip_seq: forall f s k e le m ta,
+      step (State f Sskip (Kseq s k) e le m ta)
+        E0 (State f s k e le m ta)
+  | step_continue_seq: forall f s k e le m ta,
+      step (State f Scontinue (Kseq s k) e le m ta)
+        E0 (State f Scontinue k e le m ta)
+  | step_break_seq: forall f s k e le m ta,
+      step (State f Sbreak (Kseq s k) e le m ta)
+        E0 (State f Sbreak k e le m ta)
+  | step_ifthenelse:  forall f a s1 s2 k e le m ta v1 b,
+      eval_expr e le m ta a v1 ->
       bool_val v1 (typeof a) m = Some b ->
-      step (State f (Sifthenelse a s1 s2) k e le m)
-        E0 (State f (if b then s1 else s2) k e le m)
-
-  | step_loop: forall f s1 s2 k e le m,
-      step (State f (Sloop s1 s2) k e le m)
-        E0 (State f s1 (Kloop1 s1 s2 k) e le m)
-  | step_skip_or_continue_loop1:  forall f s1 s2 k e le m x,
+      step (State f (Sifthenelse a s1 s2) k e le m ta)
+        E0 (State f (if b then s1 else s2) k e le m ta)
+  | step_loop: forall f s1 s2 k e le m ta,
+      step (State f (Sloop s1 s2) k e le m ta)
+        E0 (State f s1 (Kloop1 s1 s2 k) e le m ta)
+  | step_skip_or_continue_loop1:  forall f s1 s2 k e le m ta x,
       x = Sskip \/ x = Scontinue ->
-      step (State f x (Kloop1 s1 s2 k) e le m)
-        E0 (State f s2 (Kloop2 s1 s2 k) e le m)
-  | step_break_loop1:  forall f s1 s2 k e le m,
-      step (State f Sbreak (Kloop1 s1 s2 k) e le m)
-        E0 (State f Sskip k e le m)
-  | step_skip_loop2: forall f s1 s2 k e le m,
-      step (State f Sskip (Kloop2 s1 s2 k) e le m)
-        E0 (State f (Sloop s1 s2) k e le m)
-  | step_break_loop2: forall f s1 s2 k e le m,
-      step (State f Sbreak (Kloop2 s1 s2 k) e le m)
-        E0 (State f Sskip k e le m)
-  | step_return_0: forall f k e le m m',
+      step (State f x (Kloop1 s1 s2 k) e le m ta)
+        E0 (State f s2 (Kloop2 s1 s2 k) e le m ta)
+  | step_break_loop1:  forall f s1 s2 k e le m ta,
+      step (State f Sbreak (Kloop1 s1 s2 k) e le m ta)
+        E0 (State f Sskip k e le m ta)
+  | step_skip_loop2: forall f s1 s2 k e le m ta,
+      step (State f Sskip (Kloop2 s1 s2 k) e le m ta)
+        E0 (State f (Sloop s1 s2) k e le m ta)
+  | step_break_loop2: forall f s1 s2 k e le m ta,
+      step (State f Sbreak (Kloop2 s1 s2 k) e le m ta)
+        E0 (State f Sskip k e le m ta)
+  | step_return_0: forall f k e le m ta m',
       Mem.free_list m (blocks_of_env e) = Some m' ->
-      step (State f (Sreturn None) k e le m)
-        E0 (Returnstate Vundef (call_cont k) m')
-  | step_return_1: forall f a k e le m v v' m',
-      eval_expr e le m a v ->
+      step (State f (Sreturn None) k e le m ta)
+        E0 (Returnstate Vundef (call_cont k) m' ta)
+  | step_return_1: forall f a k e le m ta v v' m',
+      eval_expr e le m ta a v ->
       sem_cast v (typeof a) f.(fn_return) m = Some v' ->
       Mem.free_list m (blocks_of_env e) = Some m' ->
-      step (State f (Sreturn (Some a)) k e le m)
-        E0 (Returnstate v' (call_cont k) m')
-  | step_skip_call: forall f k e le m m',
+      step (State f (Sreturn (Some a)) k e le m ta)
+        E0 (Returnstate v' (call_cont k) m' ta)
+  | step_skip_call: forall f k e le m ta m',
       is_call_cont k ->
       Mem.free_list m (blocks_of_env e) = Some m' ->
-      step (State f Sskip k e le m)
-        E0 (Returnstate Vundef k m')
-  | step_skip_break_switch: forall f x k e le m,
+      step (State f Sskip k e le m ta)
+        E0 (Returnstate Vundef k m' ta)
+  | step_skip_break_switch: forall f x k e le m ta,
       x = Sskip \/ x = Sbreak ->
-      step (State f x (Kswitch k) e le m)
-        E0 (State f Sskip k e le m)
-  | step_continue_switch: forall f k e le m,
-      step (State f Scontinue (Kswitch k) e le m)
-        E0 (State f Scontinue k e le m)
-
-  | step_internal_function: forall f vargs k m e le m1,
+      step (State f x (Kswitch k) e le m ta)
+        E0 (State f Sskip k e le m ta)
+  | step_continue_switch: forall f k e le m ta,
+      step (State f Scontinue (Kswitch k) e le m ta)
+        E0 (State f Scontinue k e le m ta)
+  | step_internal_function: forall f vargs k m ta e le m1,
       function_entry f vargs m e le m1 ->
-      step (Callstate (Internal f) vargs k m)
-        E0 (State f f.(fn_body) k e le m1)
-
-  | step_external_function: forall ef targs tres cconv vargs k m vres t m',
+      step (Callstate (Internal f) vargs k m ta)
+        E0 (State f f.(fn_body) k e le m1 ta)
+  | step_external_function: forall ef targs tres cconv vargs k m ta vres t m',
       external_call ef ge vargs m t vres m' ->
-      step (Callstate (External ef targs tres cconv) vargs k m)
-         t (Returnstate vres k m')
+      step (Callstate (External ef targs tres cconv) vargs k m ta)
+         t (Returnstate vres k m' ta)
+  | step_returnstate: forall v optid f e le k m ta,
+      step (Returnstate v (Kcall optid f e le k) m ta)
+        E0 (State f Sskip k e (set_opttemp optid v le) m ta)
+  | step_target: forall f a k e le m ta v ta',
+      eval_expr e le m ta a v ->
+      v = Vfloat ta' ->
+      step (State f (Starget a) k e le m ta) 
+        E0 (State f Sskip k e le m ta').
 
-  | step_returnstate: forall v optid f e le k m,
-      step (Returnstate v (Kcall optid f e le k) m)
-        E0 (State f Sskip k e (set_opttemp optid v le) m).
+Parameter zero: float.
 
 Inductive initial_state (p: program): state -> Prop :=
   | initial_state_intro: forall b f m0,
       let ge := Genv.globalenv p in
       Genv.init_mem p = Some m0 ->
-      Genv.find_symbol ge p.(prog_main) = Some b ->
+      Genv.find_symbol ge p.(prog_model) = Some b ->
       Genv.find_funct_ptr ge b = Some f ->
       type_of_fundef f = Tfunction Tnil type_int32s cc_default ->
-      initial_state p (Callstate f nil Kstop m0).
+      initial_state p (Callstate f nil Kstop m0 zero).
 
 (** A final state is a [Returnstate] with an empty continuation. *)
 
 Inductive final_state: state -> int -> Prop :=
-  | final_state_intro: forall r m,
-      final_state (Returnstate (Vint r) Kstop m) r.
+  | final_state_intro: forall r m ta,
+      final_state (Returnstate (Vint r) Kstop m ta) r.
 
 End SEMANTICS.
 
