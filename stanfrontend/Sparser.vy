@@ -327,13 +327,7 @@ basic_expr:
   | LBRACE xs=separated_nonempty_list(COMMA, expr) RBRACE { Earray xs }
   | LBRACK xs=separated_list(COMMA, expr) RBRACK { Erow xs }
   | id=identifier LPAREN e=expr BAR args=separated_list(COMMA, expr) RPAREN { Edist id (e :: args) }
-  | id=identifier LPAREN args=separated_list(COMMA, expr) RPAREN
-    {  
-       if andb ( eqb (List.length args) 1  )
-               ( is_suffix literal_lpdf id
-                || is_suffix literal_lpmf id )
-       then Edist id args else  Ecall id args 
-    }
+  | id=identifier LPAREN args=separated_list(COMMA, expr) RPAREN { Ecall id args }
   | TARGET LPAREN RPAREN { Etarget }
   | LPAREN e=expr RPAREN { e }
 

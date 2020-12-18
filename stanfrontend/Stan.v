@@ -8,10 +8,6 @@ Require Import Stypes.
 Parameter string : Type.
 
 Parameter literal_T : string.
-Parameter literal_lpdf : string (* "_lpdf" *).
-Parameter literal_lpmf : string (* "_lpmf" *).
-
-Parameter is_suffix: string -> string -> bool.
 
 Definition identifier := string.
 
