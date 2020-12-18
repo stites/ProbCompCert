@@ -6,9 +6,16 @@ Require Import Smallstep.
 Require Import Asm. 
 Require Import Stemplate.
 Require Import Compiler.
+Require Import Denumpyification.
+Require Import String.
+
+Definition backend (p: CStan.program): res Clight.program :=
+  OK (Stemplate.prog).							     
   
 Definition transf_stan_program(p: Stan.program): res Clight.program :=
-  OK (Stemplate.prog).
+  OK p
+  @@@ time EmptyString Denumpyification.transf_program								  
+  @@@ time EmptyString backend.
   
 Theorem transf_stan_program_correct:
   forall p tp,

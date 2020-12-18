@@ -131,7 +131,8 @@ PARSER=Cabs.v Parser.v
 
 # Stan front-end
 
-STANFRONTEND=Sops.v Stypes.v Stan.v Ssemantics.v Sparser.v CStan.v Scompiler.v Runtime.v System.v Stemplate.v
+STANFRONTEND=Sops.v Stypes.v Stan.v Ssemantics.v Sparser.v CStan.v Scompiler.v Runtime.v System.v Stemplate.v \
+  Denumpyification.v
 
 # MenhirLib
 

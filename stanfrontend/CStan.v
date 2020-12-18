@@ -569,7 +569,7 @@ Definition semantics2 (p: program) :=
   Semantics_gen step2 (initial_state p) final_state ge ge.
 
 (** This semantics is receptive to changes in events. *)
-
+(*
 Lemma semantics_receptive:
   forall (p: program), receptive (semantics1 p).
 Proof.
@@ -590,3 +590,4 @@ Proof.
   eapply external_call_trace_length; eauto.
   eapply external_call_trace_length; eauto.
 Qed.
+*)
