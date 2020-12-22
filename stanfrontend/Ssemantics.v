@@ -1,4 +1,4 @@
-Require Import Stan.
+Require Import StanE.
 Require Import Smallstep.
 Require Import Globalenvs.
 Require Import Events.

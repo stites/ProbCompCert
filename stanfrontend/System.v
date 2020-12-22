@@ -3,7 +3,7 @@ Require Import Runtime.
 Require Import Compiler. 
 Require Import Asm.
 Require Import Compiler.
-Require Import Stan.
+Require Import StanE.
 Require Import Ssemantics.
 Require Import Linking.
 Require Import Scompiler.
@@ -21,12 +21,12 @@ Parameter from_trace: Events.traceinf -> (nat -> R).
 
 Parameter distribution: Type. 
 
-Parameter denotational_semantics: Stan.program -> distribution.
+Parameter denotational_semantics: StanE.program -> distribution.
 
 Parameter is_distributed_as: R -> distribution -> Prop.
 
 Theorem convergence: 
-  forall p: Stan.program,
+  forall p: StanE.program,
   forall tp: Clight.program,
   Scompiler.transf_stan_program p = OK tp ->
   forall system: Clight.program,

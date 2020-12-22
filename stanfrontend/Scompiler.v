@@ -1,4 +1,4 @@
-Require Import Stan.
+Require Import StanE.
 Require Import Ssemantics.
 Require Import Clight.
 Require Import Errors.
@@ -13,7 +13,7 @@ Open Scope string_scope.
 Definition backend (p: CStan.program): res Clight.program :=
   OK (Stemplate.prog).							     
   
-Definition transf_stan_program(p: Stan.program): res Clight.program :=
+Definition transf_stan_program(p: StanE.program): res Clight.program :=
   OK p
   @@@ time "Denumpyification" Denumpyification.transf_program								  
   @@@ time "Backend" backend.
@@ -25,7 +25,7 @@ Theorem transf_stan_program_correct:
 Proof.
 Admitted.
 
-Definition transf_stan_program_complete(p: Stan.program): res Asm.program :=						 
+Definition transf_stan_program_complete(p: StanE.program): res Asm.program :=						 
   let p := transf_stan_program p in
   match p with				
   | OK p => transf_clight_program p

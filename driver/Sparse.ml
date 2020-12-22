@@ -1,7 +1,10 @@
 open Sparser.MenhirLibParser.Inter
 
 exception SNIY of string
-   
+exception NIY_elab of string
+
+let elaborate p = raise (NIY_elab "TODO")
+                
 let read_file sourcefile =
   let ic = open_in_bin sourcefile in
   let n = in_channel_length ic in
@@ -16,7 +19,7 @@ let tokens_stream text: buffer =
     loop (Slexer.token lexbuf)
   in
   Lazy.from_fun compute_buffer
-         
+  
 let parse_stan_file sourcefile ifile =
   Frontend.init();
   Hashtbl.clear C2C.decl_atom;
@@ -38,5 +41,5 @@ let parse_stan_file sourcefile ifile =
   match Sparser.program log_fuel (tokens_stream text) with
   | Sparser.MenhirLibParser.Inter.Fail_pr -> assert false
   | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
-  | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> ast
+  | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast
       

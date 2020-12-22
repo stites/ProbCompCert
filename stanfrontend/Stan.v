@@ -4,7 +4,7 @@ Require Import Integers.
 
 Require Import Sops.
 Require Import Stypes.
-
+  
 Parameter string : Type.
 
 Parameter literal_T : string.
