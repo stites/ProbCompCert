@@ -3,6 +3,7 @@ Require Import Events.
 Require Import Integers.
 Require Import Coqlib.
 Require Import Floats.
+Require Stan.
 
 Require Import Sops.
 Require Import Stypes.
@@ -38,29 +39,12 @@ Inductive basic :=
   | Breal
   | Bvector: expr -> basic
   | Brow: expr -> basic
-  | Bmatrix: expr -> expr -> basic.
-
-Inductive constraint :=
-  | Cidentity
-  | Clower: expr -> constraint
-  | Cupper: expr -> constraint
-  | Clower_upper: expr -> expr -> constraint
-  | Coffset: expr -> constraint
-  | Cmultiplier: expr -> constraint
-  | Coffset_multiplier: expr -> expr -> constraint
-  | Cordered
-  | Cpositive_ordered
-  | Csimplex
-  | Cunit_vector
-  | Ccholesky_corr
-  | Ccholesky_cov
-  | Ccorrelation
-  | Ccovariance. 		       
+  | Bmatrix: expr -> expr -> basic. 		       
 		      			 
 Record variable := mkvariable {
   vd_id: ident;
   vd_type: basic;
-  vd_constraint: constraint;
+  vd_constraint: Stan.constraint;
   vd_dims: list(expr);
   vd_init: option expr;
   vd_global: bool
