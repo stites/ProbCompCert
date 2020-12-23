@@ -4,10 +4,12 @@ Require Import Integers.
 
 Require Import Sops.
 Require Import Stypes.
-  
-Parameter string : Type.
 
-Parameter literal_T : string.
+Require Import String.
+Open Scope string_scope. 
+
+(* OCaml string *)  
+Parameter string : Type.
 
 Definition identifier := string.
 

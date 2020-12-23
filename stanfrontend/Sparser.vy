@@ -160,7 +160,6 @@ generated_quantities_block:
 
 identifier:
   | id=IDENTIFIER { id }
-  | TRUNCATE { literal_T }
 
 decl_identifier:
   | id=identifier { id }

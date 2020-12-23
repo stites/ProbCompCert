@@ -141,8 +141,7 @@ Extract Constant Cabs.char_code => "int64".
 
 (* Stan *)
 Extract Inlined Constant Stan.string => "String.t".
-Extract Inlined Constant Stan.literal_T => "(String.make 1 'a')".
-
+ 
 (* Processor-specific extraction directives *)
 
 Load extractionMachdep.
