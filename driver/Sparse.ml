@@ -1,5 +1,6 @@
 open Sparser.MenhirLibParser.Inter
 open List
+open C2C
    
 exception SNIY of string
 exception NIY_elab of string
@@ -98,7 +99,27 @@ let elab elab_fun ol =
   match ol with
   | None -> None
   | Some l -> Some (List.map elab_fun l)
-                         
+
+let declareFundef name body =
+  let id = Camlcoq.intern_string name in
+  Hashtbl.add C2C.decl_atom id {
+      a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_text;Sections.Section_literal;Sections.Section_jumptable];
+      a_access = Sections.Access_default;
+      a_inline = Noinline;
+      a_loc = ("dummy",0) };
+  let body = List.map el_s body in
+  let fd =  {
+      StanE.fn_return = None;
+      StanE.fn_callconv = AST.cc_default;
+      StanE.fn_params = [];
+      StanE.fn_vars = [];
+      StanE.fn_temps = [];
+      StanE.fn_body = body} in
+  (id,fd)
+            
 let elaborate (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
@@ -109,14 +130,29 @@ let elaborate (p: Stan.program) =
       Stan.pr_model=m;
       Stan.pr_generated=g;
     } ->
-    { StanE.pr_functions=elab elaborate_function f;
-      StanE.pr_data=elab elaborate_variable d;
-      StanE.pr_transformed_data=elab el_s td;
-      StanE.pr_parameters=elab elaborate_variable p;
-      StanE.pr_transformed_parameters=elab el_s tp;
-      StanE.pr_model=elab el_s m;
-      StanE.pr_generated=elab el_s g;
-    }
+
+    let (id_data,f_data) = declareFundef "transformed_data" [Stan.Sskip] in
+
+    {
+      StanE.pr_functions=[(id_data,f_data)];
+      StanE.pr_variables = [];
+      StanE.pr_data=Some id_data;
+      StanE.pr_transformed_data=None;
+      StanE.pr_parameters=None;
+      StanE.pr_transformed_parameters=None;
+      StanE.pr_model=None;
+      StanE.pr_generated=None;
+    }    
+    
+    (* {
+     *   StanE.pr_functions=elab elaborate_function f;
+     *   StanE.pr_data=elab elaborate_variable d;
+     *   StanE.pr_transformed_data=elab el_s td;
+     *   StanE.pr_parameters=elab elaborate_variable p;
+     *   StanE.pr_transformed_parameters=elab el_s tp;
+     *   StanE.pr_model=elab el_s m;
+     *   StanE.pr_generated=elab el_s g;
+     * } *)
   
       
   

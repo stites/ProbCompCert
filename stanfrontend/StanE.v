@@ -76,17 +76,20 @@ Inductive statement :=
 		      
 Record function := mkfunction { 
   fn_return: option(type); 
-  fn_name: ident; 
   fn_params: list (autodifftype * type * ident);
-  fn_body: statement 
+  fn_body: list statement;
+  fn_callconv: AST.calling_convention;
+  fn_temps: list (ident * type);
+  fn_vars: list (ident * type); 
 }.
 
 Record program := mkprogram {
-  pr_functions: option (list function);
-  pr_data: option (list variable);
-  pr_transformed_data: option (list statement);
-  pr_parameters: option (list variable);
-  pr_transformed_parameters: option (list statement);
-  pr_model: option (list statement);
-  pr_generated: option (list statement)
+  pr_functions: list (ident * function);
+  pr_variables: list (ident * variable);
+  pr_data: option ident;
+  pr_transformed_data: option ident;
+  pr_parameters: option ident;
+  pr_transformed_parameters: option ident;
+  pr_model: option ident;
+  pr_generated: option ident
 }.
