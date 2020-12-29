@@ -208,16 +208,17 @@ let elaborate (p: Stan.program) =
     }    
   
 let parse_stan_file sourcefile ifile =
-  Frontend.init();
+  (*Frontend.init();*)
   Hashtbl.clear C2C.decl_atom;
   Hashtbl.clear C2C.stringTable;
   Hashtbl.clear C2C.wstringTable;
   Camlcoq.use_canonical_atoms := true;
-    
+
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
-  match Sparser.program log_fuel (tokens_stream text) with
+  let p = match Sparser.program log_fuel (tokens_stream text) with
   | Sparser.MenhirLibParser.Inter.Fail_pr -> assert false
   | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
-  | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast
+  | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
+  p
       
