@@ -1503,14 +1503,4 @@ let convertProgram p =
   with Env.Error msg ->
     fatal_error "%s" (Env.error_message msg)
 
-let decl_stan_function name =
-  Hashtbl.add decl_atom (Camlcoq.intern_string name)
-    { a_storage = C.Storage_auto;
-      a_alignment = None;
-      a_size = None;
-      a_sections = [Sections.Section_text];
-      a_access = Sections.Access_default;
-      a_inline = Noinline;
-      a_loc = ("dummy",0) };
-
 

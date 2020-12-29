@@ -8,10 +8,8 @@ Require Import Stemplate.
 Require Import Compiler.
 Require Import Denumpyification.
 Require Import String.
-Open Scope string_scope.
-  
-Definition backend (p: CStan.program): res Clight.program :=
-  OK (Stemplate.prog).							     
+Require Import Sbackend.
+Open Scope string_scope.						     
   
 Definition transf_stan_program(p: StanE.program): res Clight.program :=
   OK p

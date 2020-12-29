@@ -99,10 +99,9 @@ let declareVariable v =
       StanE.vd_dims = List.map el_e v.Stan.vd_dims;
       StanE.vd_init = None;
       StanE.vd_global = true;
-      StanE.vd_read_only = readonly;
-      StanE.vd_volatile = volatile;
     } in
-  (id, vd)
+  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = [];
+              gvar_readonly = readonly; gvar_volatile = volatile})
             
 let declareFundef name body rt params =
   let id = Camlcoq.intern_string name in
@@ -123,7 +122,7 @@ let declareFundef name body rt params =
       StanE.fn_vars = [];
       StanE.fn_temps = [];
       StanE.fn_body = body} in
-  (id,fd)
+  (id,  AST.Gfun(Ctypes.Internal fd))
             
 let elaborate (p: Stan.program) =
   match p with
@@ -193,10 +192,12 @@ let elaborate (p: Stan.program) =
       List.fold_left
         (fun acc -> fun v -> declareVariable v :: acc)
         variables (unop p) in    
+
+    let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
+    let _ = C2C.globals_for_strings gl1 in
     
     {
-      StanE.pr_functions=functions;
-      StanE.pr_variables = variables;
+      StanE.pr_defs=functions @ variables;
       StanE.pr_public=List.map fst functions;
       StanE.pr_data=id_data;
       StanE.pr_transformed_data=id_tr_data;

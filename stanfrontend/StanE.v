@@ -3,12 +3,12 @@ Require Import Events.
 Require Import Integers.
 Require Import Coqlib.
 Require Import Floats.
+Require Import AST.
 Require Stan.
+Require CStan.
 
 Require Import Sops.
 Require Import Stypes.
-
-Definition ident := positive.
   
 Inductive expr :=
   (* Classical expressions that exist in C *)
@@ -51,8 +51,6 @@ Record variable := mkvariable {
   vd_dims: list(expr);
   vd_init: option expr;
   vd_global: bool;
-  vd_read_only: bool;			       
-  vd_volatile: bool
 }.
 		    
 Inductive statement :=
@@ -84,9 +82,10 @@ Record function := mkfunction {
   fn_vars: list (ident * type); 
 }.
 
+Definition fundef := Ctypes.fundef function.
+  
 Record program := mkprogram {
-  pr_functions: list (ident * function);
-  pr_variables: list (ident * variable);
+  pr_defs: list (ident * globdef fundef variable);
   pr_public: list ident;			     
   pr_model: ident;
   pr_parameters: ident;	
