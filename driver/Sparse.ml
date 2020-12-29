@@ -197,6 +197,7 @@ let elaborate (p: Stan.program) =
     {
       StanE.pr_functions=functions;
       StanE.pr_variables = variables;
+      StanE.pr_public=List.map fst functions;
       StanE.pr_data=id_data;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;

@@ -39,8 +39,12 @@ Inductive basic :=
   | Breal
   | Bvector: expr -> basic
   | Brow: expr -> basic
-  | Bmatrix: expr -> expr -> basic. 		       
-		      			 
+  | Bmatrix: expr -> expr -> basic. 		       		      			
+
+Inductive printable := 
+  | Pstring: ident -> printable 
+  | Pexpr: expr -> printable.
+
 Record variable := mkvariable {
   vd_type: basic;
   vd_constraint: Stan.constraint;
@@ -50,11 +54,7 @@ Record variable := mkvariable {
   vd_read_only: bool;			       
   vd_volatile: bool
 }.
-
-Inductive printable := 
-  | Pstring: ident -> printable 
-  | Pexpr: expr -> printable.
-  
+		    
 Inductive statement :=
   (* Classical statements that exist in C *)
   | Sskip : statement
@@ -87,10 +87,11 @@ Record function := mkfunction {
 Record program := mkprogram {
   pr_functions: list (ident * function);
   pr_variables: list (ident * variable);
+  pr_public: list ident;			     
+  pr_model: ident;
+  pr_parameters: ident;	
+  pr_transformed_parameters: ident;		     
   pr_data: ident;
   pr_transformed_data: ident;
-  pr_parameters: ident;
-  pr_transformed_parameters: ident;
-  pr_model: ident;
   pr_generated: ident
 }.

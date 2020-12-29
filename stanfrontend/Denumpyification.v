@@ -70,14 +70,16 @@ Definition conv {A B: Type} (f: A -> res B) (ol: option (list A)): list B :=
   nil.
 				     
 Definition transf_program(p: StanE.program): res CStan.program :=
-  Error (msg "Denumpyification.transf_program: NIY").
-								 
-(*
-    OK {| CStan.prog_defs :=conv transf_function p.(StanE.pr_functions);
-	CStan.prog_public:=nil;
-      CStan.prog_model:=xH;
-      CStan.prog_transformed_parameters:=xH;
-      CStan.prog_transformed_data:=xH;
-      CStan.prog_generated_quantities:=xH;
+  OK {| 
+      CStan.prog_defs :=nil;
+      CStan.prog_public:=p.(StanE.pr_public);
+      CStan.prog_model:=p.(StanE.pr_model);
+      CStan.prog_data:=p.(StanE.pr_data);
+      CStan.prog_transformed_data:=p.(StanE.pr_parameters);
+      CStan.prog_parameters:= p.(StanE.pr_parameters);
+      CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
+      CStan.prog_generated_quantities:=p.(StanE.pr_generated);
+      CStan.prog_comp_env:=Maps.PTree.empty _;
     |}.
-*)
+								 
+

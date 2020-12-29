@@ -123,7 +123,9 @@ Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
   prog_model: ident;
+  prog_parameters: ident;			  
   prog_transformed_parameters: ident;
+  prog_data: ident;			  
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;
