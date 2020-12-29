@@ -50,7 +50,7 @@ and el_i i =
                   
 let rec el_s s =
   match s with
-  | Stan.Sskip -> raise (NIY_elab "statement: skip")
+  | Stan.Sskip -> StanE.Sskip
   | Stan.Sassign _ -> raise (NIY_elab "statement: assign") 
   | Stan.Sblock sl -> StanE.Sblock (map el_s sl)
   | Stan.Sifthenelse _ -> raise (NIY_elab "statement: ifthenelse")
@@ -75,32 +75,36 @@ let el_b b =
   | Stan.Bvector e -> raise (NIY_elab "basic: vector")
   | Stan.Brow e -> raise (NIY_elab "basic: row")
   | Stan.Bmatrix (e1,e2) -> raise (NIY_elab "basic: matrix")
-    
-let elaborate_function f = raise (NIY_elab "function")
-                         
-let elaborate_variable v =
-  match v with
-    { Stan.vd_id=id;
-      Stan.vd_type=t;
-      Stan.vd_constraint=c;
-      Stan.vd_dims=d;
-      Stan.vd_init=i;
-      Stan.vd_global=g
-    } ->
-    { StanE.vd_id=Camlcoq.intern_string id;
-      StanE.vd_type=el_b t;
-      StanE.vd_constraint=c;
-      StanE.vd_dims=map el_e d;
-      StanE.vd_init=mapo i el_e;
-      StanE.vd_global=g
-    }
 
 let elab elab_fun ol =
   match ol with
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let declareFundef name body =
+let declareVariable v =
+  let id = Camlcoq.intern_string v.Stan.vd_id in
+  Hashtbl.add decl_atom id
+    { a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_data false];
+      a_access = Sections.Access_default;
+      a_inline = No_specifier;
+      a_loc = (v.Stan.vd_id,0) };
+  let volatile = false in
+  let readonly = false in
+  let vd = {
+      StanE.vd_type = el_b v.Stan.vd_type;
+      StanE.vd_constraint = v.Stan.vd_constraint;
+      StanE.vd_dims = List.map el_e v.Stan.vd_dims;
+      StanE.vd_init = None;
+      StanE.vd_global = true;
+      StanE.vd_read_only = readonly;
+      StanE.vd_volatile = volatile;
+    } in
+  (id, vd)
+            
+let declareFundef name body rt params =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
       a_storage = C.Storage_default;
@@ -109,12 +113,13 @@ let declareFundef name body =
       a_sections = [Sections.Section_text;Sections.Section_literal;Sections.Section_jumptable];
       a_access = Sections.Access_default;
       a_inline = Noinline;
-      a_loc = ("dummy",0) };
+      a_loc = (name,0) };
   let body = List.map el_s body in
-  let fd =  {
-      StanE.fn_return = None;
+  let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
+  let fd = {
+      StanE.fn_return = rt;
       StanE.fn_callconv = AST.cc_default;
-      StanE.fn_params = [];
+      StanE.fn_params = params;
       StanE.fn_vars = [];
       StanE.fn_temps = [];
       StanE.fn_body = body} in
@@ -131,30 +136,74 @@ let elaborate (p: Stan.program) =
       Stan.pr_generated=g;
     } ->
 
-    let (id_data,f_data) = declareFundef "transformed_data" [Stan.Sskip] in
+    let get_code c =
+      match c with
+      | None -> [Stan.Sskip]
+      | Some c -> c
+    in
 
-    {
-      StanE.pr_functions=[(id_data,f_data)];
-      StanE.pr_variables = [];
-      StanE.pr_data=Some id_data;
-      StanE.pr_transformed_data=None;
-      StanE.pr_parameters=None;
-      StanE.pr_transformed_parameters=None;
-      StanE.pr_model=None;
-      StanE.pr_generated=None;
-    }    
+    let functions = [] in
     
-    (* {
-     *   StanE.pr_functions=elab elaborate_function f;
-     *   StanE.pr_data=elab elaborate_variable d;
-     *   StanE.pr_transformed_data=elab el_s td;
-     *   StanE.pr_parameters=elab elaborate_variable p;
-     *   StanE.pr_transformed_parameters=elab el_s tp;
-     *   StanE.pr_model=elab el_s m;
-     *   StanE.pr_generated=elab el_s g;
-     * } *)
-  
-      
+    let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
+    let functions = (id_data,f_data) :: functions in
+    
+    let (id_tr_data,f_tr_data) = declareFundef "transformed_data" (get_code td) None [] in
+    let functions = (id_tr_data,f_tr_data) :: functions in
+    
+    let (id_params,f_params) = declareFundef "parameters" [Stan.Sskip] None [] in
+    let functions = (id_params,f_params) :: functions in
+    
+    let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
+    let functions = (id_tr_params,f_tr_params) :: functions in
+    
+    let (id_model,f_model) = declareFundef "model" (get_code m) None [] in
+    let functions = (id_model,f_model) :: functions in
+    
+    let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
+    let functions = (id_gen_quant,f_gen_quant) :: functions in
+
+    let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in
+    let functions = (id_propose,f_propose) :: functions in
+
+    let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in
+    let functions = (id_get,f_get) :: functions in
+    
+    let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
+    let functions = (id_set,f_set) :: functions in
+
+    let unop f =
+      match f with
+      | None -> []
+      | Some f -> f
+    in
+    
+    let functions =
+      List.fold_left
+        (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body] ff.Stan.fn_return ff.Stan.fn_params) :: acc)
+        functions (unop f) in
+
+    let variables = [] in
+
+    let variables =
+      List.fold_left
+        (fun acc -> fun v -> declareVariable v :: acc)
+        variables (unop d) in
+
+    let variables =
+      List.fold_left
+        (fun acc -> fun v -> declareVariable v :: acc)
+        variables (unop p) in    
+    
+    {
+      StanE.pr_functions=functions;
+      StanE.pr_variables = variables;
+      StanE.pr_data=id_data;
+      StanE.pr_transformed_data=id_tr_data;
+      StanE.pr_parameters=id_params;
+      StanE.pr_transformed_parameters=id_tr_params;
+      StanE.pr_model=id_model;
+      StanE.pr_generated=id_gen_quant;
+    }    
   
 let parse_stan_file sourcefile ifile =
   Frontend.init();
@@ -162,16 +211,7 @@ let parse_stan_file sourcefile ifile =
   Hashtbl.clear C2C.stringTable;
   Hashtbl.clear C2C.wstringTable;
   Camlcoq.use_canonical_atoms := true;
-  
-  C2C.decl_stan_function "logdensity";
-  C2C.decl_stan_function "get_parameters_size";
-  C2C.decl_stan_function "log";
-
-  let _ = Camlcoq.intern_string "data" in
-  let _ = Camlcoq.intern_string "d_size" in
-  
-  (* C2C.convertGlobvar ("dummy",0) Env.empty (C.Storage_extern,(Camlcoq.intern_string "data"),0,None); *)
-  
+    
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
   match Sparser.program log_fuel (tokens_stream text) with

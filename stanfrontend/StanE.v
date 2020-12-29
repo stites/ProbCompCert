@@ -42,12 +42,13 @@ Inductive basic :=
   | Bmatrix: expr -> expr -> basic. 		       
 		      			 
 Record variable := mkvariable {
-  vd_id: ident;
   vd_type: basic;
   vd_constraint: Stan.constraint;
   vd_dims: list(expr);
   vd_init: option expr;
-  vd_global: bool
+  vd_global: bool;
+  vd_read_only: bool;			       
+  vd_volatile: bool
 }.
 
 Inductive printable := 
@@ -86,10 +87,10 @@ Record function := mkfunction {
 Record program := mkprogram {
   pr_functions: list (ident * function);
   pr_variables: list (ident * variable);
-  pr_data: option ident;
-  pr_transformed_data: option ident;
-  pr_parameters: option ident;
-  pr_transformed_parameters: option ident;
-  pr_model: option ident;
-  pr_generated: option ident
+  pr_data: ident;
+  pr_transformed_data: ident;
+  pr_parameters: ident;
+  pr_transformed_parameters: ident;
+  pr_model: ident;
+  pr_generated: ident
 }.
