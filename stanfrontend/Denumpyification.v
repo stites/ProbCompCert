@@ -69,8 +69,15 @@ Definition transf_basic (b: StanE.basic): res Ctypes.type :=
 Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :=
   Error (msg "Denumpyification.transf_variable: NIY").								     
 	
-Definition transf_function (v: StanE.function): res CStan.function :=
-  Error (msg "Denumpyification.transf_function: NIY").
+Definition transf_function (f: StanE.function): res CStan.function :=
+  OK {|
+      CStan.fn_return := Tvoid;
+      CStan.fn_params := nil;
+      CStan.fn_body := CStan.Sskip;
+      CStan.fn_callconv := f.(StanE.fn_callconv);
+      CStan.fn_temps := nil;
+      CStan.fn_vars := nil;
+     |}.
 
 Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :=
   match fd with

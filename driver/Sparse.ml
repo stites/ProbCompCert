@@ -121,7 +121,7 @@ let declareFundef name body rt params =
       StanE.fn_params = params;
       StanE.fn_vars = [];
       StanE.fn_temps = [];
-      StanE.fn_body = body} in
+      StanE.fn_body = StanE.Sblock body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
             
 let elaborate (p: Stan.program) =
