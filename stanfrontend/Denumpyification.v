@@ -7,6 +7,12 @@ Require Import String.
 Open Scope string_scope.
 Require Import Coqlib.
 
+Notation "'do' X <- A ; B" := (bind A (fun X => B))
+   (at level 200, X ident, A at level 100, B at level 200)
+   : gensym_monad_scope.
+
+Local Open Scope gensym_monad_scope.
+  
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
   | Econst_int _ => Error (msg "Denumpyification.transf_program: NIY")
@@ -60,50 +66,24 @@ Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   | Bmatrix _ _ => Error (msg "Denumpyification.transf_program: NIY")
   end. 
 
-Definition transf_variable (v: StanE.variable): res CStan.type :=
+Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :=
   Error (msg "Denumpyification.transf_variable: NIY").								     
 	
 Definition transf_function (v: StanE.function): res CStan.function :=
   Error (msg "Denumpyification.transf_function: NIY").
 
-Notation "'do' X <- A ; B" := (bind A (fun X => B))
-   (at level 200, X ident, A at level 100, B at level 200)
-   : gensym_monad_scope.
-
-Local Open Scope gensym_monad_scope.			      
-
-			     (*
-Fixpoint transf_fundef (fdl: list Csyntax.fundef) {struct fdl} : res (list CStan.fundef) :=
-  match fdl with
-  | nil => OK nil
-  | cons fd fdl => 
-      let res := transf_fundef fdl in
-      match res with 
-      | Error e => Error e
-      | OK fdl => 										    
-        match fd with
-        | Ctypes.Internal f =>
-          Error (msg "Denumpyification.transf_fundef: NIY Internal")
-        | Ctypes.External ef targs tres cc =>
-          OK (cons (Ctypes.External ef targs tres cc) fdl)
-        end
-      end	
-			      end. 
-			      *)
-
-(*			      
-Definition transf_fundef (fd: Csyntax.fundef) : res CStan.fundef :=
+Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :=
   match fd with
-  | Ctypes.Internal f =>
-      Error (msg "Denumpyification.transf_fundef: NIY Internal")
-  | Ctypes.External ef targs tres cc =>
+  | Internal f =>
+      do tf <- transf_function f; OK (Internal tf)
+  | External ef targs tres cc =>
       OK (External ef targs tres cc)
-  end.							       
-*)
-						     
+  end.
+
 Definition transf_program(p: StanE.program): res CStan.program :=
+  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;	 
   OK {| 
-      CStan.prog_defs := nil;
+      CStan.prog_defs := AST.prog_defs p1;
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
       CStan.prog_data:=p.(StanE.pr_data);

@@ -94,3 +94,10 @@ Record program := mkprogram {
   pr_transformed_data: ident;
   pr_generated: ident
 }.
+
+Definition program_of_program (p: program) : AST.program fundef variable :=
+  {| AST.prog_defs := p.(pr_defs);
+     AST.prog_public := p.(pr_public);
+     AST.prog_main := xH |}.
+
+Coercion program_of_program: program >-> AST.program.
