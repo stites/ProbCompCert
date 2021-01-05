@@ -554,5 +554,11 @@ Definition semantics_data (p: program) (m: mem) :=
 Definition semantics_transformed_data (p: program) (m: mem) :=
   semantics_gen p m p.(prog_transformed_data).
 
+Definition semantics_parameters (p: program) (m: mem) :=
+  semantics_gen p m p.(prog_parameters).
+			
+Definition semantics_transformed_parameters (p: program) (m: mem) :=
+  semantics_gen p m p.(prog_transformed_parameters).
+						      
 Definition semantics_generated_quantities (p: program) (m: mem) :=
   semantics_gen p m p.(prog_generated_quantities).
