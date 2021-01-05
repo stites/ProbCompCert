@@ -518,78 +518,41 @@ Inductive step: state -> trace -> state -> Prop :=
       step (State f (Starget a) k e le m ta) 
         E0 (State f Sskip k e le m ta').
 
-Parameter zero: float.
-
-Inductive initial_state (p: program): state -> Prop :=
-  | initial_state_intro: forall b f m0,
-      let ge := Genv.globalenv p in
-      Genv.init_mem p = Some m0 ->
-      Genv.find_symbol ge p.(prog_model) = Some b ->
-      Genv.find_funct_ptr ge b = Some f ->
-      type_of_fundef f = Tfunction Tnil type_int32s cc_default ->
-      initial_state p (Callstate f nil Kstop m0 zero).
-
-(** A final state is a [Returnstate] with an empty continuation. *)
-
-Inductive final_state: state -> int -> Prop :=
-  | final_state_intro: forall r m ta,
-      final_state (Returnstate (Vint r) Kstop m ta) r.
-
 End SEMANTICS.
-
-Inductive function_entry1 (ge: genv) (f: function) (vargs: list val) (m: mem) (e: env) (le: temp_env) (m': mem) : Prop :=
-  | function_entry1_intro: forall m1,
+  
+Inductive function_entry (ge: genv) (f: function) (vargs: list val) (m: mem) (e: env) (le: temp_env) (m': mem) : Prop :=
+  | function_entry_intro: forall m1,
       list_norepet (var_names f.(fn_params) ++ var_names f.(fn_vars)) ->
       alloc_variables ge empty_env m (f.(fn_params) ++ f.(fn_vars)) e m1 ->
       bind_parameters ge e m1 f.(fn_params) vargs m' ->
       le = create_undef_temps f.(fn_temps) ->
-      function_entry1 ge f vargs m e le m'.
+      function_entry ge f vargs m e le m'.
 
-Definition step1 (ge: genv) := step ge (function_entry1 ge).
+Definition stepf (ge: genv) := step ge (function_entry ge).
 
-(** Second, parameters as temporaries. *)
+Parameter zero: float.
+														       
+Inductive initial_state_gen (p: program) (m: mem) (i: ident): state -> Prop :=
+  | initial_state_data_intro: forall b f,
+      let ge := Genv.globalenv p in
+      Genv.find_symbol ge i = Some b ->
+      Genv.find_funct_ptr ge b = Some f ->
+      type_of_fundef f = Tfunction Tnil Tvoid cc_default ->
+      initial_state_gen p m i (Callstate f nil Kstop m zero).						      
 
-Inductive function_entry2 (ge: genv)  (f: function) (vargs: list val) (m: mem) (e: env) (le: temp_env) (m': mem) : Prop :=
-  | function_entry2_intro:
-      list_norepet (var_names f.(fn_vars)) ->
-      list_norepet (var_names f.(fn_params)) ->
-      list_disjoint (var_names f.(fn_params)) (var_names f.(fn_temps)) ->
-      alloc_variables ge empty_env m f.(fn_vars) e m' ->
-      bind_parameter_temps f.(fn_params) vargs (create_undef_temps f.(fn_temps)) = Some le ->
-      function_entry2 ge f vargs m e le m'.
+Inductive final_state_gen: state -> int -> Prop :=
+  | final_state_data_intro: forall r m ta,
+      final_state_gen (Returnstate (Vint r) Kstop m ta) r.
 
-Definition step2 (ge: genv) := step ge (function_entry2 ge).
-
-(** Wrapping up these definitions in two small-step semantics. *)
-
-Definition semantics1 (p: program) :=
+Definition semantics_gen (p: program) (m: mem) (i: ident) :=
   let ge := globalenv p in
-  Semantics_gen step1 (initial_state p) final_state ge ge.
+  Semantics_gen stepf (initial_state_gen p m i) final_state_gen ge ge.
 
-Definition semantics2 (p: program) :=
-  let ge := globalenv p in
-  Semantics_gen step2 (initial_state p) final_state ge ge.
+Definition semantics_data (p: program) (m: mem) :=
+  semantics_gen p m p.(prog_data).
 
-(** This semantics is receptive to changes in events. *)
-(*
-Lemma semantics_receptive:
-  forall (p: program), receptive (semantics1 p).
-Proof.
-  intros. unfold semantics1.
-  set (ge := globalenv p). constructor; simpl; intros.
-(* receptiveness *)
-  assert (t1 = E0 -> exists s2, step1 ge s t2 s2).
-    intros. subst. inv H0. exists s1; auto.
-  inversion H; subst; auto.
-  (* builtin *)
-  exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
-  econstructor; econstructor; eauto.
-  (* external *)
-  exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
-  exists (Returnstate vres2 k m2). econstructor; eauto.
-(* trace length *)
-  red; simpl; intros. inv H; simpl; try omega.
-  eapply external_call_trace_length; eauto.
-  eapply external_call_trace_length; eauto.
-Qed.
-*)
+Definition semantics_transformed_data (p: program) (m: mem) :=
+  semantics_gen p m p.(prog_transformed_data).
+
+Definition semantics_generated_quantities (p: program) (m: mem) :=
+  semantics_gen p m p.(prog_generated_quantities).
