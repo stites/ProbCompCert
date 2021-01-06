@@ -66,7 +66,7 @@ Inductive statement :=
   | Sreturn: option expr -> statement
   | Svar: variable -> statement
   | Scall: ident -> list expr -> statement
-  | Sruntime: String.string -> list printable -> statement
+  | Sruntime: ident -> list printable -> statement
   (* Classical statements that differ C *)
   | Sforeach: ident -> expr -> statement -> statement
   (* Probabilistic statements *)

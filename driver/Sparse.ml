@@ -47,7 +47,12 @@ and el_i i =
   | Stan.Iupfrom e -> StanE.Iupfrom (el_e e)
   | Stan.Idownfrom e -> StanE.Idownfrom (el_e e)
   | Stan.Ibetween (e1,e2) -> StanE.Ibetween (el_e e1, el_e e2)
-                  
+
+let el_p p =
+  match p with
+  | Stan.Pstring s -> StanE.Pstring (Camlcoq.intern_string s)
+  | Stan.Pexpr e -> StanE.Pexpr (el_e e)
+                           
 let rec el_s s =
   match s with
   | Stan.Sskip -> StanE.Sskip
@@ -62,7 +67,8 @@ let rec el_s s =
   | Stan.Sreturn oe -> StanE.Sreturn (mapo oe el_e)
   | Stan.Svar v -> raise (NIY_elab "statement: var")
   | Stan.Scall (i,el) -> StanE.Scall (Camlcoq.intern_string i,List.map el_e el)
-  | Stan.Sruntime (s,pl) -> raise (NIY_elab "statement: runtime")
+  | Stan.Sprint lp -> raise (NIY_elab "statement: print")
+  | Stan.Sreject lp -> raise (NIY_elab "statement: reject")
   | Stan.Sforeach (i,e,s) -> StanE.Sforeach (Camlcoq.intern_string i,el_e e, el_s s)
   | Stan.Starget e -> StanE.Starget (el_e e)
   | Stan.Stilde (e,i,el,(tr1,tr2)) ->

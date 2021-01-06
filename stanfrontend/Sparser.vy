@@ -371,8 +371,8 @@ atomic_statement:
   | TARGET PLUSASSIGN e=expr SEMICOLON { Starget e }
   | BREAK SEMICOLON { Sbreak }
   | CONTINUE SEMICOLON { Scontinue }
-  | PRINT LPAREN l=printables RPAREN SEMICOLON { Sruntime "print" l }
-  | REJECT LPAREN l=printables RPAREN SEMICOLON { Sruntime "reject" l  }
+  | PRINT LPAREN l=printables RPAREN SEMICOLON { Sprint l }
+  | REJECT LPAREN l=printables RPAREN SEMICOLON { Sreject l  }
   | RETURN e=expr SEMICOLON { Sreturn (Some e) }
   | RETURN SEMICOLON { Sreturn None }
   | SEMICOLON { Sskip }

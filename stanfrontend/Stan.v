@@ -87,7 +87,8 @@ Inductive statement :=
   | Sreturn: option expr -> statement
   | Svar: variable -> statement
   | Scall: identifier -> list expr -> statement
-  | Sruntime: String.string -> list printable -> statement
+  | Sprint: list printable -> statement
+  | Sreject: list printable -> statement
   (* Classical statements that differ C *)
   | Sforeach: identifier -> expr -> statement -> statement
   (* Probabilistic statements *)
