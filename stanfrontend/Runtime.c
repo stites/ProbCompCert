@@ -14,7 +14,19 @@ void generated_quantities();
 
 void* propose();
 
-void runtime(int n) {
+int main(int argc, char* argv[]) {
+
+  if (argc != 2) {
+
+    printf("One argument required: number of iterations\n");
+    exit(1);
+    
+  }
+
+  int n = atoi(argv[1]);
+  
+  data();
+  transformed_data();
 
   parameters();
   
@@ -39,22 +51,6 @@ void runtime(int n) {
     generated_quantities();
     
   }
-
-}
-
-int main(int argc, char* argv[]) {
-
-  if (argc != 2) {
-
-    printf("One argument required: number of iterations\n");
-    exit(1);
-    
-  }
-
-  data();
-  transformed_data();
-  
-  runtime(atoi(argv[1]));
   
   return 0;
   

@@ -13,6 +13,7 @@ Require Import ZArith Integers.
 Open Scope string_scope.
 Local Open Scope Z_scope.
 
+
 Require Import String List ZArith.
 Require Import Coqlib Integers Floats AST Ctypes Cop Clight Clightdefs.
 Local Open Scope Z_scope.
@@ -354,8 +355,8 @@ Definition public_idents : list ident :=
  ___builtin_clzll :: ___builtin_clzl :: ___builtin_clz ::
  ___builtin_bswap16 :: ___builtin_bswap32 :: ___builtin_bswap ::
  ___builtin_bswap64 :: nil).								       
-	
 
+		
 Fixpoint transf_expression (e: CStan.expr) {struct e}: res Clight.expr :=
   match e with						       
   | CStan.Econst_int i t => OK (Econst_int i t)

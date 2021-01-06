@@ -4,7 +4,7 @@ Local Open Scope Z_scope.
 Local Open Scope string_scope.
 
 Module Info.
-  Definition version := "3.7".
+  Definition version := "3.8".
   Definition build_number := "".
   Definition build_tag := "".
   Definition build_branch := "".
@@ -13,15 +13,10 @@ Module Info.
   Definition abi := "macosx".
   Definition bitsize := 64.
   Definition big_endian := false.
-  Definition source_file := "runtime.c".
+  Definition source_file := "Runtime.c".
   Definition normalized := false.
 End Info.
 
-Definition _U1 : ident := $"U1".
-Definition _U2 : ident := $"U2".
-Definition _W : ident := $"W".
-Definition _X1 : ident := $"X1".
-Definition _X2 : ident := $"X2".
 Definition ___builtin_annot : ident := $"__builtin_annot".
 Definition ___builtin_annot_intval : ident := $"__builtin_annot_intval".
 Definition ___builtin_bswap : ident := $"__builtin_bswap".
@@ -76,38 +71,28 @@ Definition ___compcert_va_float64 : ident := $"__compcert_va_float64".
 Definition ___compcert_va_int32 : ident := $"__compcert_va_int32".
 Definition ___compcert_va_int64 : ident := $"__compcert_va_int64".
 Definition ___stringlit_1 : ident := $"__stringlit_1".
-Definition ___stringlit_2 : ident := $"__stringlit_2".
-Definition ___stringlit_3 : ident := $"__stringlit_3".
 Definition _argc : ident := $"argc".
 Definition _argv : ident := $"argv".
 Definition _atoi : ident := $"atoi".
-Definition _call : ident := $"call".
 Definition _candidate : ident := $"candidate".
+Definition _data : ident := $"data".
 Definition _exit : ident := $"exit".
-Definition _get_parameters_size : ident := $"get_parameters_size".
+Definition _generated_quantities : ident := $"generated_quantities".
+Definition _get_state : ident := $"get_state".
 Definition _i : ident := $"i".
-Definition _j : ident := $"j".
-Definition _j__1 : ident := $"j__1".
-Definition _j__2 : ident := $"j__2".
-Definition _j__3 : ident := $"j__3".
-Definition _log : ident := $"log".
-Definition _logdensity : ident := $"logdensity".
 Definition _lp_candidate : ident := $"lp_candidate".
 Definition _lp_parameters : ident := $"lp_parameters".
 Definition _main : ident := $"main".
-Definition _malloc : ident := $"malloc".
-Definition _mu : ident := $"mu".
-Definition _mult : ident := $"mult".
+Definition _model : ident := $"model".
 Definition _n : ident := $"n".
-Definition _p_size : ident := $"p_size".
 Definition _parameters : ident := $"parameters".
-Definition _pow : ident := $"pow".
+Definition _parameters__1 : ident := $"parameters__1".
 Definition _printf : ident := $"printf".
+Definition _propose : ident := $"propose".
 Definition _rand : ident := $"rand".
-Definition _randn : ident := $"randn".
-Definition _runtime : ident := $"runtime".
-Definition _sigma : ident := $"sigma".
-Definition _sqrt : ident := $"sqrt".
+Definition _set_state : ident := $"set_state".
+Definition _transformed_data : ident := $"transformed_data".
+Definition _transformed_parameters : ident := $"transformed_parameters".
 Definition _u : ident := $"u".
 Definition _t'1 : ident := 128%positive.
 Definition _t'2 : ident := 129%positive.
@@ -115,9 +100,8 @@ Definition _t'3 : ident := 130%positive.
 Definition _t'4 : ident := 131%positive.
 Definition _t'5 : ident := 132%positive.
 Definition _t'6 : ident := 133%positive.
-Definition _t'7 : ident := 134%positive.
 
-Definition v___stringlit_3 := {|
+Definition v___stringlit_1 := {|
   gvar_info := (tarray tschar 45);
   gvar_init := (Init_int8 (Int.repr 79) :: Init_int8 (Int.repr 110) ::
                 Init_int8 (Int.repr 101) :: Init_int8 (Int.repr 32) ::
@@ -146,314 +130,16 @@ Definition v___stringlit_3 := {|
   gvar_volatile := false
 |}.
 
-Definition v___stringlit_2 := {|
-  gvar_info := (tarray tschar 2);
-  gvar_init := (Init_int8 (Int.repr 10) :: Init_int8 (Int.repr 0) :: nil);
-  gvar_readonly := true;
-  gvar_volatile := false
-|}.
-
-Definition v___stringlit_1 := {|
-  gvar_info := (tarray tschar 3);
-  gvar_init := (Init_int8 (Int.repr 37) :: Init_int8 (Int.repr 102) ::
-                Init_int8 (Int.repr 0) :: nil);
-  gvar_readonly := true;
-  gvar_volatile := false
-|}.
-
-Definition v_X1 := {|
-  gvar_info := tdouble;
-  gvar_init := (Init_space 8 :: nil);
-  gvar_readonly := false;
-  gvar_volatile := false
-|}.
-
-Definition v_X2 := {|
-  gvar_info := tdouble;
-  gvar_init := (Init_space 8 :: nil);
-  gvar_readonly := false;
-  gvar_volatile := false
-|}.
-
-Definition v_call := {|
-  gvar_info := tint;
-  gvar_init := (Init_int32 (Int.repr 0) :: nil);
-  gvar_readonly := false;
-  gvar_volatile := false
-|}.
-
-Definition f_randn := {|
-  fn_return := tdouble;
-  fn_callconv := cc_default;
-  fn_params := ((_mu, tdouble) :: (_sigma, tdouble) :: nil);
-  fn_vars := nil;
-  fn_temps := ((_U1, tdouble) :: (_U2, tdouble) :: (_W, tdouble) ::
-               (_mult, tdouble) :: (_t'7, tdouble) :: (_t'6, tdouble) ::
-               (_t'5, tdouble) :: (_t'4, tdouble) :: (_t'3, tint) ::
-               (_t'2, tint) :: (_t'1, tint) :: nil);
-  fn_body :=
-(Ssequence
-  (Sifthenelse (Ebinop Oeq (Evar _call tint) (Econst_int (Int.repr 1) tint)
-                 tint)
-    (Ssequence
-      (Sassign (Evar _call tint) (Eunop Onotbool (Evar _call tint) tint))
-      (Sreturn (Some (Ebinop Oadd (Etempvar _mu tdouble)
-                       (Ebinop Omul (Etempvar _sigma tdouble)
-                         (Ecast (Evar _X2 tdouble) tdouble) tdouble) tdouble))))
-    Sskip)
-  (Ssequence
-    (Sloop
-      (Ssequence
-        (Ssequence
-          (Scall (Some _t'2) (Evar _rand (Tfunction Tnil tint cc_default))
-            nil)
-          (Sset _U1
-            (Ebinop Oadd (Eunop Oneg (Econst_int (Int.repr 1) tint) tint)
-              (Ebinop Omul
-                (Ebinop Odiv (Ecast (Etempvar _t'2 tint) tdouble)
-                  (Econst_int (Int.repr 2147483647) tint) tdouble)
-                (Econst_int (Int.repr 2) tint) tdouble) tdouble)))
-        (Ssequence
-          (Ssequence
-            (Scall (Some _t'3) (Evar _rand (Tfunction Tnil tint cc_default))
-              nil)
-            (Sset _U2
-              (Ebinop Oadd (Eunop Oneg (Econst_int (Int.repr 1) tint) tint)
-                (Ebinop Omul
-                  (Ebinop Odiv (Ecast (Etempvar _t'3 tint) tdouble)
-                    (Econst_int (Int.repr 2147483647) tint) tdouble)
-                  (Econst_int (Int.repr 2) tint) tdouble) tdouble)))
-          (Ssequence
-            (Ssequence
-              (Scall (Some _t'4)
-                (Evar _pow (Tfunction (Tcons tdouble (Tcons tdouble Tnil))
-                             tdouble cc_default))
-                ((Etempvar _U1 tdouble) :: (Econst_int (Int.repr 2) tint) ::
-                 nil))
-              (Scall (Some _t'5)
-                (Evar _pow (Tfunction (Tcons tdouble (Tcons tdouble Tnil))
-                             tdouble cc_default))
-                ((Etempvar _U2 tdouble) :: (Econst_int (Int.repr 2) tint) ::
-                 nil)))
-            (Sset _W
-              (Ebinop Oadd (Etempvar _t'4 tdouble) (Etempvar _t'5 tdouble)
-                tdouble)))))
-      (Ssequence
-        (Sifthenelse (Ebinop Oge (Etempvar _W tdouble)
-                       (Econst_int (Int.repr 1) tint) tint)
-          (Sset _t'1 (Econst_int (Int.repr 1) tint))
-          (Sset _t'1
-            (Ecast
-              (Ebinop Oeq (Etempvar _W tdouble)
-                (Econst_int (Int.repr 0) tint) tint) tbool)))
-        (Sifthenelse (Etempvar _t'1 tint) Sskip Sbreak)))
-    (Ssequence
-      (Ssequence
-        (Ssequence
-          (Scall (Some _t'6)
-            (Evar _log (Tfunction (Tcons tdouble Tnil) tdouble cc_default))
-            ((Etempvar _W tdouble) :: nil))
-          (Scall (Some _t'7)
-            (Evar _sqrt (Tfunction (Tcons tdouble Tnil) tdouble cc_default))
-            ((Ebinop Odiv
-               (Ebinop Omul (Eunop Oneg (Econst_int (Int.repr 2) tint) tint)
-                 (Etempvar _t'6 tdouble) tdouble) (Etempvar _W tdouble)
-               tdouble) :: nil)))
-        (Sset _mult (Etempvar _t'7 tdouble)))
-      (Ssequence
-        (Sassign (Evar _X1 tdouble)
-          (Ebinop Omul (Etempvar _U1 tdouble) (Etempvar _mult tdouble)
-            tdouble))
-        (Ssequence
-          (Sassign (Evar _X2 tdouble)
-            (Ebinop Omul (Etempvar _U2 tdouble) (Etempvar _mult tdouble)
-              tdouble))
-          (Ssequence
-            (Sassign (Evar _call tint)
-              (Eunop Onotbool (Evar _call tint) tint))
-            (Sreturn (Some (Ebinop Oadd (Etempvar _mu tdouble)
-                             (Ebinop Omul (Etempvar _sigma tdouble)
-                               (Ecast (Evar _X1 tdouble) tdouble) tdouble)
-                             tdouble)))))))))
-|}.
-
-Definition f_runtime := {|
-  fn_return := tvoid;
-  fn_callconv := cc_default;
-  fn_params := ((_n, tint) :: (_p_size, tint) :: nil);
-  fn_vars := nil;
-  fn_temps := ((_parameters, (tptr tdouble)) :: (_j, tint) ::
-               (_candidate, (tptr tdouble)) :: (_i, tint) :: (_j__1, tint) ::
-               (_lp_parameters, tdouble) :: (_lp_candidate, tdouble) ::
-               (_u, tdouble) :: (_j__2, tint) :: (_j__3, tint) ::
-               (_t'6, tint) :: (_t'5, tdouble) :: (_t'4, tdouble) ::
-               (_t'3, tdouble) :: (_t'2, (tptr tvoid)) ::
-               (_t'1, (tptr tvoid)) :: nil);
-  fn_body :=
-(Ssequence
-  (Ssequence
-    (Scall (Some _t'1)
-      (Evar _malloc (Tfunction (Tcons tulong Tnil) (tptr tvoid) cc_default))
-      ((Ebinop Omul (Etempvar _p_size tint) (Esizeof tdouble tulong) tulong) ::
-       nil))
-    (Sset _parameters (Etempvar _t'1 (tptr tvoid))))
-  (Ssequence
-    (Ssequence
-      (Sset _j (Econst_int (Int.repr 0) tint))
-      (Sloop
-        (Ssequence
-          (Sifthenelse (Ebinop Olt (Etempvar _j tint) (Etempvar _p_size tint)
-                         tint)
-            Sskip
-            Sbreak)
-          (Sassign
-            (Ederef
-              (Ebinop Oadd (Etempvar _parameters (tptr tdouble))
-                (Etempvar _j tint) (tptr tdouble)) tdouble)
-            (Econst_float (Float.of_bits (Int64.repr 4602678819172646912)) tdouble)))
-        (Sset _j
-          (Ebinop Oadd (Etempvar _j tint) (Econst_int (Int.repr 1) tint)
-            tint))))
-    (Ssequence
-      (Ssequence
-        (Scall (Some _t'2)
-          (Evar _malloc (Tfunction (Tcons tulong Tnil) (tptr tvoid)
-                          cc_default))
-          ((Ebinop Omul (Etempvar _p_size tint) (Esizeof tdouble tulong)
-             tulong) :: nil))
-        (Sset _candidate (Etempvar _t'2 (tptr tvoid))))
-      (Ssequence
-        (Sset _i (Econst_int (Int.repr 0) tint))
-        (Sloop
-          (Ssequence
-            (Sifthenelse (Ebinop Olt (Etempvar _i tint) (Etempvar _n tint)
-                           tint)
-              Sskip
-              Sbreak)
-            (Ssequence
-              (Ssequence
-                (Sset _j__1 (Econst_int (Int.repr 0) tint))
-                (Sloop
-                  (Ssequence
-                    (Sifthenelse (Ebinop Olt (Etempvar _j__1 tint)
-                                   (Etempvar _p_size tint) tint)
-                      Sskip
-                      Sbreak)
-                    (Ssequence
-                      (Scall (Some _t'3)
-                        (Evar _randn (Tfunction
-                                       (Tcons tdouble (Tcons tdouble Tnil))
-                                       tdouble cc_default))
-                        ((Econst_int (Int.repr 0) tint) ::
-                         (Econst_int (Int.repr 1) tint) :: nil))
-                      (Sassign
-                        (Ederef
-                          (Ebinop Oadd (Etempvar _candidate (tptr tdouble))
-                            (Etempvar _j__1 tint) (tptr tdouble)) tdouble)
-                        (Ebinop Oadd
-                          (Ederef
-                            (Ebinop Oadd
-                              (Etempvar _parameters (tptr tdouble))
-                              (Etempvar _j__1 tint) (tptr tdouble)) tdouble)
-                          (Etempvar _t'3 tdouble) tdouble))))
-                  (Sset _j__1
-                    (Ebinop Oadd (Etempvar _j__1 tint)
-                      (Econst_int (Int.repr 1) tint) tint))))
-              (Ssequence
-                (Ssequence
-                  (Scall (Some _t'4)
-                    (Evar _logdensity (Tfunction
-                                        (Tcons (tptr tdouble)
-                                          (Tcons tint Tnil)) tdouble
-                                        cc_default))
-                    ((Etempvar _parameters (tptr tdouble)) ::
-                     (Etempvar _p_size tint) :: nil))
-                  (Sset _lp_parameters (Etempvar _t'4 tdouble)))
-                (Ssequence
-                  (Ssequence
-                    (Scall (Some _t'5)
-                      (Evar _logdensity (Tfunction
-                                          (Tcons (tptr tdouble)
-                                            (Tcons tint Tnil)) tdouble
-                                          cc_default))
-                      ((Etempvar _candidate (tptr tdouble)) ::
-                       (Etempvar _p_size tint) :: nil))
-                    (Sset _lp_candidate (Etempvar _t'5 tdouble)))
-                  (Ssequence
-                    (Ssequence
-                      (Scall (Some _t'6)
-                        (Evar _rand (Tfunction Tnil tint cc_default)) nil)
-                      (Sset _u
-                        (Ebinop Odiv (Ecast (Etempvar _t'6 tint) tdouble)
-                          (Econst_int (Int.repr 2147483647) tint) tdouble)))
-                    (Ssequence
-                      (Sifthenelse (Ebinop Ole (Etempvar _u tdouble)
-                                     (Ebinop Osub
-                                       (Etempvar _lp_candidate tdouble)
-                                       (Etempvar _lp_parameters tdouble)
-                                       tdouble) tint)
-                        (Ssequence
-                          (Sset _j__2 (Econst_int (Int.repr 0) tint))
-                          (Sloop
-                            (Ssequence
-                              (Sifthenelse (Ebinop Olt (Etempvar _j__2 tint)
-                                             (Etempvar _p_size tint) tint)
-                                Sskip
-                                Sbreak)
-                              (Sassign
-                                (Ederef
-                                  (Ebinop Oadd
-                                    (Etempvar _parameters (tptr tdouble))
-                                    (Etempvar _j__2 tint) (tptr tdouble))
-                                  tdouble)
-                                (Ederef
-                                  (Ebinop Oadd
-                                    (Etempvar _candidate (tptr tdouble))
-                                    (Etempvar _j__2 tint) (tptr tdouble))
-                                  tdouble)))
-                            (Sset _j__2
-                              (Ebinop Oadd (Etempvar _j__2 tint)
-                                (Econst_int (Int.repr 1) tint) tint))))
-                        Sskip)
-                      (Ssequence
-                        (Ssequence
-                          (Sset _j__3 (Econst_int (Int.repr 0) tint))
-                          (Sloop
-                            (Ssequence
-                              (Sifthenelse (Ebinop Olt (Etempvar _j__3 tint)
-                                             (Etempvar _p_size tint) tint)
-                                Sskip
-                                Sbreak)
-                              (Scall None
-                                (Evar _printf (Tfunction
-                                                (Tcons (tptr tschar) Tnil)
-                                                tint
-                                                {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
-                                ((Evar ___stringlit_1 (tarray tschar 3)) ::
-                                 (Ederef
-                                   (Ebinop Oadd
-                                     (Etempvar _parameters (tptr tdouble))
-                                     (Etempvar _j__3 tint) (tptr tdouble))
-                                   tdouble) :: nil)))
-                            (Sset _j__3
-                              (Ebinop Oadd (Etempvar _j__3 tint)
-                                (Econst_int (Int.repr 1) tint) tint))))
-                        (Scall None
-                          (Evar _printf (Tfunction (Tcons (tptr tschar) Tnil)
-                                          tint
-                                          {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
-                          ((Evar ___stringlit_2 (tarray tschar 2)) :: nil)))))))))
-          (Sset _i
-            (Ebinop Oadd (Etempvar _i tint) (Econst_int (Int.repr 1) tint)
-              tint)))))))
-|}.
-
 Definition f_main := {|
   fn_return := tint;
   fn_callconv := cc_default;
   fn_params := ((_argc, tint) :: (_argv, (tptr (tptr tschar))) :: nil);
   fn_vars := nil;
-  fn_temps := ((_p_size, tint) :: (_t'2, tint) :: (_t'1, tint) :: nil);
+  fn_temps := ((_n, tint) :: (_i, tint) :: (_parameters__1, (tptr tvoid)) ::
+               (_lp_parameters, tdouble) :: (_candidate, (tptr tvoid)) ::
+               (_lp_candidate, tdouble) :: (_u, tdouble) :: (_t'6, tint) ::
+               (_t'5, tdouble) :: (_t'4, (tptr tvoid)) :: (_t'3, tdouble) ::
+               (_t'2, (tptr tvoid)) :: (_t'1, tint) :: nil);
   fn_body :=
 (Ssequence
   (Ssequence
@@ -463,7 +149,7 @@ Definition f_main := {|
         (Scall None
           (Evar _printf (Tfunction (Tcons (tptr tschar) Tnil) tint
                           {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
-          ((Evar ___stringlit_3 (tarray tschar 45)) :: nil))
+          ((Evar ___stringlit_1 (tarray tschar 45)) :: nil))
         (Scall None
           (Evar _exit (Tfunction (Tcons tint Tnil) tvoid cc_default))
           ((Econst_int (Int.repr 1) tint) :: nil)))
@@ -471,24 +157,119 @@ Definition f_main := {|
     (Ssequence
       (Ssequence
         (Scall (Some _t'1)
-          (Evar _get_parameters_size (Tfunction Tnil tint
-                                       {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-          nil)
-        (Sset _p_size (Etempvar _t'1 tint)))
+          (Evar _atoi (Tfunction (Tcons (tptr tschar) Tnil) tint cc_default))
+          ((Ederef
+             (Ebinop Oadd (Etempvar _argv (tptr (tptr tschar)))
+               (Econst_int (Int.repr 1) tint) (tptr (tptr tschar)))
+             (tptr tschar)) :: nil))
+        (Sset _n (Etempvar _t'1 tint)))
       (Ssequence
+        (Scall None
+          (Evar _data (Tfunction Tnil tvoid
+                        {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+          nil)
         (Ssequence
-          (Scall (Some _t'2)
-            (Evar _atoi (Tfunction (Tcons (tptr tschar) Tnil) tint
-                          cc_default))
-            ((Ederef
-               (Ebinop Oadd (Etempvar _argv (tptr (tptr tschar)))
-                 (Econst_int (Int.repr 1) tint) (tptr (tptr tschar)))
-               (tptr tschar)) :: nil))
           (Scall None
-            (Evar _runtime (Tfunction (Tcons tint (Tcons tint Tnil)) tvoid
-                             cc_default))
-            ((Etempvar _t'2 tint) :: (Etempvar _p_size tint) :: nil)))
-        (Sreturn (Some (Econst_int (Int.repr 0) tint))))))
+            (Evar _transformed_data (Tfunction Tnil tvoid
+                                      {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+            nil)
+          (Ssequence
+            (Scall None
+              (Evar _parameters (Tfunction Tnil tvoid
+                                  {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+              nil)
+            (Ssequence
+              (Ssequence
+                (Sset _i (Econst_int (Int.repr 0) tint))
+                (Sloop
+                  (Ssequence
+                    (Sifthenelse (Ebinop Olt (Etempvar _i tint)
+                                   (Etempvar _n tint) tint)
+                      Sskip
+                      Sbreak)
+                    (Ssequence
+                      (Ssequence
+                        (Scall (Some _t'2)
+                          (Evar _get_state (Tfunction Tnil (tptr tvoid)
+                                             {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                          nil)
+                        (Sset _parameters__1 (Etempvar _t'2 (tptr tvoid))))
+                      (Ssequence
+                        (Scall None
+                          (Evar _transformed_parameters (Tfunction
+                                                          (Tcons (tptr tvoid)
+                                                            Tnil) tvoid
+                                                          cc_default))
+                          ((Etempvar _parameters__1 (tptr tvoid)) :: nil))
+                        (Ssequence
+                          (Ssequence
+                            (Scall (Some _t'3)
+                              (Evar _model (Tfunction
+                                             (Tcons (tptr tvoid) Tnil)
+                                             tdouble cc_default))
+                              ((Etempvar _parameters__1 (tptr tvoid)) :: nil))
+                            (Sset _lp_parameters (Etempvar _t'3 tdouble)))
+                          (Ssequence
+                            (Ssequence
+                              (Scall (Some _t'4)
+                                (Evar _propose (Tfunction Tnil (tptr tvoid)
+                                                 {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                                nil)
+                              (Sset _candidate (Etempvar _t'4 (tptr tvoid))))
+                            (Ssequence
+                              (Scall None
+                                (Evar _transformed_parameters (Tfunction
+                                                                (Tcons
+                                                                  (tptr tvoid)
+                                                                  Tnil) tvoid
+                                                                cc_default))
+                                ((Etempvar _candidate (tptr tvoid)) :: nil))
+                              (Ssequence
+                                (Ssequence
+                                  (Scall (Some _t'5)
+                                    (Evar _model (Tfunction
+                                                   (Tcons (tptr tvoid) Tnil)
+                                                   tdouble cc_default))
+                                    ((Etempvar _candidate (tptr tvoid)) ::
+                                     nil))
+                                  (Sset _lp_candidate
+                                    (Etempvar _t'5 tdouble)))
+                                (Ssequence
+                                  (Ssequence
+                                    (Scall (Some _t'6)
+                                      (Evar _rand (Tfunction Tnil tint
+                                                    cc_default)) nil)
+                                    (Sset _u
+                                      (Ebinop Odiv
+                                        (Ecast (Etempvar _t'6 tint) tdouble)
+                                        (Econst_int (Int.repr 2147483647) tint)
+                                        tdouble)))
+                                  (Ssequence
+                                    (Sifthenelse (Ebinop Ole
+                                                   (Etempvar _u tdouble)
+                                                   (Ebinop Osub
+                                                     (Etempvar _lp_candidate tdouble)
+                                                     (Etempvar _lp_parameters tdouble)
+                                                     tdouble) tint)
+                                      (Scall None
+                                        (Evar _set_state (Tfunction
+                                                           (Tcons
+                                                             (tptr tvoid)
+                                                             Tnil) tvoid
+                                                           cc_default))
+                                        ((Etempvar _candidate (tptr tvoid)) ::
+                                         nil))
+                                      Sskip)
+                                    (Scall None
+                                      (Evar _generated_quantities (Tfunction
+                                                                    Tnil
+                                                                    tvoid
+                                                                    {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                                      nil))))))))))
+                  (Sset _i
+                    (Ebinop Oadd (Etempvar _i tint)
+                      (Econst_int (Int.repr 1) tint) tint))))
+              (Sreturn (Some (Econst_int (Int.repr 0) tint)))))))))
   (Sreturn (Some (Econst_int (Int.repr 0) tint))))
 |}.
 
@@ -496,9 +277,7 @@ Definition composites : list composite_definition :=
 nil.
 
 Definition global_definitions : list (ident * globdef fundef type) :=
-((___stringlit_3, Gvar v___stringlit_3) ::
- (___stringlit_2, Gvar v___stringlit_2) ::
- (___stringlit_1, Gvar v___stringlit_1) ::
+((___stringlit_1, Gvar v___stringlit_1) ::
  (___builtin_bswap64,
    Gfun(External (EF_builtin "__builtin_bswap64"
                    (mksignature (AST.Tlong :: nil) AST.Tlong cc_default))
@@ -751,8 +530,6 @@ Definition global_definitions : list (ident * globdef fundef type) :=
                      {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
      (Tcons tint Tnil) tvoid
      {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
- (_malloc,
-   Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) ::
  (_atoi,
    Gfun(External (EF_external "atoi"
                    (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
@@ -764,42 +541,62 @@ Definition global_definitions : list (ident * globdef fundef type) :=
  (_rand,
    Gfun(External (EF_external "rand" (mksignature nil AST.Tint cc_default))
      Tnil tint cc_default)) ::
- (_log,
-   Gfun(External (EF_external "log"
-                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
-     (Tcons tdouble Tnil) tdouble cc_default)) ::
- (_pow,
-   Gfun(External (EF_external "pow"
-                   (mksignature (AST.Tfloat :: AST.Tfloat :: nil) AST.Tfloat
-                     cc_default)) (Tcons tdouble (Tcons tdouble Tnil))
-     tdouble cc_default)) ::
- (_sqrt,
-   Gfun(External (EF_external "sqrt"
-                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
-     (Tcons tdouble Tnil) tdouble cc_default)) ::
  (_printf,
    Gfun(External (EF_external "printf"
                    (mksignature (AST.Tlong :: nil) AST.Tint
                      {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
      (Tcons (tptr tschar) Tnil) tint
      {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
- (_logdensity,
-   Gfun(External (EF_external "logdensity"
-                   (mksignature (AST.Tlong :: AST.Tint :: nil) AST.Tfloat
-                     cc_default)) (Tcons (tptr tdouble) (Tcons tint Tnil))
-     tdouble cc_default)) ::
- (_get_parameters_size,
-   Gfun(External (EF_external "get_parameters_size"
-                   (mksignature nil AST.Tint
+ (_get_state,
+   Gfun(External (EF_external "get_state"
+                   (mksignature nil AST.Tlong
                      {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-     Tnil tint {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
- (_X1, Gvar v_X1) :: (_X2, Gvar v_X2) :: (_call, Gvar v_call) ::
- (_randn, Gfun(Internal f_randn)) :: (_runtime, Gfun(Internal f_runtime)) ::
+     Tnil (tptr tvoid)
+     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+ (_set_state,
+   Gfun(External (EF_external "set_state"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
+ (_data,
+   Gfun(External (EF_external "data"
+                   (mksignature nil AST.Tvoid
+                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+ (_transformed_data,
+   Gfun(External (EF_external "transformed_data"
+                   (mksignature nil AST.Tvoid
+                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+ (_parameters,
+   Gfun(External (EF_external "parameters"
+                   (mksignature nil AST.Tvoid
+                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+ (_transformed_parameters,
+   Gfun(External (EF_external "transformed_parameters"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
+ (_model,
+   Gfun(External (EF_external "model"
+                   (mksignature (AST.Tlong :: nil) AST.Tfloat cc_default))
+     (Tcons (tptr tvoid) Tnil) tdouble cc_default)) ::
+ (_generated_quantities,
+   Gfun(External (EF_external "generated_quantities"
+                   (mksignature nil AST.Tvoid
+                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+ (_propose,
+   Gfun(External (EF_external "propose"
+                   (mksignature nil AST.Tlong
+                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+     Tnil (tptr tvoid)
+     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
  (_main, Gfun(Internal f_main)) :: nil).
 
 Definition public_idents : list ident :=
-(_main :: _runtime :: _randn :: _get_parameters_size :: _logdensity ::
- _printf :: _sqrt :: _pow :: _log :: _rand :: _exit :: _atoi :: _malloc ::
+(_main :: _propose :: _generated_quantities :: _model ::
+ _transformed_parameters :: _parameters :: _transformed_data :: _data ::
+ _set_state :: _get_state :: _printf :: _rand :: _exit :: _atoi ::
  ___builtin_debug :: ___builtin_write32_reversed ::
  ___builtin_write16_reversed :: ___builtin_read32_reversed ::
  ___builtin_read16_reversed :: ___builtin_fnmsub :: ___builtin_fnmadd ::

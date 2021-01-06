@@ -30,41 +30,41 @@ let rec el_e e =
   | Stan.Econst_int i -> StanE.Econst_int (Camlcoq.Z.of_sint (int_of_string i))
   | Stan.Econst_float _ -> raise (NIY_elab "expression: float constant")
   | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i)
-  | Stan.Eunop _ -> raise (NIY_elab "expression: unop")
-  | Stan.Ebinop _ -> raise (NIY_elab "expression: binop")
-  | Stan.Ecall _ -> raise (NIY_elab "expression: call")
-  | Stan.Econdition _ -> raise (NIY_elab "expression: condition")
-  | Stan.Earray _ -> raise (NIY_elab "expression: array")
-  | Stan.Erow _ -> raise (NIY_elab "expression: row")
+  | Stan.Eunop (o,e) -> StanE.Eunop (o,el_e e)
+  | Stan.Ebinop (e1,o,e2) -> StanE.Ebinop (el_e e1,o,el_e e2) 
+  | Stan.Ecall (i,el) -> StanE.Ecall (Camlcoq.intern_string i, List.map el_e el)
+  | Stan.Econdition (e1,e2,e3) -> StanE.Econdition(el_e e1, el_e e2, el_e e3)
+  | Stan.Earray el -> StanE.Earray (List.map el_e el)
+  | Stan.Erow el -> StanE.Erow (List.map el_e el)
   | Stan.Eindexed (e,il) -> StanE.Eindexed (el_e e, map el_i il)
-  | Stan.Edist _ -> raise (NIY_elab "expression: dist")
-  | Stan.Etarget -> raise (NIY_elab "expression: target")
+  | Stan.Edist (i,el) -> StanE.Edist (Camlcoq.intern_string i, List.map el_e el)
+  | Stan.Etarget -> StanE.Etarget
 
 and el_i i =
   match i with
   | Stan.Iall -> StanE.Iall
   | Stan.Isingle e -> StanE.Isingle (el_e e)
-  | Stan.Iupfrom _ -> raise (NIY_elab "index: upfrom")
-  | Stan.Idownfrom _ -> raise (NIY_elab "index: downfrom")
-  | Stan.Ibetween _ -> raise (NIY_elab "index: between")
+  | Stan.Iupfrom e -> StanE.Iupfrom (el_e e)
+  | Stan.Idownfrom e -> StanE.Idownfrom (el_e e)
+  | Stan.Ibetween (e1,e2) -> StanE.Ibetween (el_e e1, el_e e2)
                   
 let rec el_s s =
   match s with
   | Stan.Sskip -> StanE.Sskip
-  | Stan.Sassign _ -> raise (NIY_elab "statement: assign") 
+  | Stan.Sassign (e1,oo,e2) -> StanE.Sassign (el_e e1, oo, el_e e2)
   | Stan.Sblock sl -> StanE.Sblock (map el_s sl)
-  | Stan.Sifthenelse _ -> raise (NIY_elab "statement: ifthenelse")
-  | Stan.Swhile _ -> raise (NIY_elab "statement: while")
+  | Stan.Sifthenelse (e,s1,s2) -> StanE.Sifthenelse (el_e e, el_s s1, el_s s2)
+  | Stan.Swhile (e,s) -> StanE.Swhile (el_e e, el_s s)
   | Stan.Sfor (i,e1,e2,s) ->
      StanE.Sfor (Camlcoq.intern_string i,el_e e1, el_e e2, el_s s)
-  | Stan.Sbreak -> raise (NIY_elab "statement: break")
-  | Stan.Scontinue -> raise (NIY_elab "statement: continue")
-  | Stan.Sreturn _ -> raise (NIY_elab "statement: return")
-  | Stan.Svar _ -> raise (NIY_elab "statement: var")
-  | Stan.Scall _ -> raise (NIY_elab "statement: call")
-  | Stan.Sruntime _ -> raise (NIY_elab "statement: runtime")
-  | Stan.Sforeach _ -> raise (NIY_elab "statement: foreach")
-  | Stan.Starget _ -> raise (NIY_elab "statement: target")
+  | Stan.Sbreak -> StanE.Sbreak
+  | Stan.Scontinue -> StanE.Scontinue
+  | Stan.Sreturn oe -> StanE.Sreturn (mapo oe el_e)
+  | Stan.Svar v -> raise (NIY_elab "statement: var")
+  | Stan.Scall (i,el) -> StanE.Scall (Camlcoq.intern_string i,List.map el_e el)
+  | Stan.Sruntime (s,pl) -> raise (NIY_elab "statement: runtime")
+  | Stan.Sforeach (i,e,s) -> StanE.Sforeach (Camlcoq.intern_string i,el_e e, el_s s)
+  | Stan.Starget e -> StanE.Starget (el_e e)
   | Stan.Stilde (e,i,el,(tr1,tr2)) ->
      StanE.Stilde (el_e e, Camlcoq.intern_string i, map el_e el, (mapo tr1 el_e,mapo tr2 el_e) )
 
@@ -72,9 +72,9 @@ let el_b b =
   match b with
   | Stan.Bint -> StanE.Bint
   | Stan.Breal -> StanE.Breal
-  | Stan.Bvector e -> raise (NIY_elab "basic: vector")
-  | Stan.Brow e -> raise (NIY_elab "basic: row")
-  | Stan.Bmatrix (e1,e2) -> raise (NIY_elab "basic: matrix")
+  | Stan.Bvector e -> StanE.Bvector (el_e e)
+  | Stan.Brow e -> StanE.Brow (el_e e)
+  | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2)
 
 let elab elab_fun ol =
   match ol with
