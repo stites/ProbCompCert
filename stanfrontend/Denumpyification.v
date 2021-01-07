@@ -111,10 +111,11 @@ Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :
   Error (msg "Denumpyification.transf_variable: NIY").								     
 	
 Definition transf_function (f: StanE.function): res CStan.function :=
+  do body <- transf_statement f.(StanE.fn_body);	 
   OK {|
       CStan.fn_return := Tvoid;
       CStan.fn_params := nil;
-      CStan.fn_body := CStan.Sskip;
+      CStan.fn_body := body;
       CStan.fn_callconv := f.(StanE.fn_callconv);
       CStan.fn_temps := nil;
       CStan.fn_vars := nil;
