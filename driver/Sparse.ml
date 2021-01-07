@@ -57,7 +57,7 @@ let rec el_s s =
   match s with
   | Stan.Sskip -> StanE.Sskip
   | Stan.Sassign (e1,oo,e2) -> StanE.Sassign (el_e e1, oo, el_e e2)
-  | Stan.Sblock sl -> StanE.Sblock (map el_s sl)
+  | Stan.Sblock sl -> List.fold_left (fun s1 s2 -> StanE.Ssequence (s1, (el_s s2))) StanE.Sskip sl
   | Stan.Sifthenelse (e,s1,s2) -> StanE.Sifthenelse (el_e e, el_s s1, el_s s2)
   | Stan.Swhile (e,s) -> StanE.Swhile (el_e e, el_s s)
   | Stan.Sfor (i,e1,e2,s) ->
@@ -119,7 +119,7 @@ let declareFundef name body rt params =
       a_access = Sections.Access_default;
       a_inline = Noinline;
       a_loc = (name,0) };
-  let body = List.map el_s body in
+  let body = List.fold_left (fun s1 s2 -> StanE.Ssequence (s1, (el_s s2))) StanE.Sskip body in
   let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
   let fd = {
       StanE.fn_return = rt;
@@ -127,7 +127,7 @@ let declareFundef name body rt params =
       StanE.fn_params = params;
       StanE.fn_vars = [];
       StanE.fn_temps = [];
-      StanE.fn_body = StanE.Sblock body} in
+      StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
             
 let elaborate (p: Stan.program) =

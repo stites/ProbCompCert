@@ -18,13 +18,25 @@ Local Open Scope gensym_monad_scope.
 Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   match o with
   | Sops.Plus => OK Cop.Oadd
+  | Sops.Minus => OK Cop.Osub
+  | Sops.Times => OK Cop.Omul
+  | Sops.Divide => OK Cop.Odiv
+  | Sops.Modulo => OK Cop.Omod
+  | Sops.Or => OK Cop.Oor
+  | Sops.And => OK Cop.Oand
+  | Sops.Equals => OK Cop.Oeq
+  | Sops.NEquals => OK Cop.One
+  | Sops.Less => OK Cop.Olt
+  | Sops.Leq => OK Cop.Ole
+  | Sops.Greater => OK Cop.Ogt
+  | Sops.Geq =>	OK Cop.Oge		    
   | _ => Error (msg "Denumpyification.transf_program: operator")			      
   end.    
 			      
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
-  | Econst_int i => OK (CStan.Econst_int i Tvoid)
-  | Econst_float f => OK (CStan.Econst_float f Tvoid)
+  | Econst_int i => OK (CStan.Econst_int i (Tint I32 Signed noattr))
+  | Econst_float f => OK (CStan.Econst_float f (Tfloat F64 noattr))
   | Evar i => OK (CStan.Evar i Tvoid)
   | Eunop o e => Error (msg "Denumpyification.transf_program: NIY")
   | Ebinop e1 o e2 =>
@@ -67,7 +79,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e2 <- transf_expression e2;
     OK (CStan.Sassign e1 e2)	
   | Sassign e1 (Some o) e2 => Error (msg "Denumpyification.transf_program: Assignment with operator")
-  | Sblock sl => Error (msg "Denumpyification.transf_program: NIY")
+  | Ssequence s1 s2 => Error (msg "Denumpyification.transf_program: NIY")
   | Sifthenelse e s1 s2 =>
     do e <- (transf_expression e); 
     do s1 <- (transf_statement s1); 
@@ -84,7 +96,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
   | Sforeach i e s => Error (msg "Denumpyification.transf_program: NIY")
   | Starget e => Error (msg "Denumpyification.transf_program: NIY")
   | Stilde e i el tr => Error (msg "Denumpyification.transf_program: NIY")
-  end.
+    end. 
 				    
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with

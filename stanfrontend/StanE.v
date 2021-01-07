@@ -58,7 +58,7 @@ Inductive statement :=
   (* Classical statements that exist in C *)
   | Sskip : statement
   | Sassign : expr -> option operator -> expr -> statement
-  | Sblock: list statement -> statement
+  | Ssequence: statement -> statement -> statement
   | Sifthenelse: expr -> statement -> statement -> statement
   | Swhile: expr -> statement -> statement
   | Sfor: ident -> expr -> expr -> statement -> statement
