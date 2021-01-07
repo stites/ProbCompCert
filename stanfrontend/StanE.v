@@ -8,6 +8,7 @@ Require Stan.
 Require CStan.
 
 Require Import Sops.
+Require Import Cop.
 Require Import Stypes.
   
 Inductive expr :=

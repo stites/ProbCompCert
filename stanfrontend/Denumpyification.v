@@ -6,55 +6,84 @@ Require Import Errors.
 Require Import String.
 Open Scope string_scope.
 Require Import Coqlib.
+Require Import Sops.
+Require Import Cop.
 
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
    (at level 200, X ident, A at level 100, B at level 200)
    : gensym_monad_scope.
 
 Local Open Scope gensym_monad_scope.
-  
+
+Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
+  match o with
+  | Sops.Plus => OK Cop.Oadd
+  | _ => Error (msg "Denumpyification.transf_program: operator")			      
+  end.    
+			      
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
-  | Econst_int _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Econst_float _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Evar _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Eunop _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Ebinop _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Ecall _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Econdition _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Earray _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Erow _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Eindexed _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Edist _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Etarget => Error (msg "Denumpyification.transf_program: NIY")
+  | Econst_int i => OK (CStan.Econst_int i Tvoid)
+  | Econst_float f => OK (CStan.Econst_float f Tvoid)
+  | Evar i => OK (CStan.Evar i Tvoid)
+  | Eunop o e => Error (msg "Denumpyification.transf_program: NIY")
+  | Ebinop e1 o e2 =>
+    do o <- transf_operator o;		    
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    OK (CStan.Ebinop o e1 e2 Tvoid)
+  | Ecall i el => Error (msg "Denumpyification.transf_program: call expression should have been removed already")
+  | Econdition e1 e2 e3 => Error (msg "Denumpyification.transf_program: NIY")
+  | Earray el => Error (msg "Denumpyification.transf_program: NIY")
+  | Erow el => Error (msg "Denumpyification.transf_program: NIY")
+  | Eindexed e il => Error (msg "Denumpyification.transf_program: NIY")
+  | Edist i el => Error (msg "Denumpyification.transf_program: NIY")
+  | Etarget => OK (CStan.Etarget Tvoid)
   end
 
 with transf_index (i: StanE.index) {struct i}: res CStan.expr :=
   match i with
   | Iall => Error (msg "Denumpyification.transf_program: NIY")
-  | Isingle _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Iupfrom _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Idownfrom _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Ibetween _ _ => Error (msg "Denumpyification.transf_program: NIY")
+  | Isingle e => Error (msg "Denumpyification.transf_program: NIY")
+  | Iupfrom e => Error (msg "Denumpyification.transf_program: NIY")
+  | Idownfrom e => Error (msg "Denumpyification.transf_program: NIY")
+  | Ibetween e1 e2 => Error (msg "Denumpyification.transf_program: NIY")
   end.
-                  
+   
+Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CStan.expr) :=
+  match l with
+  | nil => OK (nil)
+  | cons e l =>
+    do e <- (transf_expression e);
+    do l <- (transf_expression_list l);
+    OK (cons e l)											 
+  end.
+               
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=
   match s with
-  | Sskip => Error (msg "Denumpyification.transf_program: NIY")
-  | Sassign _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
+  | Sskip => OK CStan.Sskip
+  | Sassign e1 None e2 =>
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    OK (CStan.Sassign e1 e2)	
+  | Sassign e1 (Some o) e2 => Error (msg "Denumpyification.transf_program: Assignment with operator")
   | Sblock sl => Error (msg "Denumpyification.transf_program: NIY")
-  | Sifthenelse _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Swhile _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Sfor _ _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Sbreak => Error (msg "Denumpyification.transf_program: NIY")
-  | Scontinue => Error (msg "Denumpyification.transf_program: NIY")
-  | Sreturn _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Svar _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Scall _ _ => Error (msg "Denumpyification.transf_program: NIY")
+  | Sifthenelse e s1 s2 =>
+    do e <- (transf_expression e); 
+    do s1 <- (transf_statement s1); 
+    do s2 <- (transf_statement s2);
+    OK (CStan.Sifthenelse e s1 s2)			    
+  | Swhile e s => Error (msg "Denumpyification.transf_program: NIY")
+  | Sfor i e1 e2 s => Error (msg "Denumpyification.transf_program: NIY")
+  | Sbreak => OK CStan.Sbreak
+  | Scontinue => OK CStan.Scontinue
+  | Sreturn oe => Error (msg "Denumpyification.transf_program: NIY")
+  | Svar i => Error (msg "Denumpyification.transf_program: NIY")
+  | Scall i el => Error (msg "Denumpyification.transf_program: NIY")
   | Sruntime _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Sforeach _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Starget _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Stilde _ _ _ _ => Error (msg "Denumpyification.transf_program: NIY")
+  | Sforeach i e s => Error (msg "Denumpyification.transf_program: NIY")
+  | Starget e => Error (msg "Denumpyification.transf_program: NIY")
+  | Stilde e i el tr => Error (msg "Denumpyification.transf_program: NIY")
   end.
 				    
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
