@@ -4,6 +4,7 @@ open C2C
 open Lexing
 open Sparser
 
+exception SyntaxError of string
 exception SNIY of string
 exception NIY_elab of string
 
@@ -344,12 +345,11 @@ let parse_stan_file sourcefile ifile =
   let log_fuel = Camlcoq.Nat.of_int 50 in
   let p = match Sparser.program log_fuel (tokens_stream text) with
     | Sparser.MenhirLibParser.Inter.Fail_pr (s, tok) -> 
-      let {pos_lnum} = location tok 
-      in
-      print_endline (errmsg s);
-      print_int pos_lnum; print_endline "";
+      let {pos_lnum; pos_cnum ; pos_bol} = location tok in
+      print_endline "Syntax error:";
+      Printf.printf "L%d C%d: %s\n" pos_lnum (pos_cnum - pos_bol) (errmsg s);
       print_endline (token_str tok);
-      assert false
+      exit 0;
 
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
     | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
