@@ -46,7 +46,7 @@ Theorem parse_complete
   complete_validator () = true ->
   forall tree:parse_tree (NT (start_nt init)) word,
   match parse safe init log_n_steps (word ++ buffer_end) with
-  | Fail_pr => False
+  | Fail_pr _ _ => False
   | Parsed_pr sem_res buffer_end_res =>
     sem_res = pt_sem tree /\ buffer_end_res = buffer_end /\
     pt_size tree <= 2^log_n_steps

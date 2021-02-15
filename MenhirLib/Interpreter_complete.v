@@ -804,7 +804,7 @@ Theorem parse_complete log_n_steps:
   | Parsed_pr sem buff =>
     sem = pt_sem full_pt /\ buff = buffer_end /\ pt_size full_pt <= 2^log_n_steps
   | Timeout_pr => 2^log_n_steps < pt_size full_pt
-  | Fail_pr => False
+  | Fail_pr _ _ => False
   end.
 Proof.
   assert (Hstk : ptd_stack_compat (build_pt_dot_from_pt full_pt Top_ptz) []) by

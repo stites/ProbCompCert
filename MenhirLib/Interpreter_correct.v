@@ -72,7 +72,7 @@ Lemma reduce_step_invariant (stk:stack) (prod:production) Hv Hi word buffer :
     buffer = buffer_new /\ pt_sem pt = sem
   | Progress_sr stk' buffer_new =>
     buffer = buffer_new /\ word_has_stack_semantics word stk'
-  | Fail_sr => True
+  | Fail_sr _ _ => True
   end.
 Proof.
   intros Hword_stk. unfold reduce_step.
@@ -106,7 +106,7 @@ Lemma step_invariant stk word buffer safe Hi :
     exists word_new,
       (word ++ buffer = word_new ++ buffer_new)%buf /\
       word_has_stack_semantics word_new stk_new
-  | Fail_sr => True
+  | Fail_sr _ _ => True
   end.
 Proof.
   intros Hword_stk. unfold step.
@@ -142,7 +142,7 @@ Lemma parse_fix_invariant stk word buffer safe log_n_steps Hi :
     exists word_new,
       (word ++ buffer = word_new ++ buffer_new)%buf /\
       word_has_stack_semantics word_new stk_new
-  | Fail_sr => True
+  | Fail_sr _ _ => True
   end.
 Proof.
   revert stk word buffer Hi.
