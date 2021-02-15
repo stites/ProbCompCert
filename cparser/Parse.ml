@@ -27,10 +27,10 @@ let transform_program t p name =
       p
   in
   let p1 = (run_pass StructPassing.program 's'
-  (run_pass PackedStructs.program 'p'
-  (run_pass Unblock.program 'b'
-  (run_pass Bitfields.program 'f'
-     p)))) in
+              (run_pass PackedStructs.program 'p'
+                 (run_pass Unblock.program 'b'
+                    (run_pass Bitfields.program 'f'
+                       p)))) in
   Rename.program p1
 
 let parse_transformations s =
@@ -38,10 +38,10 @@ let parse_transformations s =
   let set s = String.iter (fun c -> t := CharSet.add c !t) s in
   String.iter
     (function 'b' -> set "b"
-            | 's' -> set "s"
-            | 'f' -> set "bf"
-            | 'p' -> set "bp"
-            |  _  -> ())
+      | 's' -> set "s"
+      | 'f' -> set "bf"
+      | 'p' -> set "bp"
+      |  _  -> ())
     s;
   !t
 
@@ -62,24 +62,24 @@ let preprocessed_file transfs name sourcefile =
      on my machine. *)
   let text = read_file sourcefile in
   let p =
-      let t = parse_transformations transfs in
-      let log_fuel = Camlcoq.Nat.of_int 50 in
-      let ast : Cabs.definition list =
-          (match Timing.time "Parsing"
-              (* The call to Lexer.tokens_stream results in the pre
-                 parsing of the entire file. This is non-negligeabe,
-                 so we cannot use Timing.time2 *)
-              (fun () ->
-                Parser.translation_unit_file log_fuel (Lexer.tokens_stream name text)) ()
-           with
-           | Parser.MenhirLibParser.Inter.Fail_pr ->
-                 (* Theoretically impossible : implies inconsistencies
-                    between grammars. *)
-              Diagnostics.fatal_error Diagnostics.no_loc "internal error while parsing"
-           | Parser.MenhirLibParser.Inter.Timeout_pr -> assert false
-           | Parser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> ast) in
-      let p1 = Timing.time "Elaboration" Elab.elab_file ast in
-      Diagnostics.check_errors ();
-      Timing.time2 "Emulations" transform_program t p1 name in
+    let t = parse_transformations transfs in
+    let log_fuel = Camlcoq.Nat.of_int 50 in
+    let ast : Cabs.definition list =
+      (match Timing.time "Parsing"
+               (* The call to Lexer.tokens_stream results in the pre
+                  parsing of the entire file. This is non-negligeabe,
+                  so we cannot use Timing.time2 *)
+               (fun () ->
+                  Parser.translation_unit_file log_fuel (Lexer.tokens_stream name text)) ()
+       with
+       | Parser.MenhirLibParser.Inter.Fail_pr _ ->
+         (* Theoretically impossible : implies inconsistencies
+            between grammars. *)
+         Diagnostics.fatal_error Diagnostics.no_loc "internal error while parsing"
+       | Parser.MenhirLibParser.Inter.Timeout_pr -> assert false
+       | Parser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> ast) in
+    let p1 = Timing.time "Elaboration" Elab.elab_file ast in
+    Diagnostics.check_errors ();
+    Timing.time2 "Emulations" transform_program t p1 name in
   Diagnostics.check_errors();
   p
