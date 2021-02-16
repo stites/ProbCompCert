@@ -35,6 +35,11 @@ include Makefile.menhir
 # -MENHIR_LIBS: additional menhir libraries
 #
 
+stanfrontend/Smessages.ml: stanfrontend/parser.messages stanfrontend/Sparser.vy
+	@rm -f $@
+	$(MENHIR) --coq --compile-errors stanfrontend/parser.messages stanfrontend/Sparser.vy >stanfrontend/Smessages.ml
+	@chmod a-w $@
+
 # The pre-parser's error message database is compiled as follows.
 
 cparser/pre_parser_messages.ml:
@@ -89,7 +94,7 @@ LIBS=str.cmxa unix.cmxa $(MENHIR_LIBS)
 LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 
 EXECUTABLES=ccomp ccomp.byte cchecklink cchecklink.byte clightgen clightgen.byte
-GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml) cparser/pre_parser_messages.ml
+GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml) cparser/pre_parser_messages.ml stanfrontend/Smessages.ml
 
 # Beginning of part that assumes .depend.extr already exists
 

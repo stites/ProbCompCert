@@ -679,7 +679,6 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA UPPER WH
 ## The known suffix of the stack is as follows:
 ## LOWER ASSIGN constr_expr COMMA UPPER
 ##
-Expected "=" expression (not containing binary logical operators), after "lower".
 
 Expected "=" expression (not containing binary logical operators) after "upper".
 
