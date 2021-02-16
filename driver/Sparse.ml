@@ -243,11 +243,459 @@ let location t =
    This will eventually be some mapping from Sparser.state -> int
    and a call to the normal menhir messages functionality
 *)
-let errmsg (s : Sparser.Aut.state) =
-  match s with
-  | Sparser.Aut.Init Sparser.Aut.Init'0 -> "Expected a program"
-  | _ -> "none"
 
+let statenum s =
+  let coqstr = Sparser.Aut.int_of_state s in
+  let string_state = Camlcoq.camlstring_of_coqstring coqstr
+  in int_of_string string_state
+
+(* This file was auto-generated based on "parser.messages". *)
+
+(* Please note that the function [message] can raise [Not_found]. *)
+
+let message =
+  fun s ->
+  match s with
+  | 398 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 399 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 403 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 377 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 30 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 31 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 135 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 136 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 378 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 380 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 137 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 138 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 139 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 33 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 379 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 142 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 32 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 144 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 40 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 127 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 58 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 59 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 61 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 46 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 146 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 147 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 153 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 151 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 154 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 74 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 43 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 53 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 212 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 213 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 214 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 216 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 217 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 218 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 219 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 220 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 221 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 225 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 215 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 211 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 72 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 51 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 115 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 116 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 87 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 118 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 70 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 89 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 99 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 85 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 55 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 75 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 81 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 82 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 79 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 48 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 78 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 101 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 91 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 45 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 103 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 108 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 93 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 124 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 95 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 97 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 106 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 381 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 382 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 383 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 391 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 157 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 158 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 160 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 36 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 38 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 37 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 132 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 39 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 67 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 129 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 162 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 260 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 65 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 179 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 180 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 181 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 236 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 182 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 234 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 237 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 206 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 203 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 204 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 207 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 209 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 64 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 208 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 112 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 113 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 47 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 195 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 183 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 184 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 185 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 186 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 187 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 188 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 229 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 230 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 231 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 189 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 191 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 42 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 392 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 393 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 397 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 404 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 405 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 163 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 164 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 165 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 240 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 167 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 168 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 169 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 243 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 244 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 245 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 246 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 248 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 249 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 252 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 408 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 172 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 173 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 174 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 175 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 176 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 409 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 410 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 413 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 1 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 2 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 10 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 13 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 14 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 25 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 264 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 265 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 29 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 269 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 15 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 16 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 18 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 19 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 20 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 272 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 273 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 274 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 275 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 311 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 312 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 368 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 276 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 277 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 278 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 284 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 280 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 281 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 282 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 306 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 285 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 286 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 288 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 289 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 290 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 310 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 308 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 292 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 293 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 295 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 296 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 297 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 299 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 300 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 302 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 303 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 304 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 315 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 316 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 317 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 319 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 320 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 321 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 326 | 325 | 323 ->
+    "Expected \"[\" expression \"]\" for size declaration of row_vector.\n"
+  | 324 ->
+    "Expected identifier as part of top-level variable declaration.\n"
+  | 328 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 369 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 372 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 370 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 376 ->
+    "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+  | 332 | 331 | 330 ->
+    "Expected \"[\" expression \"]\" for size of positive_ordered.\n"
+  | 336 | 335 | 334 ->
+    "Expected \"[\" expression \"]\" for size of ordered.\n"
+  | 339 | 343 | 342 | 341 | 340 | 338 ->
+    "Expected \"[\" expression \",\" expression \"]\" for matrix sizes as part of top-level variable declaration.\n"
+  | 345 ->
+    "Expected range constraint or identifier as part of top-level variable declaration.\n"
+  | 346 ->
+    "Expected \"lower = \" expression or \"upper = \" expression for integer bounds.\n"
+  | 350 | 349 | 348 ->
+    "Expected \"[\" expression \"]\" for size of cov_matrix.\n"
+  | 354 | 353 | 352 ->
+    "Expected \"[\" expression \"]\" for size of corr_matrix.\n"
+  | 362 | 359 | 358 | 357 | 356 ->
+    "Expected \"[\" expression \"]\" or \"[\" expression \",\" expression \"]\" for size of cholesky_factor_cov.\n"
+  | 366 | 365 | 364 ->
+    "Expected \"[\" expression \"]\" for size of cholesky_factor_corr.\n"
+  | 0 ->
+    "Expected \"functions {\" or \"data {\" or \"transformed data {\" or \"parameters {\" or \"transformed parameters {\" or \"model {\" or \"generated quantities {\".\n"
+  | _ ->
+    raise Not_found
+
+
+let errmsg (s : Sparser.Aut.state) =
+  let state_num = statenum s 
+  in
+  message state_num
 
 (* debug code *)
 let token_str = function

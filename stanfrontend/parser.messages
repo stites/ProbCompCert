@@ -1,3 +1,15 @@
+program: WHILE
+##
+## Ends in an error in state: 0.
+##
+## program' -> . program [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+Expected "functions {" or "data {" or "transformed data {" or "parameters {" or "transformed parameters {" or "model {" or "generated quantities {".
+
 program: DATABLOCK LBRACE CHOLESKYFACTORCORR LBRACK REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 366.
@@ -24,7 +36,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCORR LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCORR LBRACK WHILE
 ##
 ## Ends in an error in state: 365.
@@ -34,7 +45,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCORR LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## CHOLESKYFACTORCORR LBRACK
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCORR WHILE
 ##
 ## Ends in an error in state: 364.
@@ -75,7 +85,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK REALNUMERAL COMMA REALNUMERAL
 ## In state 360, spurious reduction of production pair(COMMA,expr) -> COMMA expr
 ## In state 361, spurious reduction of production option(pair(COMMA,expr)) -> pair(COMMA,expr)
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK REALNUMERAL COMMA WHILE
 ##
 ## Ends in an error in state: 359.
@@ -85,7 +94,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK REALNUMERAL COMMA WHILE
 ## The known suffix of the stack is as follows:
 ## COMMA
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 358.
@@ -112,7 +120,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK WHILE
 ##
 ## Ends in an error in state: 357.
@@ -122,7 +129,6 @@ program: DATABLOCK LBRACE CHOLESKYFACTORCOV LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## CHOLESKYFACTORCOV LBRACK
 ##
-
 program: DATABLOCK LBRACE CHOLESKYFACTORCOV WHILE
 ##
 ## Ends in an error in state: 356.
@@ -161,9 +167,6 @@ program: DATABLOCK LBRACE CORRMATRIX LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE CORRMATRIX LBRACK WHILE
 ##
 ## Ends in an error in state: 353.
@@ -173,9 +176,6 @@ program: DATABLOCK LBRACE CORRMATRIX LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## CORRMATRIX LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE CORRMATRIX WHILE
 ##
 ## Ends in an error in state: 352.
@@ -186,7 +186,7 @@ program: DATABLOCK LBRACE CORRMATRIX WHILE
 ## CORRMATRIX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size of corr_matrix.
 
 program: DATABLOCK LBRACE COVMATRIX LBRACK REALNUMERAL TILDE
 ##
@@ -214,9 +214,6 @@ program: DATABLOCK LBRACE COVMATRIX LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE COVMATRIX LBRACK WHILE
 ##
 ## Ends in an error in state: 349.
@@ -226,9 +223,6 @@ program: DATABLOCK LBRACE COVMATRIX LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## COVMATRIX LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE COVMATRIX WHILE
 ##
 ## Ends in an error in state: 348.
@@ -239,7 +233,8 @@ program: DATABLOCK LBRACE COVMATRIX WHILE
 ## COVMATRIX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size of cov_matrix.
+
 
 program: DATABLOCK LBRACE INT LABRACK WHILE
 ##
@@ -251,7 +246,7 @@ program: DATABLOCK LBRACE INT LABRACK WHILE
 ## LABRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "lower = " expression or "upper = " expression for integer bounds.
 
 program: DATABLOCK LBRACE INT WHILE
 ##
@@ -263,7 +258,7 @@ program: DATABLOCK LBRACE INT WHILE
 ## INT
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected range constraint or identifier as part of top-level variable declaration.
 
 program: DATABLOCK LBRACE MATRIX LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHILE
 ##
@@ -274,9 +269,6 @@ program: DATABLOCK LBRACE MATRIX LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHILE
 ## The known suffix of the stack is as follows:
 ## MATRIX type_constraint
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 343.
@@ -303,9 +295,6 @@ program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA WHILE
 ##
 ## Ends in an error in state: 342.
@@ -315,9 +304,6 @@ program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA WHILE
 ## The known suffix of the stack is as follows:
 ## MATRIX type_constraint LBRACK expr COMMA
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 341.
@@ -344,9 +330,6 @@ program: DATABLOCK LBRACE MATRIX LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE MATRIX LBRACK WHILE
 ##
 ## Ends in an error in state: 340.
@@ -356,9 +339,6 @@ program: DATABLOCK LBRACE MATRIX LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## MATRIX type_constraint LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE MATRIX WHILE
 ##
 ## Ends in an error in state: 338.
@@ -369,7 +349,7 @@ program: DATABLOCK LBRACE MATRIX WHILE
 ## MATRIX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "," expression "]" for matrix sizes as part of top-level variable declaration.
 
 program: DATABLOCK LBRACE ORDERED LBRACK REALNUMERAL TILDE
 ##
@@ -397,9 +377,6 @@ program: DATABLOCK LBRACE ORDERED LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE ORDERED LBRACK WHILE
 ##
 ## Ends in an error in state: 335.
@@ -409,9 +386,6 @@ program: DATABLOCK LBRACE ORDERED LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## ORDERED LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE ORDERED WHILE
 ##
 ## Ends in an error in state: 334.
@@ -422,7 +396,7 @@ program: DATABLOCK LBRACE ORDERED WHILE
 ## ORDERED
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size of ordered.
 
 program: DATABLOCK LBRACE POSITIVEORDERED LBRACK REALNUMERAL TILDE
 ##
@@ -450,9 +424,6 @@ program: DATABLOCK LBRACE POSITIVEORDERED LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE POSITIVEORDERED LBRACK WHILE
 ##
 ## Ends in an error in state: 331.
@@ -462,9 +433,6 @@ program: DATABLOCK LBRACE POSITIVEORDERED LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## POSITIVEORDERED LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE POSITIVEORDERED WHILE
 ##
 ## Ends in an error in state: 330.
@@ -475,7 +443,7 @@ program: DATABLOCK LBRACE POSITIVEORDERED WHILE
 ## POSITIVEORDERED
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size of positive_ordered.
 
 program: DATABLOCK LBRACE RBRACE WHILE
 ##
@@ -547,7 +515,7 @@ program: DATABLOCK LBRACE ROWVECTOR LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHI
 ## ROWVECTOR type_constraint
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected identifier as part of top-level variable declaration.
 
 program: DATABLOCK LBRACE ROWVECTOR LBRACK REALNUMERAL TILDE
 ##
@@ -575,9 +543,6 @@ program: DATABLOCK LBRACE ROWVECTOR LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE ROWVECTOR LBRACK WHILE
 ##
 ## Ends in an error in state: 325.
@@ -587,9 +552,6 @@ program: DATABLOCK LBRACE ROWVECTOR LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## ROWVECTOR type_constraint LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE ROWVECTOR WHILE
 ##
 ## Ends in an error in state: 323.
@@ -600,7 +562,7 @@ program: DATABLOCK LBRACE ROWVECTOR WHILE
 ## ROWVECTOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size declaration of row_vector.
 
 program: DATABLOCK LBRACE SIMPLEX LBRACK REALNUMERAL TILDE
 ##
@@ -628,9 +590,6 @@ program: DATABLOCK LBRACE SIMPLEX LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE SIMPLEX LBRACK WHILE
 ##
 ## Ends in an error in state: 320.
@@ -640,9 +599,6 @@ program: DATABLOCK LBRACE SIMPLEX LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## SIMPLEX LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE SIMPLEX WHILE
 ##
 ## Ends in an error in state: 319.
@@ -653,7 +609,7 @@ program: DATABLOCK LBRACE SIMPLEX WHILE
 ## SIMPLEX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size declaration of simplex.
 
 program: DATABLOCK LBRACE UNITVECTOR LBRACK REALNUMERAL TILDE
 ##
@@ -681,9 +637,6 @@ program: DATABLOCK LBRACE UNITVECTOR LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE UNITVECTOR LBRACK WHILE
 ##
 ## Ends in an error in state: 316.
@@ -693,9 +646,6 @@ program: DATABLOCK LBRACE UNITVECTOR LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## UNITVECTOR LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE UNITVECTOR WHILE
 ##
 ## Ends in an error in state: 315.
@@ -706,7 +656,7 @@ program: DATABLOCK LBRACE UNITVECTOR WHILE
 ## UNITVECTOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for size declaration of unit_vector.
 
 program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA UPPER ASSIGN WHILE
 ##
@@ -718,7 +668,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA UPPER AS
 ## LOWER ASSIGN constr_expr COMMA UPPER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected expression (not containing binary logical operators) after "upper = ".
 
 program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA UPPER WHILE
 ##
@@ -729,8 +679,9 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA UPPER WH
 ## The known suffix of the stack is as follows:
 ## LOWER ASSIGN constr_expr COMMA UPPER
 ##
+Expected "=" expression (not containing binary logical operators), after "lower".
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "=" expression (not containing binary logical operators) after "upper".
 
 program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA WHILE
 ##
@@ -742,7 +693,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN REALNUMERAL COMMA WHILE
 ## LOWER ASSIGN constr_expr COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"upper =" expression (not containing binary logical operators) ">" expected after "<lower =" expression "," in top-level variable declaration.
 
 program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN WHILE
 ##
@@ -755,7 +706,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER ASSIGN WHILE
 ## LOWER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+An expression (not containing binary logical operators) is expected for type lower bound.
 
 program: DATABLOCK LBRACE VECTOR LABRACK LOWER WHILE
 ##
@@ -768,7 +719,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK LOWER WHILE
 ## LOWER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "=" expression (not containing binary logical operators), after "lower".
 
 program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA OFFSET ASSIGN WHILE
 ##
@@ -780,7 +731,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA OFF
 ## MULTIPLIER ASSIGN constr_expr COMMA OFFSET ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Numerical expression expected after '=' in a multiplier expression.
 
 program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA OFFSET WHILE
 ##
@@ -792,7 +743,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA OFF
 ## MULTIPLIER ASSIGN constr_expr COMMA OFFSET
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "offset = " expression (not containing binary logical operators).
 
 program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA WHILE
 ##
@@ -804,7 +755,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN REALNUMERAL COMMA WHI
 ## MULTIPLIER ASSIGN constr_expr COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected '>' or offset expression after multiplier expression.
 
 program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN WHILE
 ##
@@ -817,7 +768,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER ASSIGN WHILE
 ## MULTIPLIER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "multiplier = " expression (not containing binary logical operators).
 
 program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER WHILE
 ##
@@ -830,7 +781,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK MULTIPLIER WHILE
 ## MULTIPLIER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "multiplier = " expression (not containing binary logical operators).
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN IDENTIFIER COMMA MULTIPLIER ASSIGN IDENTIFIER COMMA
 ##
@@ -1148,7 +1099,7 @@ program: DATABLOCK WHILE
 ## DATABLOCK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"{" followed by a list of top-level variable declarations is expected after seeing "data".
 
 program: FUNCTIONBLOCK LBRACE RBRACE COVMATRIX
 ##
@@ -1160,7 +1111,7 @@ program: FUNCTIONBLOCK LBRACE RBRACE COVMATRIX
 ## option(function_block)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "data {" or "transformed data {" or "parameters {" or "transformed parameters {" or "model {" or "generated quantities {".
 
 program: FUNCTIONBLOCK LBRACE VECTOR LBRACK COMMA WHILE
 ##
@@ -1172,7 +1123,7 @@ program: FUNCTIONBLOCK LBRACE VECTOR LBRACK COMMA WHILE
 ## COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+List of commas expected.
 
 program: FUNCTIONBLOCK LBRACE VECTOR LBRACK WHILE
 ##
@@ -1184,7 +1135,7 @@ program: FUNCTIONBLOCK LBRACE VECTOR LBRACK WHILE
 ## LBRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" (list of commas) "]" expected in unsized return type of function definition.
 
 program: FUNCTIONBLOCK LBRACE VECTOR WHILE
 ##
@@ -3699,16 +3650,4 @@ program: TRANSFORMEDPARAMETERSBLOCK WHILE
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: WHILE
-##
-## Ends in an error in state: 0.
-##
-## program' -> . program [ # ]
-##
-## The known suffix of the stack is as follows:
-##
-##
-
-Expected "functions {" or "data {" or "transformed data {" or "parameters {" or "transformed parameters {" or "model {" or "generated quantities {".
 
