@@ -1621,7 +1621,7 @@ program: MODELBLOCK LBRACE SEMICOLON VOID
 ## vardecl_or_statement
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Variable declaration, statement or "}" expected.
 
 program: MODELBLOCK LBRACE VECTOR LBRACK REALNUMERAL TILDE
 ##
