@@ -334,7 +334,10 @@ let state_num s =
 let handle_syntax_error file stack token =
   let {pos_lnum; pos_cnum ; pos_bol} = location token in
   let col = pos_cnum - pos_bol in
-  let msg = message (state_num stack) in
+  let st_num = state_num stack in
+  let msg = try message st_num with
+    | Not_found -> "Unknown error in parser state " ^ string_of_int st_num
+  in
   Printf.eprintf  "File \"%s\", line %d, column %d\nSyntax error: %s" file pos_lnum col msg;
   (* some extra debug information - temporary *)
   print_endline (string_of_int (state_num stack));

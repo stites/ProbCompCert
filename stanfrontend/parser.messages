@@ -455,7 +455,7 @@ program: DATABLOCK LBRACE RBRACE WHILE
 ## option(function_block) option(data_block)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "transformed data {" or "parameters {" or "transformed parameters {" or "model {" or "generated quantities {".
 
 program: DATABLOCK LBRACE REAL IDENTIFIER LBRACK IDENTIFIER RBRACK WHILE
 ##
@@ -467,7 +467,7 @@ program: DATABLOCK LBRACE REAL IDENTIFIER LBRACK IDENTIFIER RBRACK WHILE
 ## top_var_type decl_identifier option(dims)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ";".
 
 program: DATABLOCK LBRACE REAL IDENTIFIER SEMICOLON WHILE
 ##
@@ -479,7 +479,7 @@ program: DATABLOCK LBRACE REAL IDENTIFIER SEMICOLON WHILE
 ## top_var_decl_no_assign
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Only top-level variable declarations allowed in data and parameters blocks.
 
 program: DATABLOCK LBRACE REAL IDENTIFIER WHILE
 ##
@@ -491,7 +491,7 @@ program: DATABLOCK LBRACE REAL IDENTIFIER WHILE
 ## top_var_type decl_identifier
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+";" is expected after a top-level variable declaration.
 
 program: DATABLOCK LBRACE REAL WHILE
 ##
@@ -807,7 +807,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN IDENTIFIER COMMA MULTIPLI
 ## In state 291, spurious reduction of production offset_mult -> OFFSET ASSIGN constr_expr COMMA MULTIPLIER ASSIGN constr_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ">" after "multiplier = " expression.
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHILE
 ##
@@ -819,7 +819,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHILE
 ## VECTOR type_constraint
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "]" for vector size.
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA MULTIPLIER ASSIGN WHILE
 ##
@@ -831,7 +831,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA MULTIPL
 ## OFFSET ASSIGN constr_expr COMMA MULTIPLIER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected expression (not containing binary logical operators) after "multiplier =".
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA MULTIPLIER WHILE
 ##
@@ -843,7 +843,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA MULTIPL
 ## OFFSET ASSIGN constr_expr COMMA MULTIPLIER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "=" expression (not containing binary logical operators) ">" after "multiplier".
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA WHILE
 ##
@@ -855,7 +855,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN REALNUMERAL COMMA WHILE
 ## OFFSET ASSIGN constr_expr COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ">" or ", multiplier = " expression (not containing binary logical operators) ">" after "offset = " expression.
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN WHILE
 ##
@@ -868,7 +868,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET ASSIGN WHILE
 ## OFFSET ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "offset = " expression (not containing binary logical operators).
 
 program: DATABLOCK LBRACE VECTOR LABRACK OFFSET WHILE
 ##
@@ -881,7 +881,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK OFFSET WHILE
 ## OFFSET
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "offset = " expression (not containing binary logical operators).
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN IDENTIFIER COMMA LOWER ASSIGN IDENTIFIER COMMA
 ##
@@ -908,7 +908,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN IDENTIFIER COMMA LOWER ASS
 ## In state 283, spurious reduction of production range -> UPPER ASSIGN constr_expr COMMA LOWER ASSIGN constr_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ">" after "lower = " expression.
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA LOWER ASSIGN WHILE
 ##
@@ -920,7 +920,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA LOWER AS
 ## UPPER ASSIGN constr_expr COMMA LOWER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected expression (not containing binary logical operators) after "lower = ".
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA LOWER WHILE
 ##
@@ -932,7 +932,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA LOWER WH
 ## UPPER ASSIGN constr_expr COMMA LOWER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "=" expression (not containing binary logical operators) after "lower".
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA WHILE
 ##
@@ -944,7 +944,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL COMMA WHILE
 ## UPPER ASSIGN constr_expr COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"lower =" expression (not containing binary logical operators) ">" expected after "<upper =" expression "," in top-level variable declaration.
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL TILDE
 ##
@@ -970,7 +970,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN REALNUMERAL TILDE
 ## In state 52, spurious reduction of production additive_expr -> multiplicative_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+">" or ", lower = expression>" (with expression not containing binary logical operators) expected after specifying upper bound for type.
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN WHILE
 ##
@@ -983,7 +983,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER ASSIGN WHILE
 ## UPPER ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected expression (not containing binary logical operators) after "upper = ".
 
 program: DATABLOCK LBRACE VECTOR LABRACK UPPER WHILE
 ##
@@ -996,7 +996,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK UPPER WHILE
 ## UPPER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "=" expression (not containing binary logical operators) after "upper".
 
 program: DATABLOCK LBRACE VECTOR LABRACK WHILE
 ##
@@ -1009,7 +1009,7 @@ program: DATABLOCK LBRACE VECTOR LABRACK WHILE
 ## LABRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+We expect to see "lower =", "upper =", "offset =" or "multiplier =" followed by an expression after "<".
 
 program: DATABLOCK LBRACE VECTOR LBRACK IDENTIFIER RBRACK HAT
 ##
@@ -1021,7 +1021,7 @@ program: DATABLOCK LBRACE VECTOR LBRACK IDENTIFIER RBRACK HAT
 ## top_var_type
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+We expect to see an identifier after a sized type.
 
 program: DATABLOCK LBRACE VECTOR LBRACK REALNUMERAL TILDE
 ##
@@ -1049,9 +1049,6 @@ program: DATABLOCK LBRACE VECTOR LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE VECTOR LBRACK WHILE
 ##
 ## Ends in an error in state: 311.
@@ -1061,9 +1058,6 @@ program: DATABLOCK LBRACE VECTOR LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## VECTOR type_constraint LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: DATABLOCK LBRACE VECTOR WHILE
 ##
 ## Ends in an error in state: 275.
@@ -1074,7 +1068,7 @@ program: DATABLOCK LBRACE VECTOR WHILE
 ## VECTOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression "]" expected for vector size.
 
 program: DATABLOCK LBRACE WHILE
 ##
@@ -1086,7 +1080,7 @@ program: DATABLOCK LBRACE WHILE
 ## DATABLOCK LBRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected top-level variable declaration or "}".
 
 program: DATABLOCK WHILE
 ##
@@ -3305,9 +3299,6 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN IDENTIFIER LPAREN REALNUMERAL COMMA 
 ## In state 66, spurious reduction of production separated_nonempty_list(COMMA,expr) -> expr COMMA separated_nonempty_list(COMMA,expr)
 ## In state 60, spurious reduction of production separated_list(COMMA,expr) -> separated_nonempty_list(COMMA,expr)
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE RETURN IDENTIFIER LPAREN WHILE
 ##
 ## Ends in an error in state: 59.
@@ -3319,21 +3310,7 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN IDENTIFIER LPAREN WHILE
 ## identifier LPAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: TRANSFORMEDDATABLOCK LBRACE RETURN IDENTIFIER WHILE
-##
-## Ends in an error in state: 58.
-##
-## basic_expr -> identifier . LPAREN expr BAR separated_list(COMMA,expr) RPAREN [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
-## basic_expr -> identifier . LPAREN separated_list(COMMA,expr) RPAREN [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
-## lhs -> identifier . [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
-##
-## The known suffix of the stack is as follows:
-## identifier
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. In function application, expect comma-separated list of expressions followed by ")", after "(".
 
 program: TRANSFORMEDDATABLOCK LBRACE RETURN LBRACE REALNUMERAL RPAREN
 ##
@@ -3363,7 +3340,7 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN LBRACE REALNUMERAL RPAREN
 ## In state 67, spurious reduction of production separated_nonempty_list(COMMA,expr) -> expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected either "," followed by expression or "}" next.
 
 program: TRANSFORMEDDATABLOCK LBRACE RETURN LBRACE WHILE
 ##
@@ -3375,8 +3352,19 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN LBRACE WHILE
 ## LBRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expression expected after "{" in array expression.
 
+program: TRANSFORMEDDATABLOCK LBRACE RETURN IDENTIFIER WHILE
+##
+## Ends in an error in state: 58.
+##
+## basic_expr -> identifier . LPAREN expr BAR separated_list(COMMA,expr) RPAREN [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
+## basic_expr -> identifier . LPAREN separated_list(COMMA,expr) RPAREN [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
+## lhs -> identifier . [ TRANSPOSE TIMES TILDE SEMICOLON RPAREN RBRACK RBRACE RABRACK QMARK PLUS OR NEQUALS MODULO MINUS LEQ LDIVIDE LBRACK LABRACK IDIVIDE HAT GEQ EQUALS ELTTIMES ELTPOW ELTDIVIDE DIVIDE COMMA COLON BAR AND ]
+##
+## The known suffix of the stack is as follows:
+## identifier
+##
 program: TRANSFORMEDDATABLOCK LBRACE RETURN REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 144.
@@ -3403,9 +3391,6 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE RETURN TARGET WHILE
 ##
 ## Ends in an error in state: 32.
@@ -3415,9 +3400,6 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN TARGET WHILE
 ## The known suffix of the stack is as follows:
 ## TARGET
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE RETURN WHILE
 ##
 ## Ends in an error in state: 142.
@@ -3429,7 +3411,7 @@ program: TRANSFORMEDDATABLOCK LBRACE RETURN WHILE
 ## RETURN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed return statement. ";" or expression followed by ";" expected after "return".
 
 program: TRANSFORMEDDATABLOCK LBRACE SEMICOLON VOID
 ##
@@ -3441,7 +3423,7 @@ program: TRANSFORMEDDATABLOCK LBRACE SEMICOLON VOID
 ## top_vardecl_or_statement
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Variable declaration, statement or "}" expected.
 
 program: TRANSFORMEDDATABLOCK LBRACE TARGET LPAREN WHILE
 ##
@@ -3453,7 +3435,7 @@ program: TRANSFORMEDDATABLOCK LBRACE TARGET LPAREN WHILE
 ## TARGET LPAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected ")" after "target(".
 
 program: TRANSFORMEDDATABLOCK LBRACE TARGET PLUSASSIGN REALNUMERAL TILDE
 ##
@@ -3482,7 +3464,7 @@ program: TRANSFORMEDDATABLOCK LBRACE TARGET PLUSASSIGN REALNUMERAL TILDE
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Expected ";" or different expression.
 
 program: TRANSFORMEDDATABLOCK LBRACE TARGET PLUSASSIGN WHILE
 ##
@@ -3494,7 +3476,7 @@ program: TRANSFORMEDDATABLOCK LBRACE TARGET PLUSASSIGN WHILE
 ## TARGET PLUSASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expect an expression followed by ";" next.
 
 program: TRANSFORMEDDATABLOCK LBRACE TARGET WHILE
 ##
@@ -3507,7 +3489,7 @@ program: TRANSFORMEDDATABLOCK LBRACE TARGET WHILE
 ## TARGET
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement or expression. A statement or expression could be expected here.
 
 program: TRANSFORMEDDATABLOCK LBRACE VECTOR LBRACK IDENTIFIER RBRACK HAT
 ##
@@ -3519,7 +3501,7 @@ program: TRANSFORMEDDATABLOCK LBRACE VECTOR LBRACK IDENTIFIER RBRACK HAT
 ## top_var_type
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed top-level variable declaration. Expect an identifier next.
 
 program: TRANSFORMEDDATABLOCK LBRACE VOID
 ##
@@ -3531,7 +3513,7 @@ program: TRANSFORMEDDATABLOCK LBRACE VOID
 ## TRANSFORMEDDATABLOCK LBRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expect a statement or top-level variable declaration.
 
 program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN REALNUMERAL RPAREN VOID
 ##
@@ -3544,7 +3526,7 @@ program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN REALNUMERAL RPAREN VOID
 ## WHILE LPAREN expr RPAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement. We expect a statement after ")", for the body of the while-loop.
 
 program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN REALNUMERAL TILDE
 ##
@@ -3574,7 +3556,7 @@ program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN REALNUMERAL TILDE
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. We expect an expression after "(" for the test of the while-loop.
 
 program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN WHILE
 ##
@@ -3587,7 +3569,7 @@ program: TRANSFORMEDDATABLOCK LBRACE WHILE LPAREN WHILE
 ## WHILE LPAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. We expect an expression after "(" for the test of the while-loop.
 
 program: TRANSFORMEDDATABLOCK LBRACE WHILE WHILE
 ##
@@ -3600,7 +3582,7 @@ program: TRANSFORMEDDATABLOCK LBRACE WHILE WHILE
 ## WHILE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+After "while", we expect "(" expression ")" statement.
 
 program: TRANSFORMEDDATABLOCK WHILE
 ##
@@ -3612,7 +3594,7 @@ program: TRANSFORMEDDATABLOCK WHILE
 ## TRANSFORMEDDATABLOCK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+We expect "{" after "transformed data".
 
 program: TRANSFORMEDPARAMETERSBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ##
@@ -3624,7 +3606,7 @@ program: TRANSFORMEDPARAMETERSBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ## option(function_block) option(data_block) option(transformed_data_block) option(parameters_block) option(transformed_parameters_block)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"model {" or "generated quantities {" expected after end of transformed parameters block.
 
 program: TRANSFORMEDPARAMETERSBLOCK LBRACE VOID
 ##
@@ -3636,7 +3618,7 @@ program: TRANSFORMEDPARAMETERSBLOCK LBRACE VOID
 ## TRANSFORMEDPARAMETERSBLOCK LBRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expect a statement or top-level variable declaration.
 
 program: TRANSFORMEDPARAMETERSBLOCK WHILE
 ##
@@ -3648,5 +3630,5 @@ program: TRANSFORMEDPARAMETERSBLOCK WHILE
 ## TRANSFORMEDPARAMETERSBLOCK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+We expect "{" after "transformed parameters".
 
