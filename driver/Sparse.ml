@@ -238,22 +238,6 @@ let location t =
   | BANG p | ASSIGN p | AND p ->   
     p 
 
-(* VERY temporary 
-
-   This will eventually be some mapping from Sparser.state -> int
-   and a call to the normal menhir messages functionality
-*)
-
-let statenum s =
-  let coqstr = Sparser.Aut.int_of_state s in
-  let string_state = Camlcoq.camlstring_of_coqstring coqstr
-  in int_of_string string_state
-
-
-let errmsg (s : Sparser.Aut.state) =
-  let state_num = statenum s 
-  in
-  message state_num
 
 (* debug code *)
 let token_str = function
@@ -340,6 +324,23 @@ let token_str = function
   | ASSIGN _ -> "ass"
   | AND _ -> "and"
 
+
+let state_num s =
+  let coqstr = Sparser.Aut.int_of_state s in
+  let string_state = Camlcoq.camlstring_of_coqstring coqstr
+  in 
+  int_of_string string_state
+
+let handle_syntax_error file stack token =
+  let {pos_lnum; pos_cnum ; pos_bol} = location token in
+  let col = pos_cnum - pos_bol in
+  let msg = message (state_num stack) in
+  Printf.eprintf  "File \"%s\", line %d, column %d\nSyntax error: %s" file pos_lnum col msg;
+  (* some extra debug information - temporary *)
+  print_endline (string_of_int (state_num stack));
+  print_endline (token_str token);
+  exit 1
+
 let parse_stan_file sourcefile ifile =
   (*Frontend.init();*)
   Hashtbl.clear C2C.decl_atom;
@@ -350,13 +351,7 @@ let parse_stan_file sourcefile ifile =
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
   let p = match Sparser.program log_fuel (tokens_stream text) with
-    | Sparser.MenhirLibParser.Inter.Fail_pr (s, tok) -> 
-      let {pos_lnum; pos_cnum ; pos_bol} = location tok in
-      Printf.eprintf  "Syntax error:\nL%d C%d: %s" pos_lnum (pos_cnum - pos_bol) (errmsg s);
-      print_endline (string_of_int (statenum s));
-      print_endline (token_str tok);
-      exit 0;
-
+    | Sparser.MenhirLibParser.Inter.Fail_pr (stack, token) -> handle_syntax_error sourcefile stack token
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
     | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
   print_endline "parsed"; p
