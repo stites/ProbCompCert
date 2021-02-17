@@ -326,10 +326,10 @@ let token_str = function
 
 
 let state_num s =
-  let coqstr = Sparser.Aut.int_of_state s in
-  let string_state = Camlcoq.camlstring_of_coqstring coqstr
+  let coq_num = Sparser.Aut.nat_of_state s in
+  let state = Camlcoq.Nat.to_int coq_num
   in 
-  int_of_string string_state
+  state
 
 let handle_syntax_error file stack token =
   let {pos_lnum; pos_cnum ; pos_bol} = location token in
