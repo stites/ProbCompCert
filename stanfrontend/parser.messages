@@ -1092,7 +1092,7 @@ program: DATABLOCK WHILE
 ## DATABLOCK
 ##
 
-"{" followed by a list of top-level variable declarations is expected after seeing "data".
+Expected "{" followed by a list of top-level variable declarations is expected after "data".
 
 program: FUNCTIONBLOCK LBRACE RBRACE COVMATRIX
 ##
@@ -1322,7 +1322,7 @@ program: GENERATEDQUANTITIESBLOCK WHILE
 ## GENERATEDQUANTITIESBLOCK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "{" after "generated quantities".
 
 program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA REALNUMERAL TILDE
 ##
@@ -1350,9 +1350,6 @@ program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA WHILE
 ##
 ## Ends in an error in state: 175.
@@ -1362,9 +1359,6 @@ program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL COMMA WHILE
 ## The known suffix of the stack is as follows:
 ## MATRIX LBRACK expr COMMA
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL TILDE
 ##
 ## Ends in an error in state: 174.
@@ -1391,9 +1385,6 @@ program: MODELBLOCK LBRACE MATRIX LBRACK REALNUMERAL TILDE
 ## In state 105, spurious reduction of production or_expr -> and_expr
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: MODELBLOCK LBRACE MATRIX LBRACK WHILE
 ##
 ## Ends in an error in state: 173.
@@ -1403,9 +1394,6 @@ program: MODELBLOCK LBRACE MATRIX LBRACK WHILE
 ## The known suffix of the stack is as follows:
 ## MATRIX LBRACK
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: MODELBLOCK LBRACE MATRIX WHILE
 ##
 ## Ends in an error in state: 172.
@@ -1416,7 +1404,7 @@ program: MODELBLOCK LBRACE MATRIX WHILE
 ## MATRIX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "[" expression "," expression "]" for sizes of matrix.
 
 program: MODELBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ##
@@ -1428,7 +1416,7 @@ program: MODELBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ## option(function_block) option(data_block) option(transformed_data_block) option(parameters_block) option(transformed_parameters_block) option(model_block)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "generated quantities {" or end of file after end of model block.
 
 program: MODELBLOCK LBRACE REAL IDENTIFIER ASSIGN REALNUMERAL TILDE
 ##
@@ -1458,9 +1446,6 @@ program: MODELBLOCK LBRACE REAL IDENTIFIER ASSIGN REALNUMERAL TILDE
 ## In state 250, spurious reduction of production pair(ASSIGN,expr) -> ASSIGN expr
 ## In state 251, spurious reduction of production option(pair(ASSIGN,expr)) -> pair(ASSIGN,expr)
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: MODELBLOCK LBRACE REAL IDENTIFIER ASSIGN WHILE
 ##
 ## Ends in an error in state: 249.
@@ -1471,7 +1456,7 @@ program: MODELBLOCK LBRACE REAL IDENTIFIER ASSIGN WHILE
 ## ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expression followed by ";" expected after "=".
 
 program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK REALNUMERAL RBRACK AND
 ##
@@ -1482,8 +1467,17 @@ program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK REALNUMERAL RBRACK AND
 ## The known suffix of the stack is as follows:
 ## sized_basic_type decl_identifier option(dims)
 ##
+program: MODELBLOCK LBRACE REAL IDENTIFIER WHILE
+##
+## Ends in an error in state: 244.
+##
+## var_decl -> sized_basic_type decl_identifier . option(dims) option(pair(ASSIGN,expr)) SEMICOLON [ WHILE VECTOR TARGET SEMICOLON ROWVECTOR RETURN REJECT REALNUMERAL REAL RBRACE PRINT PLUS MINUS MATRIX LPAREN LBRACK LBRACE INTNUMERAL INT IF_ IDENTIFIER FOR CONTINUE BREAK BANG ]
+##
+## The known suffix of the stack is as follows:
+## sized_basic_type decl_identifier
+##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected  ";" or assignment.
 
 program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK REALNUMERAL RPAREN
 ##
@@ -1513,7 +1507,7 @@ program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK REALNUMERAL RPAREN
 ## In state 67, spurious reduction of production separated_nonempty_list(COMMA,expr) -> expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed array sizes. "[" (non-empty comma separated list of expressions) "]" expected to specify array sizes.
 
 program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK WHILE
 ##
@@ -1525,19 +1519,7 @@ program: MODELBLOCK LBRACE REAL IDENTIFIER LBRACK WHILE
 ## LBRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: MODELBLOCK LBRACE REAL IDENTIFIER WHILE
-##
-## Ends in an error in state: 244.
-##
-## var_decl -> sized_basic_type decl_identifier . option(dims) option(pair(ASSIGN,expr)) SEMICOLON [ WHILE VECTOR TARGET SEMICOLON ROWVECTOR RETURN REJECT REALNUMERAL REAL RBRACE PRINT PLUS MINUS MATRIX LPAREN LBRACK LBRACE INTNUMERAL INT IF_ IDENTIFIER FOR CONTINUE BREAK BANG ]
-##
-## The known suffix of the stack is as follows:
-## sized_basic_type decl_identifier
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Comma separated list of expressions followed by "]" expected after "[".
 
 program: MODELBLOCK LBRACE REAL WHILE
 ##
@@ -1549,7 +1531,7 @@ program: MODELBLOCK LBRACE REAL WHILE
 ## sized_basic_type
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected identifier after type in declaration.
 
 program: MODELBLOCK LBRACE ROWVECTOR LBRACK REALNUMERAL TILDE
 ##
@@ -1578,7 +1560,7 @@ program: MODELBLOCK LBRACE ROWVECTOR LBRACK REALNUMERAL TILDE
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression "]" expected for row_vector sizes.
 
 program: MODELBLOCK LBRACE ROWVECTOR LBRACK WHILE
 ##
@@ -1590,7 +1572,7 @@ program: MODELBLOCK LBRACE ROWVECTOR LBRACK WHILE
 ## ROWVECTOR LBRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression "]" expected for row_vector sizes.
 
 program: MODELBLOCK LBRACE ROWVECTOR WHILE
 ##
@@ -1602,7 +1584,7 @@ program: MODELBLOCK LBRACE ROWVECTOR WHILE
 ## ROWVECTOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression"]" expected after "row_vector" in local (or model block) variable declaration. (No transformations/constraints allowed.)
 
 program: MODELBLOCK LBRACE SEMICOLON VOID
 ##
@@ -1643,7 +1625,7 @@ program: MODELBLOCK LBRACE VECTOR LBRACK REALNUMERAL TILDE
 ## In state 50, spurious reduction of production expr -> or_expr
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression "]" expected for vector sizes.
 
 program: MODELBLOCK LBRACE VECTOR LBRACK WHILE
 ##
@@ -1655,7 +1637,7 @@ program: MODELBLOCK LBRACE VECTOR LBRACK WHILE
 ## VECTOR LBRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression "]" expected for vector sizes.
 
 program: MODELBLOCK LBRACE VECTOR WHILE
 ##
@@ -1667,7 +1649,7 @@ program: MODELBLOCK LBRACE VECTOR WHILE
 ## VECTOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"[" expression  "]" expected after "vector" in local (or model block) variable declaration. (No transformations/constraints allowed.)
 
 program: MODELBLOCK LBRACE VOID
 ##
@@ -1679,7 +1661,7 @@ program: MODELBLOCK LBRACE VOID
 ## MODELBLOCK LBRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Variable declaration, statement or "}" expected.
 
 program: MODELBLOCK WHILE
 ##
@@ -1691,7 +1673,7 @@ program: MODELBLOCK WHILE
 ## MODELBLOCK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "{" after "model".
 
 program: PARAMETERSBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ##
@@ -3594,7 +3576,7 @@ program: TRANSFORMEDDATABLOCK WHILE
 ## TRANSFORMEDDATABLOCK
 ##
 
-We expect "{" after "transformed data".
+Expect "{" after "transformed data".
 
 program: TRANSFORMEDPARAMETERSBLOCK LBRACE RBRACE ELTTIMESASSIGN
 ##
@@ -3630,5 +3612,5 @@ program: TRANSFORMEDPARAMETERSBLOCK WHILE
 ## TRANSFORMEDPARAMETERSBLOCK
 ##
 
-We expect "{" after "transformed parameters".
+Expected "{" after "transformed parameters".
 

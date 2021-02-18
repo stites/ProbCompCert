@@ -66,6 +66,9 @@
 /lib/Tokenize.ml
 /lib/Responsefile.ml
 /driver/Version.ml
+/stanfrontend/Sparser.v
+/stanfrontend/Slexer.ml
+/stanfrontend/Smessages.ml
 # Documentation
 /doc/coq2html
 /doc/coq2html.ml
