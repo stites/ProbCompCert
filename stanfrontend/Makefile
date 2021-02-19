@@ -19,7 +19,7 @@ COMMAND  := $(MENHIR) --coq Sparser.vy $(FLAGS)
 
 DATABASE := parser.messages
 
-.PHONY: nothing correct complete update strip
+.PHONY: nothing correct complete merge update strip 
 
 nothing:
 	@ echo "If you wish to compile ProbCompCert, please run \"make\" one level up."
@@ -46,6 +46,13 @@ complete:
 # We assume pre_parser.messages is up-to-date.
 	@ $(COMMAND) --compare-errors generated.messages --compare-errors $(DATABASE) && \
 	    echo "OK. The set of erroneous inputs is complete."
+	@ rm -f generated.messages
+
+merge:
+# when make complete fails, this adds the new sentences (with dummy messages) to the messages file
+	@ $(COMMAND) --list-errors >generated.messages
+	@ $(COMMAND) --merge-errors generated.messages --merge-errors $(DATABASE) > parser.merged
+	@ mv parser.merged $(DATABASE)
 	@ rm -f generated.messages
 
 update:
