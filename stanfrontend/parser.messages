@@ -76,7 +76,7 @@ program: DATABLOCK LBRACE REAL IDENTIFIER WHILE
 
 program: DATABLOCK LBRACE REAL WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Identifier expected after type in top-level variable declaration.
 
 program: DATABLOCK LBRACE ROWVECTOR LABRACK OFFSET ASSIGN IDENTIFIER RABRACK WHILE
 
@@ -232,63 +232,57 @@ program: FUNCTIONBLOCK LBRACE VECTOR LBRACK WHILE
 
 program: FUNCTIONBLOCK LBRACE VECTOR WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN DATABLOCK VECTOR LBRACK RBRACK WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN DATABLOCK WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Either a number of unsized dimensions is expected as part of a function return type or an identifier is expected as a function name.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN RPAREN SEMICOLON WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+A "}" or a function definition/declaration is expected.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN RPAREN VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Either "{" statement "}" is expected for a function definition or ";" for a function forward declaration.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN VECTOR IDENTIFIER COMMA WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+An argument declaration (unsized type followed by identifier) is expected.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN VECTOR IDENTIFIER WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"," or ")" expected after function argument declaration.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN VECTOR LBRACK RBRACK WHILE
+program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN DATABLOCK WHILE
+program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN DATABLOCK VECTOR LBRACK RBRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+An identifier is expected as a function argument name.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+(Non-void) type expected in function argument declaration.
 
 program: FUNCTIONBLOCK LBRACE VOID IDENTIFIER WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"(" expected after function name.
 
 program: FUNCTIONBLOCK LBRACE VOID WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+An identifier is expected as a function name.
 
 program: FUNCTIONBLOCK LBRACE WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Function forward declaration, definition or "}" expected after "functions {".
 
 program: FUNCTIONBLOCK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"{" expected after "functions".
 
 program: GENERATEDQUANTITIESBLOCK LBRACE RBRACE ELTTIMESASSIGN
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected end of file after end of generated quantities block.
 
 program: GENERATEDQUANTITIESBLOCK LBRACE VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Variable declaration or statement or "}" expected in generated quantities block.
 
 program: GENERATEDQUANTITIESBLOCK WHILE
 
@@ -366,119 +360,104 @@ Expected "{" after "model".
 
 program: PARAMETERSBLOCK LBRACE RBRACE ELTTIMESASSIGN
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"transformed parameters {", "model {" or "generated quantities {" expected after end of parameters block.
 
 program: PARAMETERSBLOCK LBRACE WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected top-level variable declaration or "}".
 
 program: PARAMETERSBLOCK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "{" after "parameters".
 
 program: TRANSFORMEDDATABLOCK LBRACE BANG WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expression expected after "!".
 
 program: TRANSFORMEDDATABLOCK LBRACE BREAK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ";" after "break".
 
 program: TRANSFORMEDDATABLOCK LBRACE CONTINUE WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ";" after "continue".
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL COLON REALNUMERAL RPAREN VOID
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL COLON REALNUMERAL TILDE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL COLON WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL RPAREN VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement. Expected statement after ")" for the loop body of the for loop.
+
+program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL COLON REALNUMERAL TILDE
+program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL COLON WHILE
+
+Ill-formed expression. Expected expression followed by ")" after "for (" identifier "in" expression ":".
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN REALNUMERAL TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected expression followed by ")" or ":" after "for (" identifier "in".
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER IN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected expression followed by ")" or ":" after "for (" identifier "in".
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN IDENTIFIER WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "in" after loop identifier.
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected (loop) identifier after "(".
 
 program: TRANSFORMEDDATABLOCK LBRACE FOR WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "(" after "for".
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LBRACK RBRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Found an L-value. This can be followed by a "~", a ",", a "}", a "[" or an infix or postfix operator or an assignment operator.
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LBRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Found an ill-formed expression where we expected a statement. Did you forget to close your "["?
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN REALNUMERAL BAR REALNUMERAL RBRACK
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN REALNUMERAL BAR WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed conditional distribution evaluation. Expect comma-separated list of expressions followed by ")" after "|".
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN REALNUMERAL COMMA IDENTIFIER RBRACK
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN REALNUMERAL TILDE
+program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed function application. Expect comma-separated list of expressions followed by ")" after "(".
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN RPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER LPAREN WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Found a well-formed function application. After this, there are many legal completions of the phrase.
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER TIMESASSIGN REALNUMERAL TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Expected a ";" following assignment expression
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER TIMESASSIGN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Expected an expression followed by ";" following assignment.
 
 program: TRANSFORMEDDATABLOCK LBRACE IDENTIFIER WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement or expression. A statement or expression could be expected here.
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL RPAREN SEMICOLON ELSE VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement. Expected statement after "else".
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL RPAREN SEMICOLON UPPER
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed block. Expected a statement, variable declaration, or just "}".
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL RPAREN VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed statement. Statement expected for true branch of conditional.
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL RPAREN WHILE LPAREN IDENTIFIER RPAREN SEMICOLON DIVIDEASSIGN
 
@@ -486,31 +465,31 @@ program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL RPAREN WHILE LPAREN 
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN REALNUMERAL TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ")" after test expression of conditional control flow construct.
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected expression for test of conditional control flow construct.
 
 program: TRANSFORMEDDATABLOCK LBRACE IF_ WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+"(" expression ")" expected after "if".
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACE REALNUMERAL COMMA WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected a comma-separated list of expressions.
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACE REALNUMERAL SEMICOLON
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. Found an expression. This can be followed by a "~", a ",", a "}", a "[" or an infix or postfix operator.
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACE VOID
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed phrase. "{" should be followed by a statement, variable declaration or expression.
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACK REALNUMERAL RBRACE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. We expect a comma separated list of expressions, followed by "]".
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACK REALNUMERAL TILDE
 
@@ -518,115 +497,88 @@ program: TRANSFORMEDDATABLOCK LBRACE LBRACK REALNUMERAL TILDE
 
 program: TRANSFORMEDDATABLOCK LBRACE LBRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Comma separated list of expressions followed by "]" expected after "[".
 
 program: TRANSFORMEDDATABLOCK LBRACE LPAREN REALNUMERAL TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expression or range of expressions followed by ")" expected after "(".
 
 program: TRANSFORMEDDATABLOCK LBRACE LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expression expected after "(".
 
 program: TRANSFORMEDDATABLOCK LBRACE MINUS WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expect an expression after "-".
 
 program: TRANSFORMEDDATABLOCK LBRACE PLUS WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expect an expression after "+".
 
 program: TRANSFORMEDDATABLOCK LBRACE PRINT LPAREN STRINGLITERAL RPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected a ";" after "print(...)".
 
 program: TRANSFORMEDDATABLOCK LBRACE PRINT LPAREN WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected a comma-separated list of expressions or strings followed by ");" after "print(".
 
 program: TRANSFORMEDDATABLOCK LBRACE PRINT WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "(" followed by a comma-separated list of expressions or strings followed by ");" after "print".
 
 program: TRANSFORMEDDATABLOCK LBRACE RBRACE ELTTIMESASSIGN
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected "parameters {", "transformed parameters {", "model {", "generated quantities {" or end-of-file after end of transformed data block.
 
 program: TRANSFORMEDDATABLOCK LBRACE REAL IDENTIFIER ASSIGN IDENTIFIER TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expression followed by ";" expected after "=".
 
 program: TRANSFORMEDDATABLOCK LBRACE REAL IDENTIFIER LBRACK IDENTIFIER RBRACK AND
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected ";" or assignment.
 
 program: TRANSFORMEDDATABLOCK LBRACE REAL IDENTIFIER WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected dimensions, ";", or assignment.
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL AND WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL DIVIDE WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL ELTDIVIDE WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL ELTPOW WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL ELTTIMES WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL EQUALS WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL GEQ WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL HAT WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL IDIVIDE WHILE
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LABRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected expression after binary operator.
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK COLON IDENTIFIER TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed index. Expected "," followed by additional indexes or "]".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK COLON WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression in index. Expected expression or "]" or "," after ":".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK COMMA WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected index after indices followed by ",".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK REALNUMERAL COLON WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected expression or "]" or "," after ":".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK REALNUMERAL TILDE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected "]" or "," or ":".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LBRACK WHILE
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Ill-formed expression. Expected index expression followed by "]" or "," or ":".
 
 program: TRANSFORMEDDATABLOCK LBRACE REALNUMERAL LDIVIDE WHILE
 
