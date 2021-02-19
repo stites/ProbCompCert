@@ -36,9 +36,7 @@ include Makefile.menhir
 #
 
 stanfrontend/Smessages.ml: stanfrontend/parser.messages stanfrontend/Sparser.vy
-	@rm -f $@
-	$(MENHIR) --coq --compile-errors stanfrontend/parser.messages stanfrontend/Sparser.vy >stanfrontend/Smessages.ml
-	@chmod a-w $@
+	$(MAKE) -C stanfrontend correct
 
 # The pre-parser's error message database is compiled as follows.
 

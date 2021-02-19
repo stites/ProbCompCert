@@ -67,6 +67,10 @@
 /lib/Responsefile.ml
 /driver/Version.ml
 /stanfrontend/Sparser.v
+/stanfrontend/Sparser.automaton
+/stanfrontend/Sparser.conflicts
+/stanfrontend/generated.messages
+/stanfrontend/parser.messages.bak
 /stanfrontend/Slexer.ml
 /stanfrontend/Smessages.ml
 # Documentation
