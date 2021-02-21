@@ -238,93 +238,6 @@ let location t =
   | BANG p | ASSIGN p | AND p ->   
     p 
 
-
-(* debug code *)
-let token_str = function
-  | WHILE _ -> "while"
-  | VOID _ -> "void"
-  | VECTOR _ -> "vector"
-  | UPPER _ -> "upper"
-  | UNITVECTOR _ -> "unitvec"
-  | TRUNCATE _ -> "trunc"
-  | TRANSPOSE _ -> "trans"
-  | TRANSFORMEDPARAMETERSBLOCK _ -> "tfpb"
-  | TRANSFORMEDDATABLOCK _ -> "tfdb"
-  | TIMESASSIGN _ -> "timeassign"
-  | TIMES _ -> "times"
-  | TILDE _ -> "tilde"
-  | TARGET _ -> "target"
-  | STRINGLITERAL _ -> "stringlit"
-  | SIMPLEX _ -> "simplex"
-  | SEMICOLON _ -> "semi"
-  | RPAREN _ -> "rparen"
-  | ROWVECTOR _ -> "rowvec"
-  | RETURN _ -> "ret"
-  | REJECT _ -> "rej"
-  | REALNUMERAL _ -> "realn"
-  | REAL _ -> "real"
-  | RBRACK _ -> "rbrac"
-  | RBRACE _ -> "rbrace"
-  | RABRACK _ -> "rabrac"
-  | QMARK _ -> "?"
-  | PRINT _ -> "print"
-  | POSITIVEORDERED _ -> "positiveord"
-  | PLUSASSIGN _ -> "plusassign"
-  | PLUS _ -> "plus"
-  | PARAMETERSBLOCK _ -> "parametersblock"
-  | ORDERED _ -> "ordered"
-  | OR _ -> "or"
-  | OFFSET _ -> "offset"
-  | NEQUALS _ -> "neq"
-  | MULTIPLIER _ -> "multiplier"
-  | MODULO _ -> "modulo"
-  | MODELBLOCK _ -> "mb"
-  | MINUSASSIGN _ -> "minusassign"
-  | MINUS _ -> "minus"
-  | MATRIX _ -> "matrix"
-  | LPAREN _ -> "lparen"
-  | LOWER _ -> "lower"
-  | LEQ _ -> "leq"
-  | LDIVIDE _ -> "ldiv"
-  | LBRACK _ -> "lbrac"
-  | LBRACE _ -> "lbrace"
-  | LABRACK _ -> "labrac"
-  | INTNUMERAL _ -> "intn"
-  | INT _ -> "int"
-  | IN _ -> "in"
-  | IF_ _ -> "if"
-  | IDIVIDE _ -> "idiv"
-  | IDENTIFIER _ -> "ident"
-  | HAT _ -> "hat"
-  | GEQ _ -> "geq"
-  | GENERATEDQUANTITIESBLOCK _ -> "generatedquantitiesblock"
-  | FUNCTIONBLOCK _ -> "functionblock"
-  | FOR _ -> "for"
-  | EQUALS _ -> "equals"
-  | EOF _ -> "eof"
-  | ELTTIMESASSIGN _ -> "elttimesassign"
-  | ELTTIMES _ -> "elttimes"
-  | ELTPOW _ -> "eltpow"
-  | ELTDIVIDEASSIGN _ -> "eltdivass"
-  | ELTDIVIDE _ -> "eltdiv"
-  | ELSE _ -> "else"
-  | DIVIDEASSIGN _ -> "divass"
-  | DIVIDE _ -> "divide"
-  | DATABLOCK _ -> "datablock"
-  | COVMATRIX _ -> "covmatrix"
-  | CORRMATRIX _ -> "corrmatrix"
-  | CONTINUE _ -> "continue"
-  | COMMA _ -> "comma"
-  | COLON _ -> "colon"
-  | CHOLESKYFACTORCOV _ -> "choleskycov"
-  | CHOLESKYFACTORCORR _ -> "choleskycorr"
-  | BREAK _ -> "break"
-  | BAR _ -> "bar"
-  | BANG _ -> "bang"
-  | ASSIGN _ -> "ass"
-  | AND _ -> "and"
-
-
 let state_num s =
   let coq_num = Sparser.Aut.nat_of_state s in
   let state = Camlcoq.Nat.to_int coq_num
@@ -338,10 +251,7 @@ let handle_syntax_error file stack token =
   let msg = try message st_num with
     | Not_found -> "Unknown error in parser state " ^ string_of_int st_num
   in
-  Printf.eprintf  "File \"%s\", line %d, column %d\nSyntax error: %s" file pos_lnum col msg;
-  (* some extra debug information - temporary *)
-  print_endline (string_of_int (state_num stack));
-  print_endline (token_str token);
+  Printf.eprintf  "Syntax error in '%s', line %d, column %d:\n%s" file pos_lnum col msg;
   exit 1
 
 let parse_stan_file sourcefile ifile =
@@ -357,4 +267,4 @@ let parse_stan_file sourcefile ifile =
     | Sparser.MenhirLibParser.Inter.Fail_pr (stack, token) -> handle_syntax_error sourcefile stack token
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
     | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
-  print_endline "parsed"; p
+  p
