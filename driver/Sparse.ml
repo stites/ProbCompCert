@@ -245,13 +245,15 @@ let state_num s =
   state
 
 let handle_syntax_error file state token =
-  let {pos_lnum; pos_cnum ; pos_bol} = location token in
-  let col = pos_cnum - pos_bol in
+  let (pos1, pos2) as positions = location token in
+  let line = pos2.pos_lnum in
   let st_num = state_num state in
+  let col_start = let {pos_cnum;pos_bol} = pos1 in 1 + pos_cnum - pos_bol in
+  let col_end = let {pos_cnum;pos_bol} = pos2 in 1 + pos_cnum - pos_bol in
   let msg = try message st_num with
     | Not_found -> "Unknown error in parser state " ^ string_of_int st_num
   in
-  Printf.eprintf  "Syntax error in '%s', line %d, column %d:\n%s" file pos_lnum col msg;
+  Printf.eprintf  "Syntax error in '%s', line %d, characters %d-%d:\n%s" file line col_start col_end msg;
   exit 1
 
 let parse_stan_file sourcefile ifile =
