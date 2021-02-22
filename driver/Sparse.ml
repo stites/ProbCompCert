@@ -244,10 +244,10 @@ let state_num s =
   in 
   state
 
-let handle_syntax_error file stack token =
+let handle_syntax_error file state token =
   let {pos_lnum; pos_cnum ; pos_bol} = location token in
   let col = pos_cnum - pos_bol in
-  let st_num = state_num stack in
+  let st_num = state_num state in
   let msg = try message st_num with
     | Not_found -> "Unknown error in parser state " ^ string_of_int st_num
   in
@@ -264,7 +264,7 @@ let parse_stan_file sourcefile ifile =
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
   let p = match Sparser.program log_fuel (tokens_stream text) with
-    | Sparser.MenhirLibParser.Inter.Fail_pr (stack, token) -> handle_syntax_error sourcefile stack token
+    | Sparser.MenhirLibParser.Inter.Fail_pr (state, token) -> handle_syntax_error sourcefile state token
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
     | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
   p
