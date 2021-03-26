@@ -72,7 +72,7 @@ let preprocessed_file transfs name sourcefile =
                (fun () ->
                   Parser.translation_unit_file log_fuel (Lexer.tokens_stream name text)) ()
        with
-       | Parser.MenhirLibParser.Inter.Fail_pr _ ->
+       | Parser.MenhirLibParser.Inter.Fail_pr_full _ ->
          (* Theoretically impossible : implies inconsistencies
             between grammars. *)
          Diagnostics.fatal_error Diagnostics.no_loc "internal error while parsing"

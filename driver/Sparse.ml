@@ -266,7 +266,7 @@ let parse_stan_file sourcefile ifile =
   let text = read_file sourcefile in
   let log_fuel = Camlcoq.Nat.of_int 50 in
   let p = match Sparser.program log_fuel (tokens_stream text) with
-    | Sparser.MenhirLibParser.Inter.Fail_pr (state, token) -> handle_syntax_error sourcefile state token
+    | Sparser.MenhirLibParser.Inter.Fail_pr_full (state, token) -> handle_syntax_error sourcefile state token
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
     | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
   p
