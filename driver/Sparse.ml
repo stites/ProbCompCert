@@ -239,8 +239,8 @@ let location t =
     p 
 
 let state_num s =
-  let coq_num = Sparser.Aut.nat_of_state s in
-  let state = Camlcoq.Nat.to_int coq_num
+  let coq_num = Sparser.Aut.coq_N_of_state s in
+  let state = Camlcoq.N.to_int coq_num
   in 
   state
 
