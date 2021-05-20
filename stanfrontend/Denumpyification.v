@@ -30,36 +30,36 @@ Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   | Sops.Leq => OK Cop.Ole
   | Sops.Greater => OK Cop.Ogt
   | Sops.Geq =>	OK Cop.Oge		    
-  | _ => Error (msg "Denumpyification.transf_program: operator")			      
+  | _ => Error (msg "Denumpyification.transf_program: operator")
   end.    
-			      
+
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
   | Econst_int i => OK (CStan.Econst_int i (Tint I32 Signed noattr))
   | Econst_float f => OK (CStan.Econst_float f (Tfloat F64 noattr))
   | Evar i => OK (CStan.Evar i Tvoid)
-  | Eunop o e => Error (msg "Denumpyification.transf_program: NIY")
+  | Eunop o e => Error (msg "Denumpyification.transf_expression (NYI): Eunop")
   | Ebinop e1 o e2 =>
     do o <- transf_operator o;		    
     do e1 <- transf_expression e1;
     do e2 <- transf_expression e2;
     OK (CStan.Ebinop o e1 e2 Tvoid)
-  | Ecall i el => Error (msg "Denumpyification.transf_program: call expression should have been removed already")
-  | Econdition e1 e2 e3 => Error (msg "Denumpyification.transf_program: NIY")
-  | Earray el => Error (msg "Denumpyification.transf_program: NIY")
-  | Erow el => Error (msg "Denumpyification.transf_program: NIY")
-  | Eindexed e il => Error (msg "Denumpyification.transf_program: NIY")
-  | Edist i el => Error (msg "Denumpyification.transf_program: NIY")
+  | Ecall i el => Error (msg "Denumpyification.transf_expression: call expression should have been removed already")
+  | Econdition e1 e2 e3 => Error (msg "Denumpyification.transf_expression (NYI): Econdition")
+  | Earray el => Error (msg "Denumpyification.transf_expression (NYI): Earray")
+  | Erow el => Error (msg "Denumpyification.transf_expression (NYI): Erow")
+  | Eindexed e il => Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+  | Edist i el => Error (msg "Denumpyification.transf_expression (NYI): Edist")
   | Etarget => OK (CStan.Etarget Tvoid)
   end
 
 with transf_index (i: StanE.index) {struct i}: res CStan.expr :=
   match i with
-  | Iall => Error (msg "Denumpyification.transf_program: NIY")
-  | Isingle e => Error (msg "Denumpyification.transf_program: NIY")
-  | Iupfrom e => Error (msg "Denumpyification.transf_program: NIY")
-  | Idownfrom e => Error (msg "Denumpyification.transf_program: NIY")
-  | Ibetween e1 e2 => Error (msg "Denumpyification.transf_program: NIY")
+  | Iall => Error (msg "Denumpyification.transf_index (NYI): Iall")
+  | Isingle e => Error (msg "Denumpyification.transf_index (NYI): Isingle")
+  | Iupfrom e => Error (msg "Denumpyification.transf_index (NYI): Iupfrom")
+  | Idownfrom e => Error (msg "Denumpyification.transf_index (NYI): Idownfrom")
+  | Ibetween e1 e2 => Error (msg "Denumpyification.transf_index (NYI): Ibetween")
   end.
    
 Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CStan.expr) :=
@@ -68,7 +68,7 @@ Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CSt
   | cons e l =>
     do e <- (transf_expression e);
     do l <- (transf_expression_list l);
-    OK (cons e l)											 
+    OK (cons e l)
   end.
                
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=
@@ -159,16 +159,16 @@ end.
 
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
-  | Bint => Error (msg "Denumpyification.transf_program: NIY")
-  | Breal => Error (msg "Denumpyification.transf_program: NIY")
-  | Bvector _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Brow _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Bmatrix _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  end. 
+  | Bint => Error (msg "Denumpyification.transf_basic (NYI): Bint")
+  | Breal => Error (msg "Denumpyification.transf_basic (NYI): Breal")
+  | Bvector _ => Error (msg "Denumpyification.transf_basic (NYI): Bvector")
+  | Brow _ => Error (msg "Denumpyification.transf_basic (NYI): Brow")
+  | Bmatrix _ _ => Error (msg "Denumpyification.transf_basic (NYI): Bmatrix")
+  end.
 
 Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :=
-  Error (msg "Denumpyification.transf_variable: NIY").								     
-	
+  Error (msg "Denumpyification.transf_variable: NIY").
+
 Definition transf_function (f: StanE.function): res CStan.function :=
   do body <- transf_statement f.(StanE.fn_body);	 
   OK {|
@@ -201,4 +201,3 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
       CStan.prog_comp_env:=Maps.PTree.empty _;
     |}.
-								 
