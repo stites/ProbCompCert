@@ -7,13 +7,37 @@
         pkgs = import "${nixpkgs}" {
           inherit system;
           config.allowUnfree = true;
-          overlays = [ devshell.overlay ];
+          overlays = [
+            devshell.overlay
+            (final: prev: {
+              python3 = prev.python3.override {
+                self = prev.python3;
+                # configd = null;
+                packageOverrides = finalpy: prevpy: {
+                  pystan = prevpy.buildPythonPackage rec {
+                    pname = "pystan";
+                    version = "2.19.1.1";
+                    name = "${pname}-${version}";
+                    src = prevpy.fetchPypi {
+                      inherit pname version;
+                      sha256 = "0f5hbv9dhsx3b5yn5kpq5pwi1kxzmg4mdbrndyz2p8hdpj6sv2zs";
+                    };
+                    propagatedBuildInputs = with prevpy; [ cython numpy matplotlib ];
+                    doCheck = false; # long, slow tests
+                  };
+                };
+              };
+            })
+          ];
+
         };
       in
       rec {
        devShell = pkgs.devshell.mkShell {
           packages = with pkgs; [
             watchexec
+            cmdstan
+            (python3.withPackages (ps: [ps.pystan]))
           ];
           # hack for zsh devshell
           bash.interactive = (pkgs.lib.optionalString true ''
