@@ -118,6 +118,30 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e <- transf_expression e;
     OK (CStan.Starget e)
 
+    (*FIXME(stites): could really use a Maybe monad here*)
+  | Stilde e i el (None, None) =>
+    do e <- transf_expression e;
+    do el <- transf_expression_list el;
+    OK (CStan.Stilde e i el (None, None))
+  | Stilde e i el (Some e1, None) =>
+    do e <- transf_expression e;
+    do el <- transf_expression_list el;
+    do e1 <- transf_expression e1;
+    OK (CStan.Stilde e i el (Some e1, None))
+  | Stilde e i el (None, Some e2) =>
+    do e <- transf_expression e;
+    do el <- transf_expression_list el;
+    do e2 <- transf_expression e2;
+    OK (CStan.Stilde e i el (None, Some e2))
+  | Stilde e i el (Some e1, Some e2) =>
+    do e <- transf_expression e;
+    do el <- transf_expression_list el;
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    OK (CStan.Stilde e i el (Some e1, Some e2))
+end.
+
+
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
   | Bint => Error (msg "Denumpyification.transf_program: NIY")
