@@ -97,6 +97,21 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e <- (transf_expression e);
     do s <- (transf_statement s);
     OK (CStan.Swhile e s)
+  | Sfor i e1 e2 s =>
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    do body <- transf_statement s;
+
+    (* set i to first pointer in array *)
+    let init := CStan.Sset i e1 in
+
+    (* break condition of e1 == e2 *)
+    let cond := CStan.Ebinop Oeq (CStan.Evar i (CStan.typeof e1)) e2 type_bool in
+
+    (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
+    let Eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
+    let incr := CStan.Sset i Eincr in
+    OK (CStan.Sfor init cond body incr)
   | Sbreak => OK CStan.Sbreak
   | Scontinue => OK CStan.Scontinue
   | Sreturn None => OK (CStan.Sreturn None)
