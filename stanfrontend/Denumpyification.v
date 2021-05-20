@@ -74,30 +74,50 @@ Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CSt
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=
   match s with
   | Sskip => OK CStan.Sskip
-  | Sassign e1 None e2 =>
+  | Sassign e1 None e2 => (* v = x *)
     do e1 <- transf_expression e1;
     do e2 <- transf_expression e2;
-    OK (CStan.Sassign e1 e2)	
-  | Sassign e1 (Some o) e2 => Error (msg "Denumpyification.transf_program: Assignment with operator")
-  | Ssequence s1 s2 => Error (msg "Denumpyification.transf_program: NIY")
+    OK (CStan.Sassign e1 e2)
+  | Sassign e1 (Some o) e2 => (* v ?= x *)
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    do o <- transf_operator o;
+    Error (msg "Denumpyification.transf_statement (NYI): Sassign")
+    (* OK (CStan.Sassign e1 (CStan.Ebinop o e1 e2 Tvoid)) TODO(stites): Tvoid seems wrong and I need to doublecheck. *)
+  | Ssequence s1 s2 =>
+    do s1 <- (transf_statement s1);
+    do s2 <- (transf_statement s2);
+    OK (CStan.Ssequence s1 s2)
   | Sifthenelse e s1 s2 =>
     do e <- (transf_expression e); 
-    do s1 <- (transf_statement s1); 
+    do s1 <- (transf_statement s1);
     do s2 <- (transf_statement s2);
-    OK (CStan.Sifthenelse e s1 s2)			    
-  | Swhile e s => Error (msg "Denumpyification.transf_program: NIY")
-  | Sfor i e1 e2 s => Error (msg "Denumpyification.transf_program: NIY")
+    OK (CStan.Sifthenelse e s1 s2)
+  | Swhile e s =>
+    do e <- (transf_expression e);
+    do s <- (transf_statement s);
+    OK (CStan.Swhile e s)
   | Sbreak => OK CStan.Sbreak
   | Scontinue => OK CStan.Scontinue
-  | Sreturn oe => Error (msg "Denumpyification.transf_program: NIY")
-  | Svar i => Error (msg "Denumpyification.transf_program: NIY")
-  | Scall i el => Error (msg "Denumpyification.transf_program: NIY")
-  | Sruntime _ _ => Error (msg "Denumpyification.transf_program: NIY")
-  | Sforeach i e s => Error (msg "Denumpyification.transf_program: NIY")
-  | Starget e => Error (msg "Denumpyification.transf_program: NIY")
-  | Stilde e i el tr => Error (msg "Denumpyification.transf_program: NIY")
-    end. 
-				    
+  | Sreturn None => OK (CStan.Sreturn None)
+  | Sreturn (Some e) =>
+    do e <- transf_expression e;
+    OK (CStan.Sreturn (Some e))
+  | Svar v =>
+    (*OK (CStan.Sset i (CStan.Evar i ...))*)
+    Error (msg "Denumpyification.transf_statement (NYI): Svar")
+  | Scall i el =>
+    do el <- transf_expression_list el;
+    (*OK (CStan.Scall (Some i) Tvoid el)*)
+    Error (msg "Denumpyification.transf_statement (NYI): Scall")
+  | Sruntime _ _ => Error (msg "Denumpyification.transf_statement (NYI): Sruntime")
+  | Sforeach i e s =>
+
+    Error (msg "Denumpyification.transf_statement (NYI): Sforeach")
+  | Starget e =>
+    do e <- transf_expression e;
+    OK (CStan.Starget e)
+
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
   | Bint => Error (msg "Denumpyification.transf_program: NIY")

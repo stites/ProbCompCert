@@ -87,8 +87,12 @@ Definition Swhile (e: expr) (s: statement) :=
 Definition Sdowhile (s: statement) (e: expr) :=
   Sloop s (Sifthenelse e Sskip Sbreak).
 
-Definition Sfor (s1: statement) (e2: expr) (s3: statement) (s4: statement) :=
-  Ssequence s1 (Sloop (Ssequence (Sifthenelse e2 Sskip Sbreak) s3) s4).
+Definition Sfor
+  (s1: statement) (* initializing statement *)
+  (e2: expr) (* conditional *)
+  (s3: statement) (* body *)
+  (s4: statement) (* postprocessing statement *)
+  := Ssequence s1 (Sloop (Ssequence (Sifthenelse e2 Sskip Sbreak) s3) s4).
 
 Record type := mkvariable {
   vd_type: Ctypes.type;
