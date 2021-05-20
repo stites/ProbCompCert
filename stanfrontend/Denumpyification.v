@@ -40,7 +40,7 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   | Evar i => OK (CStan.Evar i Tvoid)
   | Eunop o e => Error (msg "Denumpyification.transf_expression (NYI): Eunop")
   | Ebinop e1 o e2 =>
-    do o <- transf_operator o;		    
+    do o <- transf_operator o;
     do e1 <- transf_expression e1;
     do e2 <- transf_expression e2;
     OK (CStan.Ebinop o e1 e2 Tvoid)
@@ -70,7 +70,13 @@ Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CSt
     do l <- (transf_expression_list l);
     OK (cons e l)
   end.
-               
+
+Fixpoint option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
+  match ox with
+  | None => OK None
+  | Some x => do x <- f x; OK (Some x)
+  end.
+
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=
   match s with
   | Sskip => OK CStan.Sskip
@@ -110,6 +116,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
 
     (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
     let Eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
+
     let incr := CStan.Sset i Eincr in
     OK (CStan.Sfor init cond body incr)
   | Sbreak => OK CStan.Sbreak
@@ -127,33 +134,17 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     Error (msg "Denumpyification.transf_statement (NYI): Scall")
   | Sruntime _ _ => Error (msg "Denumpyification.transf_statement (NYI): Sruntime")
   | Sforeach i e s =>
-
     Error (msg "Denumpyification.transf_statement (NYI): Sforeach")
   | Starget e =>
     do e <- transf_expression e;
     OK (CStan.Starget e)
 
-    (*FIXME(stites): could really use a Maybe monad here*)
-  | Stilde e i el (None, None) =>
+  | Stilde e i el (oe1, oe2) =>
     do e <- transf_expression e;
     do el <- transf_expression_list el;
-    OK (CStan.Stilde e i el (None, None))
-  | Stilde e i el (Some e1, None) =>
-    do e <- transf_expression e;
-    do el <- transf_expression_list el;
-    do e1 <- transf_expression e1;
-    OK (CStan.Stilde e i el (Some e1, None))
-  | Stilde e i el (None, Some e2) =>
-    do e <- transf_expression e;
-    do el <- transf_expression_list el;
-    do e2 <- transf_expression e2;
-    OK (CStan.Stilde e i el (None, Some e2))
-  | Stilde e i el (Some e1, Some e2) =>
-    do e <- transf_expression e;
-    do el <- transf_expression_list el;
-    do e1 <- transf_expression e1;
-    do e2 <- transf_expression e2;
-    OK (CStan.Stilde e i el (Some e1, Some e2))
+    do oe1 <- option_mmap transf_expression oe1;
+    do oe2 <- option_mmap transf_expression oe2;
+    OK (CStan.Stilde e i el (oe1, oe2))
 end.
 
 
@@ -170,7 +161,7 @@ Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :
   Error (msg "Denumpyification.transf_variable: NIY").
 
 Definition transf_function (f: StanE.function): res CStan.function :=
-  do body <- transf_statement f.(StanE.fn_body);	 
+  do body <- transf_statement f.(StanE.fn_body);
   OK {|
       CStan.fn_return := Tvoid;
       CStan.fn_params := nil;
