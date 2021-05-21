@@ -15,6 +15,9 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
 
+Definition TCInt := Tint I32 Signed noattr.
+Definition TCFloat := Tfloat F64 noattr.
+
 Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   match o with
   | Sops.Plus => OK Cop.Oadd
@@ -35,8 +38,8 @@ Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
 
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
-  | Econst_int i => OK (CStan.Econst_int i (Tint I32 Signed noattr))
-  | Econst_float f => OK (CStan.Econst_float f (Tfloat F64 noattr))
+  | Econst_int i => OK (CStan.Econst_int i TCInt)
+  | Econst_float f => OK (CStan.Econst_float f TCFloat)
   | Evar i => OK (CStan.Evar i Tvoid)
   | Eunop o e => Error (msg "Denumpyification.transf_expression (NYI): Eunop")
   | Ebinop e1 o e2 =>
@@ -71,7 +74,7 @@ Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CSt
     OK (cons e l)
   end.
 
-Fixpoint option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
+Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
   match ox with
   | None => OK None
   | Some x => do x <- f x; OK (Some x)
@@ -150,15 +153,30 @@ end.
 
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
-  | Bint => Error (msg "Denumpyification.transf_basic (NYI): Bint")
-  | Breal => Error (msg "Denumpyification.transf_basic (NYI): Breal")
-  | Bvector _ => Error (msg "Denumpyification.transf_basic (NYI): Bvector")
-  | Brow _ => Error (msg "Denumpyification.transf_basic (NYI): Brow")
+  | Bint => OK TCInt
+  | Breal => OK TCFloat
+  | Bvector e =>
+    Error (msg "Denumpyification.transf_basic (NYI): Bvector")
+    (* do e <- transf_expression e; *)
+    (* (let Econst_int i := e in *)
+    (* OK (Tarray TCFloat i noattr)) *)
+  | Brow e =>
+    Error (msg "Denumpyification.transf_basic (NYI): Brow")
+    (* do e <- transf_expression e; *)
+    (* match e with *)
+    (* | Econst_int i => OK (Tarray TCFloat i noattr) *)
+    (* | _ => Error (msg "Denumpyification.transf_basic: expected an int") *)
+    (* end *)
   | Bmatrix _ _ => Error (msg "Denumpyification.transf_basic (NYI): Bmatrix")
   end.
 
-Definition transf_variable (id: AST.ident) (v: StanE.variable): res CStan.type :=
-  Error (msg "Denumpyification.transf_variable: NIY").
+Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
+  do ty <- transf_basic (StanE.vd_type v);
+  OK {|
+    CStan.vd_type := ty;
+    CStan.vd_constraint := StanE.vd_constraint v;
+    CStan.vd_global := StanE.vd_global v;
+  |}.
 
 Definition transf_function (f: StanE.function): res CStan.function :=
   do body <- transf_statement f.(StanE.fn_body);
