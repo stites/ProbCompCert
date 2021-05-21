@@ -59,12 +59,20 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
 with transf_index (i: StanE.index) {struct i}: res CStan.expr :=
   match i with
   | Iall => Error (msg "Denumpyification.transf_index (NYI): Iall")
-  | Isingle e => Error (msg "Denumpyification.transf_index (NYI): Isingle")
-  | Iupfrom e => Error (msg "Denumpyification.transf_index (NYI): Iupfrom")
-  | Idownfrom e => Error (msg "Denumpyification.transf_index (NYI): Idownfrom")
-  | Ibetween e1 e2 => Error (msg "Denumpyification.transf_index (NYI): Ibetween")
+  | Isingle e => do e <- transf_expression e; OK e
+  | Iupfrom e =>
+    do e <- transf_expression e;
+    Error (msg "Denumpyification.transf_index (NYI): Iupfrom")
+  | Idownfrom e =>
+    do e <- transf_expression e;
+    Error (msg "Denumpyification.transf_index (NYI): Idownfrom")
+  | Ibetween e1 e2 =>
+    do e1 <- transf_expression e1;
+    do e2 <- transf_expression e2;
+    Error (msg "Denumpyification.transf_index (NYI): Ibetween")
   end.
-   
+
+
 Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CStan.expr) :=
   match l with
   | nil => OK (nil)
