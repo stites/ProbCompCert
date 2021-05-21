@@ -1,7 +1,6 @@
-
 parameters {
   real x;
 }
 model {
-  target += -0.5 * square(x);
+  target += -5 * square(x);
 }

@@ -3,6 +3,6 @@ data {
 }
 model {
   for (i in 1:100) {
-    print(flips[i]);
+    target += flips[i];
   }
 }
