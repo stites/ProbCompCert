@@ -70,7 +70,6 @@ struct Params candidate;
 
 void* propose() {
   return NULL;
-  
 }
 
 

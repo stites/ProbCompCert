@@ -203,6 +203,29 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
 end.
 
 
+(** The syntax of type expressions.  Some points to note:
+- Array types [Tarray n] carry the size [n] of the array.
+  Arrays with unknown sizes are represented by pointer types.
+- Function types [Tfunction targs tres] specify the number and types
+  of the function arguments (list [targs]), and the type of the
+  function result ([tres]).  Variadic functions and old-style unprototyped
+  functions are not supported.
+
+Inductive type : Type :=
+  | Tvoid: type                                    (**r the [void] type *)
+  | Tint: intsize -> signedness -> attr -> type    (**r integer types *)
+  | Tlong: signedness -> attr -> type              (**r 64-bit integer types *)
+  | Tfloat: floatsize -> attr -> type              (**r floating-point types *)
+  | Tpointer: type -> attr -> type                 (**r pointer types ([*ty]) *)
+  | Tarray: type -> Z -> attr -> type              (**r array types ([ty[len]]) *)
+  | Tfunction: typelist -> type -> calling_convention -> type    (**r function types *)
+  | Tstruct: ident -> attr -> type                 (**r struct types *)
+  | Tunion: ident -> attr -> type                  (**r union types *)
+with typelist : Type :=
+  | Tnil: typelist
+  | Tcons: type -> typelist -> typelist.
+*)
+
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
   | Bint => OK TCInt
