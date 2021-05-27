@@ -12,7 +12,6 @@
             (final: prev: {
               python3 = prev.python3.override {
                 self = prev.python3;
-                # configd = null;
                 packageOverrides = finalpy: prevpy: {
                   pystan = prevpy.buildPythonPackage rec {
                     pname = "pystan";
@@ -55,7 +54,9 @@
             {
               category = "watchers";
               name = "watch-stan";
-              command = ''${watchexec} -e v "make -j && make install && ./out/bin/ccomp $1"'';
+              command = ''
+                ${watchexec} -e v "make -j && make install && ( ./out/bin/ccomp -c $1 && echo '>>> done.' || echo '>>> error!' )"
+              '';
             }
           ];
         };

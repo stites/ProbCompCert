@@ -83,3 +83,6 @@
 /.projectile
 /CoqMakefile.conf
 *_model.cpp
+a.out
+stanfrontend/Sparser.v
+stanfrontend/Slexer.ml
