@@ -34,14 +34,49 @@ Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   | Sops.Greater => OK Cop.Ogt
   | Sops.Geq =>	OK Cop.Oge		    
   | _ => Error (msg "Denumpyification.transf_program: operator")
-  end.    
+  end.
+
+Definition transf_unary_operator (o: Sops.operator): res Cop.unary_operation :=
+  match o with
+  | Sops.PNot => Error (msg "Sops.PNot")
+  | Sops.EltTimes => Error (msg "Sops.EltTimes")
+  | Sops.EltDivide => Error (msg "Sops.EltDivide")
+  | Sops.Pow => Error (msg "Sops.Pow")
+  | Sops.EltPow => Error (msg "Sops.EltPow")
+  | Sops.Transpose => Error (msg "Sops.Transpose.")
+
+  | Sops.Plus => Error (msg "Sops.Plus")
+  | Sops.Minus => Error (msg "Sops.Minus")
+  | Sops.Times => Error (msg "Sops.Times")
+  | Sops.Divide => Error (msg "Sops.Divide")
+  | Sops.Modulo => Error (msg "Sops.Modulo")
+  | Sops.Or => Error (msg "Sops.Or")
+  | Sops.And => Error (msg "Sops.And")
+  | Sops.Equals => Error (msg "Sops.Equals")
+  | Sops.NEquals => Error (msg "Sops.NEquals")
+  | Sops.Less => Error (msg "Sops.Less")
+  | Sops.Leq => Error (msg "Sops.Leq")
+  | Sops.Greater => Error (msg "Sops.Greater")
+  | Sops.Geq =>	Error (msg "Sops.Geq")
+  | _ => Error (msg "Denumpyification.transf_program: operator")
+  end.
+
+  (* | Onotbool : unary_operation          (**r boolean negation ([!] in C) *) *)
+  (* | Onotint : unary_operation           (**r integer complement ([~] in C) *) *)
+  (* | Oneg : unary_operation              (**r opposite (unary [-]) *) *)
+  (* | Oabsfloat : unary_operation.        (**r floating-point absolute value *) *)
+
+
 
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
   | Econst_int i => OK (CStan.Econst_int i TCInt)
   | Econst_float f => OK (CStan.Econst_float f TCFloat)
   | Evar i => OK (CStan.Evar i Tvoid)
-  | Eunop o e => Error (msg "Denumpyification.transf_expression (NYI): Eunop")
+  | Eunop o e =>
+    do o <- transf_unary_operator o;
+    do e <- transf_expression e;
+    OK (CStan.Eunop o e Tvoid)
   | Ebinop e1 o e2 =>
     do o <- transf_operator o;
     do e1 <- transf_expression e1;
@@ -51,7 +86,16 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   | Econdition e1 e2 e3 => Error (msg "Denumpyification.transf_expression (NYI): Econdition")
   | Earray el => Error (msg "Denumpyification.transf_expression (NYI): Earray")
   | Erow el => Error (msg "Denumpyification.transf_expression (NYI): Erow")
-  | Eindexed e il => Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+  | Eindexed e nil =>
+    Error (msg "Denumpyification.transf_expression: Eindexed cannot be passed an empty list")
+  | Eindexed e (cons i nil) =>
+    do e <- transf_expression e;
+    do i <- transf_index i;
+    (*FIXME how do i get the expression's address and turn it into a pointer*)
+    (*FIXME *)
+    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+  | Eindexed e (cons i l) =>
+    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
   | Edist i el => Error (msg "Denumpyification.transf_expression (NYI): Edist")
   | Etarget => OK (CStan.Etarget Tvoid)
   end
@@ -206,7 +250,7 @@ Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :
   end.
 
 Definition transf_program(p: StanE.program): res CStan.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;	 
+  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
   OK {| 
       CStan.prog_defs := AST.prog_defs p1;
       CStan.prog_public:=p.(StanE.pr_public);
@@ -218,3 +262,4 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
       CStan.prog_comp_env:=Maps.PTree.empty _;
     |}.
+
