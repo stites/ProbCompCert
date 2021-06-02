@@ -36,7 +36,7 @@
           packages = with pkgs; [
             watchexec
             cmdstan
-            (python3.withPackages (ps: [ps.pystan]))
+            #(python3.withPackages (ps: [ps.pystan]))
           ];
           # hack for zsh devshell
           bash.interactive = (pkgs.lib.optionalString true ''

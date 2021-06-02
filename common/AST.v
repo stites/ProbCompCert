@@ -384,7 +384,7 @@ End TRANSF_PROGRAM.
   definitions.
 - The transformation functions can fail and return an error message.
 - The transformation for function definitions receives a global context
-  (derived from the compilation unit being transformed) as additiona
+  (derived from the compilation unit being transformed) as additional
   argument.
 - The transformation functions receive the name of the global as
   additional argument. *)

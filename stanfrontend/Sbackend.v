@@ -377,7 +377,7 @@ Fixpoint transf_expression (e: CStan.expr) {struct e}: res Clight.expr :=
     OK (Ebinop b e1 e2 t)
   | CStan.Esizeof t1 t2 => OK (Esizeof t1 t2)
   | CStan.Ealignof t1 t2 => OK (Ealignof t1 t2)
-  | Etarget t => Error (msg "Backend: target")
+  | Etarget t => Error (msg "Backend expression: target")
   end.
 
 Fixpoint transf_expression_list (l: list (CStan.expr)) {struct l}: res (list Clight.expr) :=
@@ -430,8 +430,9 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   end.
 					 
 Definition transf_variable (id: AST.ident) (v: CStan.type): res Ctypes.type :=
-  Error (msg "Denumpyification.transf_variable: NIY").								     
-	
+  OK (CStan.vd_type v).
+  (* FIXME: is this right? Error (msg "Backend.transf_variable: NIY"). *)
+
 Definition transf_function (f: CStan.function): res Clight.function :=
   do body <- transf_statement f.(CStan.fn_body);						      
   OK {|
