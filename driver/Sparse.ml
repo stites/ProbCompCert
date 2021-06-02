@@ -90,7 +90,7 @@ let elab elab_fun ol =
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let declareVariable v blocktype =
+let declareVariable v =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -107,7 +107,6 @@ let declareVariable v blocktype =
     StanE.vd_constraint = v.Stan.vd_constraint;
     StanE.vd_dims = List.map el_e v.Stan.vd_dims;
     StanE.vd_init = None;
-    StanE.vd_block = blocktype;
     StanE.vd_global = true;
   } in
   (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = [];
@@ -191,27 +190,20 @@ let elaborate (p: Stan.program) =
         (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body] ff.Stan.fn_return ff.Stan.fn_params) :: acc)
         functions (unop f) in
 
-    let variables = [] in
-
-    let variables =
-      List.fold_left
-        (fun acc -> fun v -> declareVariable v CStan.Bdata :: acc)
-        variables (unop d) in
-
-    let variables =
-      List.fold_left
-        (fun acc -> fun v -> declareVariable v CStan.Bparam :: acc)
-        variables (unop p) in    
+    let data_variables = List.map declareVariable (unop d) in
+    let param_variables = List.map declareVariable (unop p) in
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=functions @ variables;
+      StanE.pr_defs=functions @ data_variables @ param_variables;
       StanE.pr_public=List.map fst functions;
       StanE.pr_data=id_data;
+      StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
+      StanE.pr_parameters_vars=List.map fst param_variables;
       StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;

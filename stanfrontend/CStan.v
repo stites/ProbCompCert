@@ -102,7 +102,6 @@ Record type := mkvariable {
   vd_type: Ctypes.type;
   vd_constraint: constraint;
   vd_init: option expr;
-  vd_block: blocktype;
   vd_global: bool
 }.
 
@@ -133,9 +132,11 @@ Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
   prog_model: ident;
-  prog_parameters: ident;			  
+  prog_parameters: ident;
+  prog_parameters_vars: list ident;
   prog_transformed_parameters: ident;
-  prog_data: ident;			  
+  prog_data: ident;
+  prog_data_vars: list ident;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;

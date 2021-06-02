@@ -27,7 +27,6 @@ Definition target_type : type := {|
   vd_type := flt64;
   vd_constraint:= Stan.Cidentity;
   vd_init := Some (Econst_float (Floats.Float.of_int Integers.Int.zero) flt64);
-  vd_block := Bparam;
   vd_global := true;
 |}.
 Definition vtarget := CStan.Evar target_ident target_type.(vd_type).
@@ -177,9 +176,11 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_public := AST.prog_public p1;
 
       prog_data:=p.(prog_data);
+      prog_data_vars:=p.(prog_data_vars);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_parameters:= p.(prog_parameters);
+      prog_parameters_vars:= p.(prog_parameters_vars);
       prog_transformed_parameters:=p.(prog_transformed_parameters);
 
       prog_generated_quantities:=p.(prog_generated_quantities);

@@ -51,7 +51,6 @@ Record variable := mkvariable {
   vd_constraint: Stan.constraint;
   vd_dims: list(expr);
   vd_init: option expr;
-  vd_block: CStan.blocktype;
   vd_global: bool;
 }.
 
@@ -88,11 +87,13 @@ Definition fundef := Ctypes.fundef function.
   
 Record program := mkprogram {
   pr_defs: list (ident * globdef fundef variable);
-  pr_public: list ident;			     
+  pr_public: list ident;
   pr_model: ident;
-  pr_parameters: ident;	
-  pr_transformed_parameters: ident;		     
+  pr_parameters: ident;
+  pr_parameters_vars: list ident;
+  pr_transformed_parameters: ident;
   pr_data: ident;
+  pr_data_vars: list ident;
   pr_transformed_data: ident;
   pr_generated: ident
 }.

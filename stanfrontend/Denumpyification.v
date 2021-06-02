@@ -252,7 +252,6 @@ Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
     CStan.vd_type := ty;
     CStan.vd_constraint := StanE.vd_constraint v;
     CStan.vd_init := oe;
-    CStan.vd_block := StanE.vd_block v;
     CStan.vd_global := StanE.vd_global v;
   |}.
 
@@ -282,8 +281,10 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
       CStan.prog_data:=p.(StanE.pr_data);
+      CStan.prog_data_vars:=p.(StanE.pr_data_vars);
       CStan.prog_transformed_data:=p.(StanE.pr_parameters);
       CStan.prog_parameters:= p.(StanE.pr_parameters);
+      CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars);
       CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
       CStan.prog_comp_env:=Maps.PTree.empty _;
