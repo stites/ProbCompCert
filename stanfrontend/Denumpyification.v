@@ -261,6 +261,7 @@ Definition transf_function (f: StanE.function): res CStan.function :=
       CStan.fn_return := Tvoid;
       CStan.fn_params := nil;
       CStan.fn_body := body;
+      CStan.fn_blocktype := f.(StanE.fn_blocktype);
       CStan.fn_callconv := f.(StanE.fn_callconv);
       CStan.fn_temps := nil;
       CStan.fn_vars := nil;

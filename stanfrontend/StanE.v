@@ -75,13 +75,11 @@ Inductive statement :=
   | Stilde: expr -> ident -> list expr -> (option expr * option expr) -> statement.
 
 
-Inductive blocktype := BTModel | BTOther.
-
-Record function := mkfunction { 
+Record function := mkfunction {
   fn_return: option(type); 
   fn_params: list (autodifftype * type * ident);
   fn_body: statement;
-  fn_blocktype: blocktype;
+  fn_blocktype: CStan.blocktype;
   fn_callconv: AST.calling_convention;
   fn_temps: list (ident * type);
   fn_vars: list (ident * type); 

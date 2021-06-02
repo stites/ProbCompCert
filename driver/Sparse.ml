@@ -126,8 +126,8 @@ let declareFundef name body rt params =
   let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
 
   let blocktypeFundef = function
-    | "model" -> StanE.BTModel
-    | _ -> StanE.BTOther
+    | "model" -> CStan.BTModel
+    | _ -> CStan.BTOther
   in
 
   let fd = {

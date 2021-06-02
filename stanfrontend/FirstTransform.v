@@ -131,6 +131,7 @@ Definition transf_function (f: function): res function :=
       (*should not change*)
       fn_return := Tvoid;
       fn_callconv := f.(fn_callconv);
+      fn_blocktype := f.(fn_blocktype);
      |}.
 
 Definition transf_external (ef: AST.external_function) : res AST.external_function :=
