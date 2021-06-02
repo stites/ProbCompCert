@@ -11,6 +11,8 @@ Open Scope string_scope.
 (* OCaml string *)  
 Parameter string : Type.
 
+Parameter loc: Type.
+
 Definition identifier := string.
 
 Inductive expr :=
