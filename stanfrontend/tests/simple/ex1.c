@@ -5,23 +5,9 @@
 #include <stdarg.h>
 #include <string.h>
 
-void uniform_lpdf(void* rp, va_list argptr) {
-  double * retp = (double *) rp;
-  int l, r;
-  l = va_arg(argptr, int);
-  r = va_arg(argptr, int);
-  *retp = log((((double) rand() / RAND_MAX) * (r - l)) + l);
-}
-
-void call_dist(char* symb, void* ret, int nargs, ...) {
-  va_list varargp;
-  va_start(varargp, nargs);
-  if (strcmp("uniform_lpdf", symb) == 0) {
-    uniform_lpdf(ret, varargp);
-  } else {
-    printf("unknown distribution function!\n");
-  }
-  va_end(varargp);
+double uniform_lpdf(double mu, int l, int r) {
+  // what happens to mu?
+  return log((((double) rand() / RAND_MAX) * (r - l)) + l);
 }
 
 struct Params {
@@ -56,8 +42,9 @@ double model(void *pi) {
   double target = 0.0;
   struct Params* p = (struct Params*) pi;
 
-  call_dist("uniform_lpdf", &p->mu, 2, 0, 1);
-  target += p->mu;
+  double agg;
+  agg = uniform_lpdf(p->mu, 0, 1);
+  target += agg;
 
   return target;  
 }
@@ -75,7 +62,6 @@ void* propose() {
 
 int main(int argc, char *argv[]) {
   srand(time(0));
-  double target;
   data();
   transformed_data();
   parameters();
