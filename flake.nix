@@ -55,7 +55,7 @@
               category = "watchers";
               name = "watch-stan";
               command = ''
-                ${watchexec} -e v "make -j && make install && ( ./out/bin/ccomp -c $1 && echo '>>> done.' || echo '>>> error!' )"
+                ${watchexec} -e v,ml,Makefile "make -j && make install && ( ./out/bin/ccomp -c $1 && echo '>>> done.' || echo '>>> error!' )"
               '';
             }
           ];
