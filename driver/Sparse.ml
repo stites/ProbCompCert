@@ -124,10 +124,17 @@ let declareFundef name body rt params =
     a_loc = (name,0) };
   let body = List.fold_left (fun s1 s2 -> StanE.Ssequence (s1, (el_s s2))) StanE.Sskip body in
   let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
+
+  let blocktypeFundef = function
+    | "model" -> StanE.BTModel
+    | _ -> StanE.BTOther
+  in
+
   let fd = {
     StanE.fn_return = rt;
     StanE.fn_callconv = AST.cc_default;
     StanE.fn_params = params;
+    StanE.fn_blocktype = blocktypeFundef name;
     StanE.fn_vars = [];
     StanE.fn_temps = [];
     StanE.fn_body = body} in
