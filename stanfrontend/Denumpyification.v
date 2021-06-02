@@ -252,6 +252,7 @@ Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
     CStan.vd_type := ty;
     CStan.vd_constraint := StanE.vd_constraint v;
     CStan.vd_init := oe;
+    CStan.vd_block := StanE.vd_block v;
     CStan.vd_global := StanE.vd_global v;
   |}.
 

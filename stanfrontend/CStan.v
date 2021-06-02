@@ -94,10 +94,15 @@ Definition Sfor
   (s4: statement) (* postprocessing statement *)
   := Ssequence s1 (Sloop (Ssequence (Sifthenelse e2 Sskip Sbreak) s3) s4).
 
+Inductive blocktype : Type :=
+  | Bdata
+  | Bparam.
+
 Record type := mkvariable {
   vd_type: Ctypes.type;
   vd_constraint: constraint;
   vd_init: option expr;
+  vd_block: blocktype;
   vd_global: bool
 }.
 

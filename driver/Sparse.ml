@@ -87,7 +87,7 @@ let elab elab_fun ol =
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let declareVariable v =
+let declareVariable v blocktype =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -104,6 +104,7 @@ let declareVariable v =
       StanE.vd_constraint = v.Stan.vd_constraint;
       StanE.vd_dims = List.map el_e v.Stan.vd_dims;
       StanE.vd_init = None;
+      StanE.vd_block = blocktype;
       StanE.vd_global = true;
     } in
   (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = [];
@@ -191,12 +192,12 @@ let elaborate (p: Stan.program) =
 
     let variables =
       List.fold_left
-        (fun acc -> fun v -> declareVariable v :: acc)
+        (fun acc -> fun v -> declareVariable v CStan.Bdata :: acc)
         variables (unop d) in
 
     let variables =
       List.fold_left
-        (fun acc -> fun v -> declareVariable v :: acc)
+        (fun acc -> fun v -> declareVariable v CStan.Bparam :: acc)
         variables (unop p) in    
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in

@@ -51,9 +51,10 @@ Record variable := mkvariable {
   vd_constraint: Stan.constraint;
   vd_dims: list(expr);
   vd_init: option expr;
+  vd_block: CStan.blocktype;
   vd_global: bool;
 }.
-		    
+
 Inductive statement :=
   (* Classical statements that exist in C *)
   | Sskip : statement
