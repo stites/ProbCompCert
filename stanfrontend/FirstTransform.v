@@ -11,8 +11,9 @@ Require Import Sops.
 Require Import Cop.
 Require Denumpyification.
 Require Import Globalenvs.
+Require Import Integers.
 Require AST.
-From ReductionEffect Require Import PrintingEffect.
+Require SimplExpr.
 
 (* FIXME how do I share this notation? *)
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
@@ -21,15 +22,7 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
 
-Definition flt64 := Tfloat F64 noattr.
-Definition target_ident : AST.ident := xH. (* FIXME setting ident to 1 (xH) seems like a bad idea*)
-Definition target_type : type := {|
-  vd_type := flt64;
-  vd_constraint:= Stan.Cidentity;
-  vd_init := Some (Econst_float (Floats.Float.of_int Integers.Int.zero) flt64);
-  vd_global := true;
-|}.
-Definition vtarget := CStan.Evar target_ident target_type.(vd_type).
+Definition tdouble := Tfloat F64 noattr.
 
 Fixpoint transf_expr (e: CStan.expr) {struct e}: res CStan.expr :=
   match e with
@@ -44,21 +37,10 @@ Fixpoint transf_expr (e: CStan.expr) {struct e}: res CStan.expr :=
   | CStan.Ebinop bop e0 e1 t => OK (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => OK (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => OK (CStan.Ealignof t0 t1)
-  | CStan.Etarget (Tfloat sz attr) =>
-    OK (CStan.Evar xH (Tfloat sz attr))
-  | CStan.Etarget _ => Error (msg "target can only be of type float")
+  | CStan.Etarget t => OK (CStan.Etarget t)
 end.
 
-Fixpoint mmap {A:Type} {B:Type} (f: A -> res B) (l: list A) : res (list B) :=
-  match l with
-    | nil => OK nil
-    | a :: a's =>
-      do b <- f a;
-      do b's <- mmap f a's;
-      OK (b :: b's)
-  end.
-
-Fixpoint transf_statement (s: CStan.statement) {struct s}: res CStan.statement :=
+Fixpoint transf_statement (s: CStan.statement) {struct s}: (res CStan.statement) :=
 match s with
   | Sskip => OK Sskip
   | Sassign e0 e1 =>
@@ -71,10 +53,9 @@ match s with
     (* do e <- transf_expr e; *)
     (* OK (Sset i e) *)
   | Scall oi e le =>
-    Error (msg "Scall")
-    (* do e <- transf_expr e; *)
-    (* do le <- mmap transf_expr le; *)
-    (* OK (Scall oi e le) *)
+    do e <- transf_expr e;
+    do le <- Errors.mmap transf_expr le;
+    OK (Scall oi e le)
   | Sbuiltin oi ef lt le => Error (msg "OK (Sbuiltin oi ef lt le)")
   | Ssequence s0 s1 =>
     do s0 <- transf_statement s0;
@@ -117,22 +98,44 @@ Definition transf_temps (ts: list localvar) (params: list localvar) (body : stat
 Definition transf_vars (vs: list localvar) (temps: list localvar) (params: list localvar) (body : statement): res (list localvar) :=
   OK vs.
 
+Notation mon := SimplExpr.mon.
+Notation ret := SimplExpr.ret.
+Notation "'do' X <~ A ; B" := (SimplExpr.bind A (fun X => B))
+   (at level 200, X ident, A at level 100, B at level 200)
+   : gensym_monad_scope.
+
+Definition transf_model (bt: blocktype) (body : statement): mon statement :=
+  match bt with
+  | BTOther => ret body
+  | BTModel =>
+    do target_sym <~ SimplExpr.gensym tdouble;
+    ret (Ssequence (Sset target_sym (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
+          (Ssequence body
+            (Sreturn (Some (CStan.Evar target_sym tdouble)))))
+  end.
+
+
 Definition transf_function (f: function): res function :=
   do body <- transf_statement f.(fn_body);
-  do params <- transf_params f.(fn_params) body;
-  do temps <- transf_temps f.(fn_temps) params body;
-  do vars <- transf_vars f.(fn_vars) temps params body;
-  OK {|
-      fn_params := params;
-      fn_body := body;
-      fn_temps := temps;
-      fn_vars := vars;
+  match transf_model f.(fn_blocktype) body (SimplExpr.initial_generator tt) with
+  | SimplExpr.Err msg => Error msg
+  | SimplExpr.Res body g i =>
+    do params <- transf_params f.(fn_params) body;
+    do temps <- transf_temps f.(fn_temps) params body;
+    do vars <- transf_vars f.(fn_vars) temps params body;
+    OK {|
+        fn_params := params;
 
-      (*should not change*)
-      fn_return := Tvoid;
-      fn_callconv := f.(fn_callconv);
-      fn_blocktype := f.(fn_blocktype);
-     |}.
+        fn_temps := temps;
+        fn_vars := vars;
+        fn_body := body;
+
+        (*should not change*)
+        fn_return := Tvoid;
+        fn_callconv := f.(fn_callconv);
+        fn_blocktype := f.(fn_blocktype);
+       |}
+  end.
 
 Definition transf_external (ef: AST.external_function) : res AST.external_function :=
   match ef with
@@ -150,30 +153,13 @@ Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :
       OK (External ef targs tres cc)
   end.
 
-
 Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
   OK v.
 
-(* Definition transf_model_def (id: AST.program CStan.fundef CStan.type) (m: AST.ident) (p : CStan.program): res CStan.program := *)
-(*   OK p. *)
-
-Notation global_refs := (prod AST.ident (AST.globdef fundef type)).
-
-Definition inject_target (defs: list global_refs): res (list global_refs) :=
-  let target_gvar := AST.Gvar ({|
-         AST.gvar_info:= target_type;
-         AST.gvar_init:= (AST.Init_float64 (Floats.Float.of_int Integers.Int.zero))::nil;
-         AST.gvar_readonly := false;
-         AST.gvar_volatile := false;
-        |})
-  in OK ((target_ident, target_gvar) :: defs).
-
-
 Definition transf_program(p: CStan.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
-  do defs <- inject_target (AST.prog_defs p1);
   OK {|
-      prog_defs := defs;
+      prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;
 
       prog_data:=p.(prog_data);
