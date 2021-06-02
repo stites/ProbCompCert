@@ -97,10 +97,11 @@ Definition Sfor
 Record type := mkvariable {
   vd_type: Ctypes.type;
   vd_constraint: constraint;
+  vd_init: option expr;
   vd_global: bool
 }.
 
-Record function := mkfunction { 
+Record function := mkfunction {
   fn_return: Ctypes.type; 
   fn_params: list (ident * Ctypes.type);
   fn_body: statement;
