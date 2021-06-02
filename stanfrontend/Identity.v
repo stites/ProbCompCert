@@ -149,13 +149,12 @@ Definition transf_prog_model (p0: AST.program fundef type) (p1: CStan.program) (
 
 Definition transf_program(p: CStan.program): res CStan.program :=
   (* do several layers of transformations? TODO: review NSF grant. *)
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
-  do p2 <- AST.transform_partial_program2 transf_fundef transf_variable p1;
-  do p3 <- AST.transform_partial_program2 transf_fundef transf_variable p2;
+  do p3 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
   (* FIXME: I think I need to traverse the ptree (composite_env) and pass a list of refs to all of these. *)
   do data                   <- transf_prog_data p3 p p.(prog_data);
   do transformed_data       <- transf_prog_transformed_data p3 p data p.(prog_transformed_data);
+  (* validate each transformation: can happen in ^^^ *)
 
   do parameters             <- transf_prog_parameters p3 p p.(prog_parameters);
   do transformed_parameters <- transf_prog_transformed_parameters p3 p parameters p.(prog_transformed_parameters);
