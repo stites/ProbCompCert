@@ -10,7 +10,6 @@ Require Import String.
 Require Import Ctypes.
 Require Import Coqlib.
 Require Import ZArith Integers.
-Require ConstraintTransformations.
 Open Scope string_scope.
 Local Open Scope Z_scope.
 
@@ -452,8 +451,7 @@ Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef 
       OK (External ef targs tres cc)
   end.
 							       
-Definition backend (p0: CStan.program): res Clight.program :=
-  do p <- ConstraintTransformations.transf_program p0;
+Definition backend (p: CStan.program): res Clight.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
   OK {| 
       Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
