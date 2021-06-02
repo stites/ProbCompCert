@@ -40,26 +40,26 @@ Definition sizes d : list expr :=
 %}
   
 
-%token FUNCTIONBLOCK DATABLOCK TRANSFORMEDDATABLOCK PARAMETERSBLOCK
+%token <loc> FUNCTIONBLOCK DATABLOCK TRANSFORMEDDATABLOCK PARAMETERSBLOCK
        TRANSFORMEDPARAMETERSBLOCK MODELBLOCK GENERATEDQUANTITIESBLOCK
-%token LBRACE RBRACE LPAREN RPAREN LBRACK RBRACK LABRACK RABRACK COMMA SEMICOLON
+%token <loc> LBRACE RBRACE LPAREN RPAREN LBRACK RBRACK LABRACK RABRACK COMMA SEMICOLON
        BAR
-%token RETURN IF_ ELSE WHILE FOR IN BREAK CONTINUE
-%token VOID INT REAL VECTOR ROWVECTOR MATRIX ORDERED POSITIVEORDERED SIMPLEX
+%token <loc> RETURN IF_ ELSE WHILE FOR IN BREAK CONTINUE
+%token <loc> VOID INT REAL VECTOR ROWVECTOR MATRIX ORDERED POSITIVEORDERED SIMPLEX
        UNITVECTOR CHOLESKYFACTORCORR CHOLESKYFACTORCOV CORRMATRIX COVMATRIX
-%token LOWER UPPER OFFSET MULTIPLIER
-%token <string> INTNUMERAL
-%token <string> REALNUMERAL
-%token <string> STRINGLITERAL
-%token <string> IDENTIFIER
-%token TARGET
-%token QMARK COLON BANG MINUS PLUS HAT ELTPOW TRANSPOSE TIMES DIVIDE MODULO IDIVIDE
+%token <loc> LOWER UPPER OFFSET MULTIPLIER
+%token <string * loc> INTNUMERAL
+%token <string * loc> REALNUMERAL
+%token <string * loc> STRINGLITERAL
+%token <string * loc> IDENTIFIER
+%token <loc> TARGET
+%token <loc> QMARK COLON BANG MINUS PLUS HAT ELTPOW TRANSPOSE TIMES DIVIDE MODULO IDIVIDE
        LDIVIDE ELTTIMES ELTDIVIDE OR AND EQUALS NEQUALS LEQ GEQ TILDE
-%token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN
+%token <loc> ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN
    ELTDIVIDEASSIGN ELTTIMESASSIGN
-%token PRINT REJECT
-%token TRUNCATE
-%token EOF
+%token <loc> PRINT REJECT
+%token <loc> TRUNCATE
+%token <loc> EOF
 
 (* type declarations for nonterminals *)
 
@@ -90,15 +90,15 @@ Definition sizes d : list expr :=
 
 %type <list expr> separated_nonempty_list(COMMA,expr) separated_list(COMMA,expr)
 %type <list (autodifftype * type * string) > separated_nonempty_list(COMMA,arg_decl) separated_list(COMMA,arg_decl)
-%type <unit * expr> pair(COMMA,expr)  pair(ASSIGN,expr)
+%type <loc * expr> pair(COMMA,expr)  pair(ASSIGN,expr)
 %type <option expr> option(expr)
 %type <option (list expr)> option(dims)
-%type <option (unit * expr)> option(pair(COMMA,expr)) option(pair(ASSIGN,expr))
+%type <option (loc * expr)> option(pair(COMMA,expr)) option(pair(ASSIGN,expr))
 %type <option (option expr * option expr)> option(truncation)
 %type <list statement> list(vardecl_or_statement) list(top_vardecl_or_statement) 
 %type <list variable> list(top_var_decl_no_assign)
 %type <list function> list(function_def)
-%type <list unit> list(COMMA)
+%type <list loc> list(COMMA)
 (* Grammar *)
 
 (* Top level rule *)
@@ -159,7 +159,7 @@ generated_quantities_block:
   | GENERATEDQUANTITIESBLOCK LBRACE tvds=list(top_vardecl_or_statement) RBRACE { tvds }
 
 identifier:
-  | id=IDENTIFIER { id }
+  | id=IDENTIFIER { fst id }
 
 decl_identifier:
   | id=identifier { id }
@@ -321,8 +321,8 @@ common_expr:
   | l=lhs { l}
 
 basic_expr:
-  | i=INTNUMERAL { Econst_int i }
-  | r=REALNUMERAL { Econst_float r }
+  | i=INTNUMERAL { Econst_int (fst i) }
+  | r=REALNUMERAL { Econst_float (fst r) }
   | LBRACE xs=separated_nonempty_list(COMMA, expr) RBRACE { Earray xs }
   | LBRACK xs=separated_list(COMMA, expr) RBRACK { Erow xs }
   | id=identifier LPAREN e=expr BAR args=separated_list(COMMA, expr) RPAREN { Edist id (e :: args) }
@@ -387,7 +387,7 @@ assignment_op:
   | ELTDIVIDEASSIGN { Some EltDivide  }
 
 string_literal:
-  | s=STRINGLITERAL { s }
+  | s=STRINGLITERAL { fst s }
 
 truncation:
   | TRUNCATE LBRACK e1=option(expr) COMMA e2=option(expr) RBRACK { (e1,e2) }
