@@ -47,7 +47,7 @@ Fixpoint transf_expr (target:AST.ident) (e: CStan.expr) {struct e}: mon CStan.ex
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-  | CStan.Etarget t => ret (CStan.Etarget t)
+  | CStan.Etarget t => ret (CStan.Evar target t)
 end.
 Notation error_mmap := Errors.mmap.
 
