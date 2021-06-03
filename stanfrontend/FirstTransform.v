@@ -101,12 +101,9 @@ match s with
     do oe <~ option_mon_mmap (transf_expr target) oe;
     ret (Sreturn oe)
   | Starget e =>
-    error (msg "Starget e")
-    (* do e <~ transf_expr e; *)
-    (* (* Scall (): option ident -> expr -> list expr -> statement (**r function call *) *) *)
-
-          (* (Sassign vtarget (Ebinop Cop.Oadd vtarget e tdouble))) *)
-    (* ret (Starget vtarget) *)
+    do e <~ transf_expr target e;
+    let etarget := Evar target tdouble in
+    ret (Sassign etarget (Ebinop Cop.Oadd etarget e tdouble))
   | Stilde e i le (oe0, oe1) => (* *)
     do tmp <~ gensym tdouble;
     (* simulate function call: *)
@@ -140,7 +137,8 @@ Definition transf_model (target:AST.ident) (bt: blocktype) (body : statement): m
 
 Definition transf_function (f: function): mon function :=
   do target <~ gensym tdouble;
-  do body <~ transf_statement target f.(fn_body);
+  do body <~ transf_statement target f.(fn_body); (* Stilde -> Starget; Error "Backend: tilde" *)
+  do body <~ transf_statement target body;        (* apply Starget transform *)
   do model <~ transf_model target f.(fn_blocktype) body;
   do params <~ transf_params f.(fn_params) body;
   do temps <~ transf_temps f.(fn_temps) params body;
