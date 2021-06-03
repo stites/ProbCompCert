@@ -34,7 +34,7 @@ Notation ret := SimplExpr.ret.
 Notation error := SimplExpr.error.
 Notation gensym := SimplExpr.gensym.
 
-Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
+Fixpoint transf_expr (target:AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
@@ -66,7 +66,7 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
   | Some x => do x <~ f x; ret (Some x)
   end.
 
-Fixpoint transf_statement (s: CStan.statement) {struct s}: mon CStan.statement :=
+Fixpoint transf_statement (target:AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sskip => ret Sskip
   | Sassign e0 e1 =>
@@ -79,26 +79,26 @@ match s with
     (* do e <~ transf_expr e; *)
     (* ret (Sset i e) *)
   | Scall oi e le =>
-    do e <~ transf_expr e;
-    do le <~ mon_mmap transf_expr le;
+    do e <~ transf_expr target e;
+    do le <~ mon_mmap (transf_expr target) le;
     ret (Scall oi e le)
   | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
   | Ssequence s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement target s0;
+    do s1 <~ transf_statement target s1;
     ret (Ssequence s0 s1)
   | Sifthenelse e s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement target s0;
+    do s1 <~ transf_statement target s1;
     ret (Sifthenelse e s0 s1)
   | Sloop s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement target s0;
+    do s1 <~ transf_statement target s1;
     ret (Sloop s0 s1)
   | Sbreak => ret Sbreak
   | Scontinue => ret Scontinue
   | Sreturn oe =>
-    do oe <~ option_mon_mmap transf_expr oe;
+    do oe <~ option_mon_mmap (transf_expr target) oe;
     ret (Sreturn oe)
   | Starget e =>
     error (msg "Starget e")
@@ -128,20 +128,20 @@ Definition transf_temps (ts: list localvar) (params: list localvar) (body : stat
 Definition transf_vars (vs: list localvar) (temps: list localvar) (params: list localvar) (body : statement): mon (list localvar) :=
   ret vs.
 
-Definition transf_model (bt: blocktype) (body : statement): mon statement :=
+Definition transf_model (target:AST.ident) (bt: blocktype) (body : statement): mon statement :=
   match bt with
   | BTOther => ret body
   | BTModel =>
-    do target_sym <~ SimplExpr.gensym tdouble;
-    ret (Ssequence (Sset target_sym (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
+    ret (Ssequence (Sset target (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
           (Ssequence body
-            (Sreturn (Some (CStan.Evar target_sym tdouble)))))
+            (Sreturn (Some (CStan.Evar target tdouble)))))
   end.
 
 
 Definition transf_function (f: function): mon function :=
-  do body <~ transf_statement f.(fn_body);
-  do model <~ transf_model f.(fn_blocktype) body;
+  do target <~ gensym tdouble;
+  do body <~ transf_statement target f.(fn_body);
+  do model <~ transf_model target f.(fn_blocktype) body;
   do params <~ transf_params f.(fn_params) body;
   do temps <~ transf_temps f.(fn_temps) params body;
   do vars <~ transf_vars f.(fn_vars) temps params body;
