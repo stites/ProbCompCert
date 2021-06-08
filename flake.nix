@@ -49,14 +49,41 @@
           '');
           commands = let
             watchexec = "${pkgs.watchexec}/bin/watchexec";
+            cd-root = ''
+              current_dir=$PWD
+              cd $(${pkgs.git}/bin/git rev-parse --show-toplevel)
+            '';
           in [
             {
               category = "watchers";
               name = "watch-stan";
               command = ''
-                current_dir=$PWD
-                cd $(${pkgs.git}/bin/git rev-parse --show-toplevel)
+                ${cd-root}
                 ${watchexec} -e v,ml,Makefile "make -j && make install && ( ./out/bin/ccomp -c $current_dir/$1 && echo '>>> done.' || echo '>>> error!' )"
+              '';
+            }
+            {
+              category = "watchers";
+              name = "watch-clightgen";
+              command = ''
+                ${cd-root}
+                ${watchexec} -e v,ml,Makefile "make -j clightgen"
+              '';
+            }
+            {
+              category = "configure";
+              name = "cconf64+clightgen";
+              command = ''
+                ${cd-root}
+                ./configure -prefix ./out -clightgen x86_64-linux
+              '';
+            }
+            {
+              category = "configure";
+              name = "cconf64";
+              command = ''
+                ${cd-root}
+                ./configure -prefix ./out x86_64-linux
               '';
             }
           ];
