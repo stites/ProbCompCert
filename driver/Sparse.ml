@@ -175,7 +175,7 @@ let elaborate (p: Stan.program) =
     let functions = (id_tr_params,f_tr_params) :: functions in
 
     let target = (Camlcoq.intern_string "target", Stypes.Treal) in
-    let (id_model,f_model) = declareFundefWithExtras "model" (get_code m) None [] [target] in
+    let (id_model,f_model) = declareFundefWithExtras "model" (get_code m) (Some Stypes.Treal) [] [target] in
 
     let functions = (id_model,f_model) :: functions in
 
