@@ -279,10 +279,11 @@ Definition transf_function (f: StanE.function): res CStan.function :=
   do body <- transf_statement f.(StanE.fn_body);
   do temps <- transf_vars f.(StanE.fn_temps);
   do vars <- transf_vars f.(StanE.fn_vars);
+  do ret <- option_mmap transf_var f.(StanE.fn_return);
   OK {|
       CStan.fn_return :=
-        match f.(StanE.fn_return) with
-          | Some ty => Tvoid
+        match ret with
+          | Some ty => ty
           | None => Tvoid
         end;
       (* CStan.fn_params := f.(StanE.fn_params); *)
