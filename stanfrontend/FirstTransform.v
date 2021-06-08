@@ -66,44 +66,64 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
   | Some x => do x <~ f x; ret (Some x)
   end.
 
+Fixpoint maybe_ident (e: expr): option AST.ident :=
+match e with
+  | CStan.Evar i t => Some i
+  | CStan.Etempvar i t => Some i
+  | _ => None
+end.
+
 Fixpoint transf_statement (target:AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sskip => ret Sskip
   | Sassign e0 e1 =>
     do e0 <~ transf_expr target e0;
     do e1 <~ transf_expr target e1;
-    ret (Sassign e0 e1)
+    match maybe_ident e0 with
+      | Some i => ret (Sset i e1)
+      | None => ret (Sassign e0 e1)
+    end
   | Sset i e =>
-    error (msg "Sset")
-    (* do e <~ transf_expr e; *)
-    (* ret (Sset i e) *)
+    do e <~ transf_expr target e;
+    ret (Sset i e)
+
   | Scall oi e le =>
     do e <~ transf_expr target e;
     do le <~ mon_mmap (transf_expr target) le;
     ret (Scall oi e le)
+
   | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
+
   | Ssequence s0 s1 =>
     do s0 <~ transf_statement target s0;
     do s1 <~ transf_statement target s1;
     ret (Ssequence s0 s1)
+
   | Sifthenelse e s0 s1 =>
     do s0 <~ transf_statement target s0;
     do s1 <~ transf_statement target s1;
     ret (Sifthenelse e s0 s1)
+
   | Sloop s0 s1 =>
     do s0 <~ transf_statement target s0;
     do s1 <~ transf_statement target s1;
     ret (Sloop s0 s1)
+
   | Sbreak => ret Sbreak
+
   | Scontinue => ret Scontinue
+
   | Sreturn oe =>
     do oe <~ option_mon_mmap (transf_expr target) oe;
     ret (Sreturn oe)
+
   | Starget e =>
     do e <~ transf_expr target e;
-    let etarget := Evar target tdouble in
-    ret (Sassign etarget (Ebinop Cop.Oadd etarget e tdouble))
-  | Stilde e i le (oe0, oe1) => (* *)
+    ret (Sset target
+              (Ebinop Cop.Oadd
+                      (Evar target tdouble) e tdouble))
+
+  | Stilde e i le (oe0, oe1) =>
     do tmp <~ gensym tdouble;
     (* simulate function call: *)
     (**)
@@ -111,10 +131,14 @@ match s with
     (* ret (Ssequence *)
     (*       (Scall (Some tmp) (Evar i tfunction :: fundef -> Ctypes.type) el) *)
     (*       (Starget etmp)) *)
+
     (* instead we just assign it 1 *)
-    ret (Ssequence
-      (Sassign (Evar tmp tdouble) (Econst_float float_one tdouble))
-      (Starget (Etempvar tmp tdouble)))
+    (* ret (Ssequence *)
+    (*   (Sassign (Evar tmp tdouble) (Econst_float float_one tdouble)) *)
+    (*   (Starget (Etempvar tmp tdouble))) *)
+
+    (* and do this in an even simpler fashion *)
+    ret (Starget (Econst_float float_one tdouble))
 end.
 
 Notation localvar := (prod AST.ident Ctypes.type).
@@ -143,7 +167,9 @@ Definition transf_function (f: function): mon function :=
   do body <~ transf_statement target body;        (* apply Starget transform *)
   do model <~ transf_model target f.(fn_blocktype) body;
   do params <~ transf_params f.(fn_params) body;
+
   do temps <~ transf_temps f.(fn_temps) params body;
+
   do vars <~ transf_vars f.(fn_vars) temps params body;
   ret {|
       fn_params := params;
