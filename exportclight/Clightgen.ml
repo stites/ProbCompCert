@@ -63,10 +63,20 @@ let clight_compilation loc p =
   | Errors.Error msg ->
     fatal_error loc "%a" print_error msg
 
-let compile_stan_ast sourcename syntax ofile =
+let compile_ast pipeline sourcename syntax ofile =
   let loc = file_loc sourcename in
-  let clight =
-    match Denumpyification.transf_program syntax with
+  let clight = pipeline loc syntax in
+  (* Dump Clight in C syntax if requested *)
+  PrintClight.print_if_2 clight;
+  (* Print Clight in Coq syntax *)
+  let oc = open_out ofile in
+  ExportClight.print_program (Format.formatter_of_out_channel oc)
+                             clight sourcename !option_normalize;
+  close_out oc
+
+let compile_stan_ast =
+  let pipeline loc syntax =
+    begin match Denumpyification.transf_program syntax with
     | Errors.OK p ->
       begin match FirstTransform.transf_program p with
       | Errors.OK p ->
@@ -76,14 +86,9 @@ let compile_stan_ast sourcename syntax ofile =
         end
       | Errors.Error msg -> fatal_error loc "%a" print_error msg
       end
-    | Errors.Error msg -> fatal_error loc "%a" print_error msg in
-  (* Dump Clight in C syntax if requested *)
-  PrintClight.print_if_2 clight;
-  (* Print Clight in Coq syntax *)
-  let oc = open_out ofile in
-  ExportClight.print_program (Format.formatter_of_out_channel oc)
-                             clight sourcename !option_normalize;
-  close_out oc
+    | Errors.Error msg -> fatal_error loc "%a" print_error msg
+    end
+  in compile_ast pipeline
 
 
 (* From C source to Clight *)
@@ -99,14 +104,16 @@ let compile_c_file sourcename ifile ofile =
 
 (* From stan source to Clight *)
 
-let compile_stan_file sourcename ifile ofile =
+let compile_file (compile_ast, parse_file, source_ext) sourcename ifile ofile =
   let set_dest dst opt ext =
-    dst := if !opt then Some (output_filename sourcename ".stan" ext)
+    dst := if !opt then Some (output_filename sourcename source_ext ext)
       else None in
-  set_dest Cprint.destination option_dparse ".parsed.stan";
-  set_dest PrintCsyntax.destination option_dcmedium ".compcert.stan";
-  set_dest PrintClight.destination option_dclight ".light.stan";
-  compile_stan_ast sourcename (Sparse.parse_stan_file sourcename ifile) ofile
+  set_dest Cprint.destination option_dparse (".parsed" ^ source_ext);
+  set_dest PrintCsyntax.destination option_dcmedium (".compcert" ^ source_ext);
+  set_dest PrintClight.destination option_dclight (".light" ^ source_ext);
+  compile_ast sourcename (parse_file sourcename ifile) ofile
+
+let compile_stan_file = compile_file (compile_stan_ast, parse_stan_file, ".stan")
 
 let output_filename sourcename suff =
   let prefixname = Filename.chop_suffix sourcename suff in
@@ -130,20 +137,21 @@ let process_c_file sourcename =
 
 (* Processing of a .stan file *)
 
-let process_stan_file sourcename =
+let process_file (compile_file, source_ext) sourcename =
   ensure_inputfile_exists sourcename;
-  let ofile = output_filename sourcename ".stan" in
+  let ofile = output_filename sourcename source_ext in
   if !option_E then begin
     preprocess sourcename "-"
   end else begin
     let preproname = if !option_dprepro then
-        Driveraux.output_filename sourcename ".stan" ".i"
+        Driveraux.output_filename sourcename source_ext ".i"
       else
         Driveraux.tmp_file ".i" in
     preprocess sourcename preproname;
-    compile_stan_file sourcename preproname ofile
+    compile_file sourcename preproname ofile
   end
 
+let process_stan_file = process_file (compile_stan_file, ".stan")
 
 (* Processing of a .i file *)
 
