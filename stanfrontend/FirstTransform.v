@@ -70,10 +70,9 @@ Fixpoint transf_statement (target:AST.ident) (s: CStan.statement) {struct s}: mo
 match s with
   | Sskip => ret Sskip
   | Sassign e0 e1 =>
-    error (msg "Sassign")
-    (* do e0 <~ transf_expr e0; *)
-    (* do e1 <~ transf_expr e1; *)
-    (* ret (Sassign e0 e1) *)
+    do e0 <~ transf_expr target e0;
+    do e1 <~ transf_expr target e1;
+    ret (Sassign e0 e1)
   | Sset i e =>
     error (msg "Sset")
     (* do e <~ transf_expr e; *)
