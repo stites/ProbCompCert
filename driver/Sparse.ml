@@ -112,7 +112,7 @@ let declareVariable v =
   (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = [];
                    gvar_readonly = readonly; gvar_volatile = volatile})
 
-let declareFundef name body rt params =
+let declareFundefWithExtras name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
     a_storage = C.Storage_default;
@@ -135,10 +135,13 @@ let declareFundef name body rt params =
     StanE.fn_callconv = AST.cc_default;
     StanE.fn_params = params;
     StanE.fn_blocktype = blocktypeFundef name;
-    StanE.fn_vars = [];
+    StanE.fn_vars = extraVars;
     StanE.fn_temps = [];
     StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
+
+let declareFundef name body rt params =
+  declareFundefWithExtras name body rt params []
 
 let elaborate (p: Stan.program) =
   match p with
@@ -171,7 +174,9 @@ let elaborate (p: Stan.program) =
     let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
     let functions = (id_tr_params,f_tr_params) :: functions in
 
-    let (id_model,f_model) = declareFundef "model" (get_code m) None [] in
+    let target = (Camlcoq.intern_string "target", Stypes.Treal) in
+    let (id_model,f_model) = declareFundefWithExtras "model" (get_code m) None [] [target] in
+
     let functions = (id_model,f_model) :: functions in
 
     let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
