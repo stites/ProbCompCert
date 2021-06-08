@@ -255,16 +255,43 @@ Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
     CStan.vd_global := StanE.vd_global v;
   |}.
 
+Definition transf_var (t: Stypes.type) : res type :=
+  match t with
+  | Stypes.Tint => OK (Ctypes.Tint Ctypes.I32 Ctypes.Signed Ctypes.noattr)
+  | Stypes.Treal => OK (Ctypes.Tfloat Ctypes.F64 Ctypes.noattr)
+  (* | Tvector => OK Tpointer: type -> noattr *)
+  (* | Trow => Tpointer: type -> noattr *)
+  (* | Tmatrix => Tpointer: type -> noattr *)
+  (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
+  | _ => Error (msg "NYI: type")
+  end.
+
+Fixpoint transf_vars (vs: list (AST.ident * Stypes.type)) : res (list (AST.ident * type)) :=
+  match vs with
+  | nil => OK nil
+  | cons (i, t) l =>
+    do t <- transf_var t;
+    do l <- transf_vars l;
+    OK (cons (i, t) l)
+  end.
+
 Definition transf_function (f: StanE.function): res CStan.function :=
   do body <- transf_statement f.(StanE.fn_body);
+  do temps <- transf_vars f.(StanE.fn_temps);
+  do vars <- transf_vars f.(StanE.fn_vars);
   OK {|
-      CStan.fn_return := Tvoid;
+      CStan.fn_return :=
+        match f.(StanE.fn_return) with
+          | Some ty => Tvoid
+          | None => Tvoid
+        end;
+      (* CStan.fn_params := f.(StanE.fn_params); *)
       CStan.fn_params := nil;
       CStan.fn_body := body;
       CStan.fn_blocktype := f.(StanE.fn_blocktype);
       CStan.fn_callconv := f.(StanE.fn_callconv);
-      CStan.fn_temps := nil;
-      CStan.fn_vars := nil;
+      CStan.fn_temps := temps;
+      CStan.fn_vars := vars;
      |}.
 
 Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :=
