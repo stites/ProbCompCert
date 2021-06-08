@@ -112,7 +112,10 @@ match s with
     (* ret (Ssequence *)
     (*       (Scall (Some tmp) (Evar i tfunction :: fundef -> Ctypes.type) el) *)
     (*       (Starget etmp)) *)
-    ret (Starget (Etempvar tmp tdouble))
+    (* instead we just assign it 1 *)
+    ret (Ssequence
+      (Sassign (Evar tmp tdouble) (Econst_float float_one tdouble))
+      (Starget (Etempvar tmp tdouble)))
 end.
 
 Notation localvar := (prod AST.ident Ctypes.type).
