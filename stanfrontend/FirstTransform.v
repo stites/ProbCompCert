@@ -156,12 +156,18 @@ Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CSt
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
   | CStan.Evar i t => ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
-  | CStan.Ederef e t => ret (CStan.Ederef e t)
-  | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
-  | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
+  | CStan.Ederef e t =>
+    do e <~ transf_target_expr tgt e;
+    ret (CStan.Ederef e t)
+  | CStan.Eunop uop e t =>
+    do e <~ transf_target_expr tgt e;
+    ret (CStan.Eunop uop e t)
+  | CStan.Ebinop bop e0 e1 t =>
+    do e0 <~ transf_target_expr tgt e0;
+    do e1 <~ transf_target_expr tgt e1;
+    ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-
   | CStan.Etarget ty => ret (CStan.Evar tgt ty)
 end.
 
@@ -208,14 +214,11 @@ Definition transf_model (f: function) (body : statement): mon statement :=
   | BTOther => ret body
   | BTModel =>
     do tgt <~ get_target_ident f.(fn_vars);
-    do body <~ transf_target_statement tgt
+    let body :=
       (Ssequence (Sassign (CStan.Etarget tdouble) (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
         (Ssequence body
-          (Sreturn (Some (CStan.Etarget tdouble)))));
-    do body <~ transf_target_statement tgt body;
-    do body <~ transf_target_statement tgt body;
-    do body <~ transf_target_statement tgt body;
-    ret body
+          (Sreturn (Some (CStan.Etarget tdouble))))) in
+    transf_target_statement tgt body
   end.
 
 Definition transf_statement_pipeline (f: function) : mon CStan.statement :=
