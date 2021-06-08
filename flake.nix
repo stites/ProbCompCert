@@ -36,7 +36,6 @@
           packages = with pkgs; [
             watchexec
             cmdstan
-            #(python3.withPackages (ps: [ps.pystan]))
           ];
           # hack for zsh devshell
           bash.interactive = (pkgs.lib.optionalString true ''
@@ -55,7 +54,9 @@
               category = "watchers";
               name = "watch-stan";
               command = ''
-                ${watchexec} -e v,ml,Makefile "make -j && make install && ( ./out/bin/ccomp -c $1 && echo '>>> done.' || echo '>>> error!' )"
+                current_dir=$PWD
+                cd $(${pkgs.git}/bin/git rev-parse --show-toplevel)
+                ${watchexec} -e v,ml,Makefile "make -j && make install && ( ./out/bin/ccomp -c $current_dir/$1 && echo '>>> done.' || echo '>>> error!' )"
               '';
             }
           ];
