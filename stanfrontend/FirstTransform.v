@@ -237,7 +237,7 @@ Definition transf_function (f: function): res function :=
       fn_body := tbody;
 
       fn_temps := f.(fn_temps);
-      fn_vars := g.(SimplExpr.gen_trail);
+      fn_vars := g.(SimplExpr.gen_trail) ++ f.(fn_vars);
 
       (*should not change*)
       fn_return := f.(fn_return);
