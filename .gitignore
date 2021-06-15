@@ -93,3 +93,4 @@
 a.out
 stanfrontend/Sparser.v
 stanfrontend/Slexer.ml
+libstan.so

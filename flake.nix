@@ -36,6 +36,7 @@
           packages = with pkgs; [
             watchexec
             cmdstan
+            gcc
           ];
           # hack for zsh devshell
           bash.interactive = (pkgs.lib.optionalString true ''
@@ -51,7 +52,9 @@
             watchexec = "${pkgs.watchexec}/bin/watchexec";
             cd-root = ''
               current_dir=$PWD
-              cd $(${pkgs.git}/bin/git rev-parse --show-toplevel)
+              root_dir=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
+              stan_dir=$root_dir/stanfrontend
+              cd $root_dir
             '';
           in [
             {
@@ -104,9 +107,9 @@
             }
             {
               category = "test";
-              name = "test-c";
+              name = "test-c1";
               command = let
-                compiler = "../out/bin/ccomp"; # "gcc";
+                compiler = "../out/bin/ccomp";
               in ''
                 ${cd-root}
                 cd stanfrontend
@@ -116,6 +119,24 @@
                 ./runit $1
               '';
             }
+            {
+              category = "test";
+              name = "test-c2";
+              command = let
+                compiler = "../out/bin/ccomp";
+                program = "Program2";
+              in ''
+                ${cd-root}
+                cd stanfrontend
+                ${compiler} -c Runtime.c
+                ${compiler} -c ${program}.c
+                ${compiler} -c stanlib.c
+                ld -shared stanlib.o -o libstan.so
+                ${compiler} -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ${program}.o Runtime.o -o runit
+                ./runit $1
+              '';
+            }
+
           ];
         };
       });
