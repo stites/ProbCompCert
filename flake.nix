@@ -86,6 +86,36 @@
                 ./configure -prefix ./out x86_64-linux
               '';
             }
+            {
+              category = "test";
+              name = "test-stan";
+              command = ''
+                ${cd-root}
+                ./out/bin/ccomp -c $current_dir/$1
+              '';
+            }
+            {
+              category = "make";
+              name = "make-all";
+              command = ''
+                ${cd-root}
+                make -j && make install
+              '';
+            }
+            {
+              category = "test";
+              name = "test-c";
+              command = let
+                compiler = "../out/bin/ccomp"; # "gcc";
+              in ''
+                ${cd-root}
+                cd stanfrontend
+                ${compiler} -c Runtime.c
+                ${compiler} -c Program.c
+                ${compiler} -L../out/lib/compcert -lm Program.o Runtime.o -o runit
+                ./runit $1
+              '';
+            }
           ];
         };
       });

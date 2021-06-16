@@ -4,6 +4,7 @@
 
 void* get_state();
 void set_state(void*);
+void map_state(void (*f)(char* k, double v));
 
 void data();
 void transformed_data();
@@ -13,6 +14,25 @@ double model(void* p);
 void generated_quantities();
 
 void* propose();
+
+void print_state_element(char* k, double v) {
+  printf("%s: %f, ", k, v);
+};
+
+void print_state(int i) {
+  if (i != NULL) {
+    printf("iteration %d: ", i);
+  }
+  printf("{");
+  map_state(print_state_element);
+  printf("\b\b}");
+  printf("\n");
+};
+
+void write() {
+  printf("\t...completed execution!\n\nSummary:\n\t");
+  print_state(NULL);
+};
 
 int main(int argc, char* argv[]) {
 
@@ -45,13 +65,15 @@ int main(int argc, char* argv[]) {
     if (u <= lp_candidate - lp_parameters) {
 
       set_state(candidate);
-      
+
     }
 
     generated_quantities();
-    
+
+    print_state(i+1); // offset from NULL
   }
-  
+
+  write();
   return 0;
   
 }

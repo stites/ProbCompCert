@@ -59,6 +59,11 @@ void* get_state() {
   
 }
 
+void map_state(void (*f)(char * k, double v)) {
+  struct Params* s = (struct Params*) get_state();
+  f("mu", s->mu);
+}
+
 void set_state(void* pi) {
 
   struct Params* p = (struct Params*) pi;
@@ -90,8 +95,6 @@ double model(void *pi) {
 
 void generated_quantities() {
 
-  printf("%f\n",state.mu);
-      
 }
 
 struct Params candidate;
