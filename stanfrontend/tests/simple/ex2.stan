@@ -1,6 +1,9 @@
 data {
-  int flip=1;
+  int flip; // initialize to 1
 }
+// transformed data {
+//   int flipped = 1;
+// }
 parameters {
   real mu;
 }
