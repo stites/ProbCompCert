@@ -1,10 +1,22 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include "MuParams.h"
+
+#define PRINT_OPAQUE_STRUCT(p)  print_mem((p), sizeof(*(p)))
+
+void print_mem(void const *vp, size_t n)
+{
+    unsigned char const *p = vp;
+    for (size_t i=0; i<n; i++)
+    {
+        printf("%02x; ", p[i]);
+    }
+    printf("\b\b}");
+};
 
 void* get_state();
 void set_state(void*);
-void map_state(void (*f)(char* k, double v));
 
 void data();
 void transformed_data();
@@ -15,18 +27,16 @@ void generated_quantities();
 
 void* propose();
 
-void print_state_element(char* k, double v) {
-  printf("%s: %f, ", k, v);
-};
-
 void print_state(int i) {
   if (i != NULL) {
     printf("iteration %d: ", i);
   }
+  struct Params* s = (struct Params*) get_state();
   printf("{");
-  map_state(print_state_element);
-  printf("\b\b}");
-  printf("\n");
+  printf("mu: %f", s->mu);
+  printf("}\n");
+
+  // print_mem(s, 1);
 };
 
 void write() {

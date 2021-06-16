@@ -54,6 +54,9 @@
               current_dir=$PWD
               root_dir=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
               stan_dir=$root_dir/stanfrontend
+              prog=''${1##*/}
+              name=''${prog%.*}
+              parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
               cd $root_dir
             '';
           in [
@@ -136,7 +139,29 @@
                 ./runit $1
               '';
             }
-
+            {
+              category = "test";
+              name = "test-stan2";
+              command = ''
+                ${cd-root}
+                ./out/bin/ccomp -c $current_dir/$1
+                ./out/bin/ccomp -c $current_dir/$1.s
+              '';
+            }
+            {
+              category = "test";
+              name = "test-stan2-full";
+              command = ''
+                ${cd-root}
+                ./out/bin/ccomp -c $current_dir/$1
+                ./out/bin/ccomp -c $current_dir/$name.s
+                ./out/bin/ccomp -c $stan_dir/Runtime.c
+                ./out/bin/ccomp -c $stan_dir/stanlib.c
+                ld -shared $current_dir/stanlib.o -o $current_dir/libstan.so
+                ./out/bin/ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L./out/lib/compcert -lm -lstan $name.o Runtime.o -o runit
+                ./runit $2
+              '';
+            }
           ];
         };
       });

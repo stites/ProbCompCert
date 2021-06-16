@@ -2,6 +2,9 @@
 #include <math.h>
 #include <stdio.h>
 #include "stanlib.h"
+#include "MuParams.h"
+
+struct Params state;
 
 struct Data {
   int flip;
@@ -16,12 +19,6 @@ void data() {
 void transformed_data() {
 }
 
-struct Params {
-  double mu;
-};
-
-struct Params state;
-
 void parameters() {
   // state.mu = 0.5;
   state.mu = 0.5;
@@ -32,11 +29,6 @@ void transformed_parameters(void *p) {
 
 void* get_state() {
   return &state; 
-}
-
-void map_state(void (*f)(char * k, double v)) {
-  struct Params* s = (struct Params*) get_state();
-  f("mu", s->mu);
 }
 
 void set_state(void* pi) {
