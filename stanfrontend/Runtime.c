@@ -1,19 +1,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-#include "MuParams.h"
 
-#define PRINT_OPAQUE_STRUCT(p)  print_mem((p), sizeof(*(p)))
-
-void print_mem(void const *vp, size_t n)
-{
-    unsigned char const *p = vp;
-    for (size_t i=0; i<n; i++)
-    {
-        printf("%02x; ", p[i]);
-    }
-    printf("\b\b}");
-};
+void print_state();
 
 void* get_state();
 void set_state(void*);
@@ -26,23 +15,6 @@ double model(void* p);
 void generated_quantities();
 
 void* propose();
-
-void print_state(int i) {
-  if (i != NULL) {
-    printf("iteration %d: ", i);
-  }
-  struct Params* s = (struct Params*) get_state();
-  printf("{");
-  printf("mu: %f", s->mu);
-  printf("}\n");
-
-  // print_mem(s, 1);
-};
-
-void write() {
-  printf("\t...completed execution!\n\nSummary:\n\t");
-  print_state(NULL);
-};
 
 int main(int argc, char* argv[]) {
 
@@ -80,10 +52,12 @@ int main(int argc, char* argv[]) {
 
     generated_quantities();
 
-    print_state(i+1); // offset from NULL
+    printf("iteration %d: ", i);
+    print_state();
   }
 
-  write();
+  printf("\t...completed execution!\n\nSummary:\n\t");
+  print_state();
   return 0;
   
 }

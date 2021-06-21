@@ -2,7 +2,10 @@
 #include <math.h>
 #include <stdio.h>
 #include "stanlib.h"
-#include "MuParams.h"
+
+struct Params {
+  double mu;
+};
 
 struct Params state;
 
@@ -64,5 +67,9 @@ void* propose() {
   
 }
 
-
-
+void print_state() {
+  struct Params* s = (struct Params*) get_state();
+  printf("{");
+  printf("mu: %f", s->mu);
+  printf("}\n");
+}
