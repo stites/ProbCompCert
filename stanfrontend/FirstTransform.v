@@ -126,7 +126,7 @@ match s with
   | Stilde e i le (oe0, oe1) =>
     do tmp <~ gensym tdouble;
     (* simulate function call: *)
-    (**)
+    (* (**) *)
     (* let etmp := (Etempvar tmp tdouble) in *)
     (* ret (Ssequence *)
     (*       (Scall (Some tmp) (Evar i tfunction :: fundef -> Ctypes.type) el) *)
@@ -134,9 +134,8 @@ match s with
 
     (* instead we just assign it 1 *)
     ret (Ssequence
-      (Sassign (Evar tmp tdouble) (Econst_float float_one tdouble))
+      (Sset tmp (Econst_float float_one tdouble))
       (Starget (Etempvar tmp tdouble)))
-
 end.
 
 Notation localvar := (prod AST.ident Ctypes.type).
@@ -235,8 +234,8 @@ Definition transf_function (f: function): res function :=
       fn_params := f.(fn_params);
       fn_body := tbody;
 
-      fn_temps := f.(fn_temps);
-      fn_vars := g.(SimplExpr.gen_trail) ++ f.(fn_vars);
+      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
+      fn_vars := f.(fn_vars);
 
       (*should not change*)
       fn_return := f.(fn_return);
