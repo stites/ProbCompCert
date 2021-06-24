@@ -290,17 +290,6 @@ Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
     CStan.vd_global := StanE.vd_global v;
   |}.
 
-Definition transf_type (t: Stypes.type) : res type :=
-  match t with
-  | Stypes.Tint => OK (Ctypes.Tint Ctypes.I32 Ctypes.Signed Ctypes.noattr)
-  | Stypes.Treal => OK (Ctypes.Tfloat Ctypes.F64 Ctypes.noattr)
-  (* | Tvector => OK Tpointer: type -> noattr *)
-  (* | Trow => Tpointer: type -> noattr *)
-  (* | Tmatrix => Tpointer: type -> noattr *)
-  (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
-  | _ => Error (msg "NYI: type")
-  end.
-
 Fixpoint mapM {X Y:Type} (f: X -> res Y) (xs: list X) : res (list Y) :=
   match xs with
   | nil => OK nil
