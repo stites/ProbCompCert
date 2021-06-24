@@ -163,6 +163,26 @@ let uniform_lpdf =
     rt (* return value *)
     [((Stypes.Aauto_diffable, tint), "x"); ((Stypes.Aauto_diffable, tdouble), "a"); ((Stypes.Aauto_diffable, tdouble), "b")]
 
+let t_uniform_lpdf = Ctypes.Internal uniform_lpdf
+
+(* let uniform_lpdf =
+ *   declareFundef "uniform"
+ *     [Stan.Sifthenelse
+ *       ((Stan.Ebinop                     (\* if sample is not in support: *\)
+ *         (Stan.Ebinop (Stan.Evar "x", Sops.Less, Stan.Evar "a"),  (\* x < a *\)
+ *         Sops.Or,                                              (\*  ||   *\)
+ *         Stan.Ebinop (Stan.Evar "x", Sops.Greater, Stan.Evar "b"))), (\* x > b *\)
+ *
+ *         (\* then return infinity *\)
+ *         Stan.Sreturn (Some (Stan.Ebinop (Stan.Econst_float "1", Sops.Divide, Stan.Econst_float "0"))),
+ *         (\* else return zero *\)
+ *         Stan.Sreturn (Some (Stan.Econst_float "0"))
+ *        )]
+ *     rt (\* return value *\)
+ *     [((Stypes.Aauto_diffable, tint), "x"); ((Stypes.Aauto_diffable, tdouble), "a"); ((Stypes.Aauto_diffable, tdouble), "b")] *)
+
+
+
 
 (* let bernoulli_lpmf =
  *   declareFundef "bernoulli_lpmf"
@@ -198,7 +218,7 @@ let elaborate (p: Stan.program) =
     in
 
     (* let functions = [uniform_lpdf; bernoulli_lpmf] in *)
-    let functions = [uniform_lpdf] in
+    let functions = [] in
 
     let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
     let functions = (id_data,f_data) :: functions in
