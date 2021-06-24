@@ -13,9 +13,10 @@ Require Import Stypes.
   
 Inductive expr :=
   (* Classical expressions that exist in C *)
-  | Econst_int: int -> expr
-  | Econst_float: float -> expr
-  | Evar: ident -> expr
+  | Econst_int: int -> type -> expr
+  | Econst_float: float -> type -> expr
+  | Evar: ident -> type -> expr
+  (* FIXME: add types to all proceeding as well? *)
   | Eunop: operator -> expr -> expr
   | Ebinop: expr -> operator -> expr -> expr
   | Ecall: ident -> list expr -> expr

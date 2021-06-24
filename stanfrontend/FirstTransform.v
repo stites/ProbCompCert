@@ -125,17 +125,17 @@ match s with
 
   | Stilde e i le (oe0, oe1) =>
     do tmp <~ gensym tdouble;
-    (* simulate function call: *)
-    (* (**) *)
-    (* let etmp := (Etempvar tmp tdouble) in *)
-    (* ret (Ssequence *)
-    (*       (Scall (Some tmp) (Evar i tfunction :: fundef -> Ctypes.type) el) *)
-    (*       (Starget etmp)) *)
 
-    (* instead we just assign it 1 *)
+    (* simulate function call: *)
+    let etmp := (Etempvar tmp tdouble) in
     ret (Ssequence
-      (Sset tmp (Econst_float float_one tdouble))
-      (Starget (Etempvar tmp tdouble)))
+          (Scall (Some tmp) (Evar i tfunction) le)
+          (Starget etmp))
+
+    (* (* instead we just assign it 1 *) *)
+    (* ret (Ssequence *)
+    (*   (Sset tmp (Econst_float float_one tdouble)) *)
+    (*   (Starget (Etempvar tmp tdouble))) *)
 end.
 
 Notation localvar := (prod AST.ident Ctypes.type).

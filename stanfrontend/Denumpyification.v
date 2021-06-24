@@ -15,8 +15,21 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
 
-Definition TCInt := Tint I32 Signed noattr.
-Definition TCFloat := Tfloat F64 noattr.
+Definition tint := Tint I32 Signed noattr.
+Definition tbool := Tint I8 Unsigned noattr.
+Definition tdouble := Tfloat F64 noattr.
+
+Definition transf_type (t: Stypes.type) : res type :=
+  match t with
+  | Stypes.Tint => OK tint
+  | Stypes.Treal => OK tdouble
+  (* | Tvector => OK Tpointer: type -> noattr *)
+  (* | Trow => Tpointer: type -> noattr *)
+  (* | Tmatrix => Tpointer: type -> noattr *)
+  (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
+  | _ => Error (msg "NYI: type")
+  end.
+
 
 Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   match o with
@@ -35,6 +48,27 @@ Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   | Sops.Geq =>	OK Cop.Oge		    
   | _ => Error (msg "Denumpyification.transf_program: operator")
   end.
+
+Definition transf_operator_return (o: Sops.operator): res Ctypes.type :=
+  match o with
+  (* FIXME These should all overloaded! *)
+  | Sops.Plus => OK tdouble
+  | Sops.Minus => OK tdouble
+  | Sops.Times => OK tdouble
+  | Sops.Divide => OK tdouble
+
+  | Sops.Modulo => OK tint
+  | Sops.Or => OK tbool
+  | Sops.And => OK tbool
+  | Sops.Equals => OK tbool
+  | Sops.NEquals => OK tbool
+  | Sops.Less => OK tbool
+  | Sops.Leq => OK tbool
+  | Sops.Greater => OK tbool
+  | Sops.Geq =>	OK tbool
+  | _ => Error (msg "Denumpyification.transf_operator_return")
+  end.
+
 
 Definition transf_unary_operator (o: Sops.operator): res Cop.unary_operation :=
   match o with
@@ -70,18 +104,19 @@ Definition transf_unary_operator (o: Sops.operator): res Cop.unary_operation :=
 
 Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
-  | Econst_int i => OK (CStan.Econst_int i TCInt)
-  | Econst_float f => OK (CStan.Econst_float f TCFloat)
-  | Evar i => OK (CStan.Evar i Tvoid)
+  | Econst_int i ty => do ty <- transf_type ty; OK (CStan.Econst_int i ty)
+  | Econst_float f ty => do ty <- transf_type ty; OK (CStan.Econst_float f ty)
+  | Evar i ty => do ty <- transf_type ty; OK (CStan.Evar i ty)
   | Eunop o e =>
     do o <- transf_unary_operator o;
     do e <- transf_expression e;
     OK (CStan.Eunop o e Tvoid)
-  | Ebinop e1 o e2 =>
-    do o <- transf_operator o;
+  | Ebinop e1 o0 e2 =>
+    do o <- transf_operator o0;
+    do t <- transf_operator_return o0;
     do e1 <- transf_expression e1;
     do e2 <- transf_expression e2;
-    OK (CStan.Ebinop o e1 e2 Tvoid)
+    OK (CStan.Ebinop o e1 e2 t)
   | Ecall i el => Error (msg "Denumpyification.transf_expression: call expression should have been removed already")
   | Econdition e1 e2 e3 => Error (msg "Denumpyification.transf_expression (NYI): Econdition")
   | Earray el => Error (msg "Denumpyification.transf_expression (NYI): Earray")
@@ -228,18 +263,18 @@ with typelist : Type :=
 
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
-  | Bint => OK TCInt
-  | Breal => OK TCFloat
+  | Bint => OK tint
+  | Breal => OK tdouble
   | Bvector e =>
     Error (msg "Denumpyification.transf_basic (NYI): Bvector")
     (* do e <- transf_expression e; *)
     (* (let Econst_int i := e in *)
-    (* OK (Tarray TCFloat i noattr)) *)
+    (* OK (Tarray tdouble i noattr)) *)
   | Brow e =>
     Error (msg "Denumpyification.transf_basic (NYI): Brow")
     (* do e <- transf_expression e; *)
     (* match e with *)
-    (* | Econst_int i => OK (Tarray TCFloat i noattr) *)
+    (* | Econst_int i => OK (Tarray tdouble i noattr) *)
     (* | _ => Error (msg "Denumpyification.transf_basic: expected an int") *)
     (* end *)
   | Bmatrix _ _ => Error (msg "Denumpyification.transf_basic (NYI): Bmatrix")
@@ -255,7 +290,7 @@ Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
     CStan.vd_global := StanE.vd_global v;
   |}.
 
-Definition transf_var (t: Stypes.type) : res type :=
+Definition transf_type (t: Stypes.type) : res type :=
   match t with
   | Stypes.Tint => OK (Ctypes.Tint Ctypes.I32 Ctypes.Signed Ctypes.noattr)
   | Stypes.Treal => OK (Ctypes.Tfloat Ctypes.F64 Ctypes.noattr)
@@ -266,28 +301,46 @@ Definition transf_var (t: Stypes.type) : res type :=
   | _ => Error (msg "NYI: type")
   end.
 
-Fixpoint transf_vars (vs: list (AST.ident * Stypes.type)) : res (list (AST.ident * type)) :=
-  match vs with
+Fixpoint mapM {X Y:Type} (f: X -> res Y) (xs: list X) : res (list Y) :=
+  match xs with
   | nil => OK nil
-  | cons (i, t) l =>
-    do t <- transf_var t;
-    do l <- transf_vars l;
-    OK (cons (i, t) l)
+  | cons x l =>
+    do y <- f x;
+    do l <- mapM f l;
+    OK (cons y l)
   end.
+
+Definition transf_var (v: AST.ident * Stypes.type) : res (AST.ident * type) :=
+  match v with
+    | (i, t) => do t <- transf_type t; OK (i, t)
+  end.
+
+Fixpoint transf_vars (vs: list (AST.ident * Stypes.type)) : res (list (AST.ident * type)) :=
+  mapM transf_var vs.
+
+(* FIXME: lambdas are too general? typechecker seems to want something more concrete... *)
+Definition transf_param (p: Stypes.autodifftype * Stypes.type * AST.ident) : res (AST.ident * type) :=
+  match p with
+    | (ad, t, i) => do t <- transf_type t; OK (i, t)
+  end.
+
+(* FIXME: don't discard AD information! *)
+Definition transf_params (ps: list (Stypes.autodifftype * Stypes.type * AST.ident)) : res (list (AST.ident * type)) :=
+  mapM transf_param ps.
 
 Definition transf_function (f: StanE.function): res CStan.function :=
   do body <- transf_statement f.(StanE.fn_body);
   do temps <- transf_vars f.(StanE.fn_temps);
   do vars <- transf_vars f.(StanE.fn_vars);
-  do ret <- option_mmap transf_var f.(StanE.fn_return);
+  do ret <- option_mmap transf_type f.(StanE.fn_return);
+  do params <- transf_params f.(StanE.fn_params);
   OK {|
       CStan.fn_return :=
         match ret with
           | Some ty => ty
           | None => Tvoid
         end;
-      (* CStan.fn_params := f.(StanE.fn_params); *)
-      CStan.fn_params := nil;
+      CStan.fn_params := params;
       CStan.fn_body := body;
       CStan.fn_blocktype := f.(StanE.fn_blocktype);
       CStan.fn_callconv := f.(StanE.fn_callconv);

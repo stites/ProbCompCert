@@ -38,16 +38,17 @@
             cmdstan
             gcc
           ];
-          # hack for zsh devshell
-          bash.interactive = (pkgs.lib.optionalString true ''
-            temp_dir=$(mktemp -d)
-            cat <<'EOF' >"$temp_dir/.zshrc"
-            if [ -e ~/.zshrc ]; then . ~/.zshrc; fi
-            if [ -e ~/.config/zsh/.zshrc ]; then . ~/.config/zsh/.zshrc; fi
-            menu
-            EOF
-            ZDOTDIR=$temp_dir zsh -i
-          '');
+          # UNUSED: hack for zsh devshell use nix-direnv instead.
+          # -----------------------------------------------------
+          # bash.interactive = (pkgs.lib.optionalString true ''
+          #   temp_dir=$(mktemp -d)
+          #   cat <<'EOF' >"$temp_dir/.zshrc"
+          #   if [ -e ~/.zshrc ]; then . ~/.zshrc; fi
+          #   if [ -e ~/.config/zsh/.zshrc ]; then . ~/.config/zsh/.zshrc; fi
+          #   menu
+          #   EOF
+          #   ZDOTDIR=$temp_dir zsh -i
+          # '');
           commands = let
             watchexec = "${pkgs.watchexec}/bin/watchexec";
             cd-root = ''
@@ -59,23 +60,44 @@
               parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
               cd $root_dir
             '';
+            run = {build ? null, cmd, finally ? null}:
+              let
+                err-str = if finally == null then cmd else "${cmd}, attempting ${finally}...";
+                final-cmd = if finally == null then "" else "&& ${finally}";
+                runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${final-cmd})";
+              in if build == null then runnable else "${build} && (${runnable})";
+
+            watch = {at-root ? true, exts ? "v,ml,Makefile", build ? null, cmd, finally ? null}: ''
+              ${if at-root then cd-root else ""}
+              if [ -z "$1" ]; then
+                  ignore=""
+              else
+                  ignore="--ignore $name.v"
+              fi
+              ${watchexec} -e ${exts} $ignore "${run {inherit build cmd finally; }}"
+             '';
+            mk-watcher = name: all@{ ... }: all // { inherit name; category = "watchers"; };
+
           in [
-            {
-              category = "watchers";
-              name = "watch-stan";
-              command = ''
-                ${cd-root}
-                ${watchexec} -e v,ml,Makefile "make -j && make install && ( ./out/bin/ccomp -c $current_dir/$1 && echo '>>> done.' || echo '>>> error!' )"
-              '';
-            }
-            {
-              category = "watchers";
-              name = "watch-clightgen";
-              command = ''
-                ${cd-root}
-                ${watchexec} -e v,ml,Makefile "make -j clightgen"
-              '';
-            }
+            (mk-watcher "watch-stan" {
+              command = watch {
+                build = "make -j && make install";
+                cmd = "./out/bin/ccomp -c $current_dir/$1";
+              };
+            })
+            (mk-watcher "watch-stan-debug" {
+              command = watch {
+                build = "make -j && make install";
+                cmd = "./out/bin/ccomp -c $current_dir/$1";
+                finally = "./out/bin/clightgen $current_dir/$1";
+              };
+            })
+            (mk-watcher "watch-clightgen" {
+              command = watch {
+                build = "make -j clightgen";
+                cmd = "./clightgen $current_dir/$1";
+              };
+            })
             {
               category = "configure";
               name = "cconf64+clightgen";

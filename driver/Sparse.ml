@@ -30,9 +30,9 @@ let mapo o f =
 
 let rec el_e e =
   match e with
-  | Stan.Econst_int i -> StanE.Econst_int (Camlcoq.Z.of_sint (int_of_string i))
-  | Stan.Econst_float _ -> raise (NIY_elab "expression: float constant")
-  | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i)
+  | Stan.Econst_int i -> StanE.Econst_int (Camlcoq.Z.of_sint (int_of_string i), Stypes.Tint)
+  | Stan.Econst_float f -> StanE.Econst_float (Camlcoq.coqfloat_of_camlfloat (float_of_string f), Stypes.Treal)
+  | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i, Stypes.Treal)
   | Stan.Eunop (o,e) -> StanE.Eunop (o,el_e e)
   | Stan.Ebinop (e1,o,e2) -> StanE.Ebinop (el_e e1,o,el_e e2) 
   | Stan.Ecall (i,el) -> StanE.Ecall (Camlcoq.intern_string i, List.map el_e el)
@@ -143,6 +143,43 @@ let declareFundefWithExtras name body rt params extraVars =
 let declareFundef name body rt params =
   declareFundefWithExtras name body rt params []
 
+let tdouble = Stypes.Treal
+let tint = Stypes.Tint
+let rt = Some tdouble
+
+let uniform_lpdf =
+  declareFundef "uniform"
+    [Stan.Sifthenelse
+      ((Stan.Ebinop                     (* if sample is not in support: *)
+        (Stan.Ebinop (Stan.Evar "x", Sops.Less, Stan.Evar "a"),  (* x < a *)
+        Sops.Or,                                              (*  ||   *)
+        Stan.Ebinop (Stan.Evar "x", Sops.Greater, Stan.Evar "b"))), (* x > b *)
+
+        (* then return infinity *)
+        Stan.Sreturn (Some (Stan.Ebinop (Stan.Econst_float "1", Sops.Divide, Stan.Econst_float "0"))),
+        (* else return zero *)
+        Stan.Sreturn (Some (Stan.Econst_float "0"))
+       )]
+    rt (* return value *)
+    [((Stypes.Aauto_diffable, tint), "x"); ((Stypes.Aauto_diffable, tdouble), "a"); ((Stypes.Aauto_diffable, tdouble), "b")]
+
+
+(* let bernoulli_lpmf =
+ *   declareFundef "bernoulli_lpmf"
+ *     [ (\* return k * log(p) + (1-k) * log(1-p); *\)
+ *       (Stan.Sreturn (Some
+ *         (Stan.Ebinop (
+ *           (Stan.Ebinop (Stan.Evar "k", Sops.Times, Stan.Ecall ("log", [Stan.Evar "p"]))),
+ *           Sops.Plus,
+ *               (Stan.Ebinop
+ *                 (Stan.Ebinop (Stan.Econst_float "1", Sops.Minus, Stan.Evar "k"),
+ *                   Sops.Times,
+ *                 Stan.Ecall ("log", [Stan.Ebinop (Stan.Econst_float "1", Sops.Minus, Stan.Evar "p")])))))
+ *         )) ]
+ *     rt (\* return value *\)
+ *     [((Stypes.Aauto_diffable, tint), "k"); ((Stypes.Adata_only, tdouble), "p")] *)
+
+
 let elaborate (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
@@ -160,7 +197,8 @@ let elaborate (p: Stan.program) =
       | Some c -> c
     in
 
-    let functions = [] in
+    (* let functions = [uniform_lpdf; bernoulli_lpmf] in *)
+    let functions = [uniform_lpdf] in
 
     let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
     let functions = (id_data,f_data) :: functions in
