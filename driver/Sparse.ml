@@ -8,6 +8,26 @@ open Smessages
 exception SNIY of string
 exception NIY_elab of string
 
+(* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
+let tdouble = Stypes.Treal
+let tint = Stypes.Tint
+let rt = Some tdouble
+
+let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
+let i_uniform_lpdf   = CamlCoq.intern_string "uniform_lpdf"
+let t_uniform_lpdf   = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
+let i_bernoulli_lpmf = CamlCoq.intern_string "bernoulli_lpmf"
+let t_bernoulli_lpmf = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
+
+let transf_dist_idents = Hashtbl.create 2;;
+Hashtbl.add transf_dist_idents "uniform" (i_uniform_lpdf, t_uniform_lpdf);
+Hashtbl.add transf_dist_idents "bernoulli", (i_bernoulli_lpmf, t_bernoulli_lpmf)
+
+(* <><><><><><><><><> bootstrapped variable type injection <><><><><><><><><><> *)
+(* let var_types = Hashtbl.create 300
+ * #val my_hash : ('_weak1, '_weak2) Hashtbl.t *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+
 let read_file sourcefile =
   let ic = open_in_bin sourcefile in
   let n = in_channel_length ic in
@@ -35,7 +55,11 @@ let rec el_e e =
   | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i, Stypes.Treal)
   | Stan.Eunop (o,e) -> StanE.Eunop (o,el_e e)
   | Stan.Ebinop (e1,o,e2) -> StanE.Ebinop (el_e e1,o,el_e e2) 
-  | Stan.Ecall (i,el) -> StanE.Ecall (Camlcoq.intern_string i, List.map el_e el)
+  | Stan.Ecall (i,el) ->
+    let (_i, _ty) = match Hashtbl.find_opt transf_dist_idents i with
+      | Some (ident, ty) -> (ident, ty)
+      | None -> (Camlcoq.intern_string i, ftype)
+    in StanE.Ecall (_i, List.map el_e el)
   | Stan.Econdition (e1,e2,e3) -> StanE.Econdition(el_e e1, el_e e2, el_e e3)
   | Stan.Earray el -> StanE.Earray (List.map el_e el)
   | Stan.Erow el -> StanE.Erow (List.map el_e el)
@@ -143,63 +167,6 @@ let declareFundefWithExtras name body rt params extraVars =
 let declareFundef name body rt params =
   declareFundefWithExtras name body rt params []
 
-let tdouble = Stypes.Treal
-let tint = Stypes.Tint
-let rt = Some tdouble
-
-let uniform_lpdf =
-  declareFundef "uniform"
-    [Stan.Sifthenelse
-      ((Stan.Ebinop                     (* if sample is not in support: *)
-        (Stan.Ebinop (Stan.Evar "x", Sops.Less, Stan.Evar "a"),  (* x < a *)
-        Sops.Or,                                              (*  ||   *)
-        Stan.Ebinop (Stan.Evar "x", Sops.Greater, Stan.Evar "b"))), (* x > b *)
-
-        (* then return infinity *)
-        Stan.Sreturn (Some (Stan.Ebinop (Stan.Econst_float "1", Sops.Divide, Stan.Econst_float "0"))),
-        (* else return zero *)
-        Stan.Sreturn (Some (Stan.Econst_float "0"))
-       )]
-    rt (* return value *)
-    [((Stypes.Aauto_diffable, tint), "x"); ((Stypes.Aauto_diffable, tdouble), "a"); ((Stypes.Aauto_diffable, tdouble), "b")]
-
-let t_uniform_lpdf = Ctypes.Internal uniform_lpdf
-
-(* let uniform_lpdf =
- *   declareFundef "uniform"
- *     [Stan.Sifthenelse
- *       ((Stan.Ebinop                     (\* if sample is not in support: *\)
- *         (Stan.Ebinop (Stan.Evar "x", Sops.Less, Stan.Evar "a"),  (\* x < a *\)
- *         Sops.Or,                                              (\*  ||   *\)
- *         Stan.Ebinop (Stan.Evar "x", Sops.Greater, Stan.Evar "b"))), (\* x > b *\)
- *
- *         (\* then return infinity *\)
- *         Stan.Sreturn (Some (Stan.Ebinop (Stan.Econst_float "1", Sops.Divide, Stan.Econst_float "0"))),
- *         (\* else return zero *\)
- *         Stan.Sreturn (Some (Stan.Econst_float "0"))
- *        )]
- *     rt (\* return value *\)
- *     [((Stypes.Aauto_diffable, tint), "x"); ((Stypes.Aauto_diffable, tdouble), "a"); ((Stypes.Aauto_diffable, tdouble), "b")] *)
-
-
-
-
-(* let bernoulli_lpmf =
- *   declareFundef "bernoulli_lpmf"
- *     [ (\* return k * log(p) + (1-k) * log(1-p); *\)
- *       (Stan.Sreturn (Some
- *         (Stan.Ebinop (
- *           (Stan.Ebinop (Stan.Evar "k", Sops.Times, Stan.Ecall ("log", [Stan.Evar "p"]))),
- *           Sops.Plus,
- *               (Stan.Ebinop
- *                 (Stan.Ebinop (Stan.Econst_float "1", Sops.Minus, Stan.Evar "k"),
- *                   Sops.Times,
- *                 Stan.Ecall ("log", [Stan.Ebinop (Stan.Econst_float "1", Sops.Minus, Stan.Evar "p")])))))
- *         )) ]
- *     rt (\* return value *\)
- *     [((Stypes.Aauto_diffable, tint), "k"); ((Stypes.Adata_only, tdouble), "p")] *)
-
-
 let elaborate (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
@@ -217,7 +184,6 @@ let elaborate (p: Stan.program) =
       | Some c -> c
     in
 
-    (* let functions = [uniform_lpdf; bernoulli_lpmf] in *)
     let functions = [] in
 
     let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
@@ -260,6 +226,8 @@ let elaborate (p: Stan.program) =
         (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body] ff.Stan.fn_return ff.Stan.fn_params) :: acc)
         functions (unop f) in
 
+    let stanlib = List.map fst (List.of_seq (Hashtbl.to_seq_values transf_dist_idents)) in
+
     let data_variables = List.map declareVariable (unop d) in
     let param_variables = List.map declareVariable (unop p) in
 
@@ -268,7 +236,7 @@ let elaborate (p: Stan.program) =
 
     {
       StanE.pr_defs=functions @ data_variables @ param_variables;
-      StanE.pr_public=List.map fst functions;
+      StanE.pr_public=List.map fst functions @ stanlib;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;
