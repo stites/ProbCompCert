@@ -9,19 +9,55 @@ exception SNIY of string
 exception NIY_elab of string
 
 (* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
-let tdouble = Stypes.Treal
-let tint = Stypes.Tint
+let  tdouble = Stypes.Treal
+let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)
+let  tint = Stypes.Tint
+let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr)
 let rt = Some tdouble
-
+let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
-let i_uniform_lpdf   = Camlcoq.intern_string "uniform_lpdf"
-let t_uniform_lpdf   = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Stypes.Treal)
-let i_bernoulli_lpmf = Camlcoq.intern_string "bernoulli_lpmf"
-let t_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Stypes.Treal)
+let st_uniform_lpdf = "uniform_lpdf"
+let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
+let ty_uniform_lpdf = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Stypes.Treal)
+let gl_uniform_lpdf = AST.Gfun
+                         (Ctypes.External
+                            (AST.EF_external (*external_function*)
+                               (to_charlist st_uniform_lpdf, {
+                                 AST.sig_args=[AST.Tfloat; AST.Tfloat; AST.Tfloat];
+                                 AST.sig_res=AST.Tret AST.Tfloat;
+                                 AST.sig_cc=AST.cc_default;
+                               }),
+                            Ctypes.Tcons (ctdouble, Ctypes.Tcons (ctdouble, (Ctypes.Tcons (ctdouble, Ctypes.Tnil)))), (* typelist for params *)
+                            ctdouble, (* return type *)
+                            AST.cc_default
+                         ))
+
+
+let st_bernoulli_lpmf = "bernoulli_lpmf"
+let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
+let ty_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Stypes.Treal)
+let gl_bernoulli_lpmf = AST.Gfun
+                         (Ctypes.External
+                            (AST.EF_external (*external_function*)
+                               (to_charlist st_bernoulli_lpmf, {
+                                 AST.sig_args=[AST.Tint; AST.Tfloat];
+                                 AST.sig_res=AST.Tret AST.Tfloat;
+                                 AST.sig_cc=AST.cc_default;
+                               }),
+                            Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))), (* typelist for params *)
+                            ctdouble, (* return type *)
+                            AST.cc_default
+                         ))
+
 
 let transf_dist_idents = Hashtbl.create 2;;
-Hashtbl.add transf_dist_idents "uniform" (i_uniform_lpdf, t_uniform_lpdf);
-Hashtbl.add transf_dist_idents "bernoulli" (i_bernoulli_lpmf, t_bernoulli_lpmf)
+Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
+Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
+let stanlib_functions = [
+    (id_uniform_lpdf,   gl_uniform_lpdf);
+    (id_bernoulli_lpmf, gl_bernoulli_lpmf)
+  ]
+
 
 (* <><><><><><><><><> bootstrapped variable type injection <><><><><><><><><><> *)
 (* let var_types = Hashtbl.create 300
@@ -226,8 +262,6 @@ let elaborate (p: Stan.program) =
         (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body] ff.Stan.fn_return ff.Stan.fn_params) :: acc)
         functions (unop f) in
 
-    let stanlib = List.map fst (List.of_seq (Hashtbl.to_seq_values transf_dist_idents)) in
-
     let data_variables = List.map declareVariable (unop d) in
     let param_variables = List.map declareVariable (unop p) in
 
@@ -235,8 +269,8 @@ let elaborate (p: Stan.program) =
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=functions @ data_variables @ param_variables;
-      StanE.pr_public=List.map fst functions @ stanlib;
+      StanE.pr_defs=functions @ data_variables @ param_variables @ stanlib_functions;
+      StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;
