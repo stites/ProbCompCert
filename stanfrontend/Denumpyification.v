@@ -19,6 +19,12 @@ Definition tint := Tint I32 Signed noattr.
 Definition tbool := Tint I8 Unsigned noattr.
 Definition tdouble := Tfloat F64 noattr.
 
+Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
+  match ox with
+  | None => OK None
+  | Some x => do x <- f x; OK (Some x)
+  end.
+
 Fixpoint transf_type (t: Stypes.type) : res type :=
   match t with
   | Stypes.Tint => OK tint
@@ -29,8 +35,13 @@ Fixpoint transf_type (t: Stypes.type) : res type :=
   (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
   | Stypes.Tfunction tl ret =>
     do tl <- transf_typelist tl;
-    do ret <- transf_type ret;
-    OK (Ctypes.Tfunction tl ret AST.cc_default)
+    do oret <- option_mmap transf_type ret;
+    let ret :=
+        match oret with
+        | None => Ctypes.Tvoid
+        | Some ret => ret
+        end
+    in OK (Ctypes.Tfunction tl ret AST.cc_default)
 
   | _ => Error (msg "NYI: type")
   end
@@ -173,12 +184,6 @@ Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CSt
     do e <- (transf_expression e);
     do l <- (transf_expression_list l);
     OK (cons e l)
-  end.
-
-Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
-  match ox with
-  | None => OK None
-  | Some x => do x <- f x; OK (Some x)
   end.
 
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=

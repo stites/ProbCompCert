@@ -5,7 +5,7 @@ Inductive type :=
   | Trow
   | Tmatrix
   | Tarray: type -> type
-  | Tfunction: typelist -> type -> type
+  | Tfunction: typelist -> option type -> type
 with typelist : Type :=
   | Tnil: typelist
   | Tcons: type -> typelist -> typelist.

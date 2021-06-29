@@ -18,7 +18,7 @@ let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
-let ty_uniform_lpdf = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Stypes.Treal)
+let ty_uniform_lpdf = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Some Stypes.Treal)
 let gl_uniform_lpdf = AST.Gfun
                          (Ctypes.External
                             (AST.EF_external (*external_function*)
@@ -35,7 +35,7 @@ let gl_uniform_lpdf = AST.Gfun
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
-let ty_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Stypes.Treal)
+let ty_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Some Stypes.Treal)
 let gl_bernoulli_lpmf = AST.Gfun
                          (Ctypes.External
                             (AST.EF_external (*external_function*)
