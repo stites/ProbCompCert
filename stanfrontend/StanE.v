@@ -73,7 +73,7 @@ Inductive statement :=
   | Sforeach: ident -> expr -> statement -> statement
   (* Probabilistic statements *)
   | Starget: expr -> statement
-  | Stilde: expr -> ident -> list expr -> (option expr * option expr) -> statement.
+  | Stilde: expr -> expr -> list expr -> (option expr * option expr) -> statement.
 
 
 Record function := mkfunction {

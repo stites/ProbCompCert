@@ -19,7 +19,7 @@ Definition tint := Tint I32 Signed noattr.
 Definition tbool := Tint I8 Unsigned noattr.
 Definition tdouble := Tfloat F64 noattr.
 
-Definition transf_type (t: Stypes.type) : res type :=
+Fixpoint transf_type (t: Stypes.type) : res type :=
   match t with
   | Stypes.Tint => OK tint
   | Stypes.Treal => OK tdouble
@@ -27,8 +27,22 @@ Definition transf_type (t: Stypes.type) : res type :=
   (* | Trow => Tpointer: type -> noattr *)
   (* | Tmatrix => Tpointer: type -> noattr *)
   (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
+  | Stypes.Tfunction tl ret =>
+    do tl <- transf_typelist tl;
+    do ret <- transf_type ret;
+    OK (Ctypes.Tfunction tl ret AST.cc_default)
+
   | _ => Error (msg "NYI: type")
+  end
+with transf_typelist (tl: Stypes.typelist) : res Ctypes.typelist :=
+  match tl with
+  | Stypes.Tnil =>  OK Ctypes.Tnil
+  | Stypes.Tcons t tl =>
+    do t <- transf_type t;
+    do tl <- transf_typelist tl;
+    OK (Ctypes.Tcons t tl)
   end.
+
 
 
 Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
@@ -45,7 +59,7 @@ Definition transf_operator (o: Sops.operator): res Cop.binary_operation :=
   | Sops.Less => OK Cop.Olt
   | Sops.Leq => OK Cop.Ole
   | Sops.Greater => OK Cop.Ogt
-  | Sops.Geq =>	OK Cop.Oge		    
+  | Sops.Geq => OK Cop.Oge
   | _ => Error (msg "Denumpyification.transf_program: operator")
   end.
 
@@ -229,12 +243,13 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e <- transf_expression e;
     OK (CStan.Starget e)
 
-  | Stilde e i el (oe1, oe2) =>
+  | Stilde e d el (oe1, oe2) =>
     do e <- transf_expression e;
+    do d <- transf_expression d;
     do el <- transf_expression_list el;
     do oe1 <- option_mmap transf_expression oe1;
     do oe2 <- option_mmap transf_expression oe2;
-    OK (CStan.Stilde e i el (oe1, oe2))
+    OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
 

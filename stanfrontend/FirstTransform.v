@@ -73,36 +73,6 @@ match e with
   | _ => None
 end.
 
-(* Record function := mkfunction { *)
-(*   fn_return: Ctypes.type; *)
-(*   fn_params: list (ident * Ctypes.type); *)
-(*   fn_body: statement; *)
-(*   fn_blocktype: blocktype; *)
-(*   fn_callconv: calling_convention; *)
-(*   fn_temps: list (ident * Ctypes.type); *)
-(*   fn_vars: list (ident * Ctypes.type); *)
-(* }. *)
-
-Definition resolve_param (e: CStan.expr) : mon (AST.ident * Ctypes.type) :=
-  match e with
-  | CStan.Evar i t => ret (i, t)
-  | CStan.Etempvar i t => ret (i, t)
-  | _ => error (msg "this logic is broken. need to correctly change Sparser.vy to pass around function type?")
-  end.
-
-Definition resolve_dist_call (e: list CStan.expr) : mon Ctypes.type :=
-  do params <~ mon_mmap resolve_param e;
-  ret (type_of_function (mkfunction
-     tdouble
-     params
-     Sskip
-     CStan.BTOther
-     AST.cc_default
-     nil
-     nil
-  )).
-
-
 Fixpoint transf_statement (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sskip => ret Sskip
@@ -162,15 +132,14 @@ match s with
   (*         (Scall (Some tmp) f (e::le)) *)
   (*         (Starget etmp)) *)
 
-  | Stilde e i le (oe0, oe1) =>
+  | Stilde e d le (oe0, oe1) =>
     do tmp <~ gensym tdouble;
 
     (* simulate function call: *)
     let etmp := (Etempvar tmp tdouble) in
     let params := e::le in
-    do fty <~ resolve_dist_call params;
     ret (Ssequence
-          (Scall (Some tmp) (Etempvar i fty) params)
+          (Scall (Some tmp) d params)
           (Starget etmp))
 
 

@@ -74,7 +74,7 @@ Inductive statement : Type :=
   | Scontinue : statement                   (**r [continue] statement *)
   | Sreturn : option expr -> statement      (**r [return] statement *)
   | Starget: expr -> statement
-  | Stilde: expr -> ident -> list expr -> (option expr * option expr) -> statement
+  | Stilde: expr -> expr -> list expr -> (option expr * option expr) -> statement
 
 with labeled_statements : Type :=            (**r cases of a [switch] *)
   | LSnil: labeled_statements

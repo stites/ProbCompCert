@@ -15,13 +15,12 @@ Parameter loc: Type.
 
 Definition identifier := string.
 
-(* FIXME add types *)
+(* FIXME add type system *)
 Inductive expr :=
   (* Classical expressions that exist in C *)
   | Econst_int: string -> expr
   | Econst_float: string -> expr
   | Evar: identifier -> expr
-
   | Eunop: operator -> expr -> expr
   | Ebinop: expr -> operator -> expr -> expr
   | Ecall: identifier -> list expr -> expr

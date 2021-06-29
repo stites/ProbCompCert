@@ -14,14 +14,14 @@ let tint = Stypes.Tint
 let rt = Some tdouble
 
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
-let i_uniform_lpdf   = CamlCoq.intern_string "uniform_lpdf"
-let t_uniform_lpdf   = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
-let i_bernoulli_lpmf = CamlCoq.intern_string "bernoulli_lpmf"
-let t_bernoulli_lpmf = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
+let i_uniform_lpdf   = Camlcoq.intern_string "uniform_lpdf"
+let t_uniform_lpdf   = Stypes.Tfunction (Stypes.Tcons (Stypes.Treal, Stypes.Tnil), Stypes.Treal)
+let i_bernoulli_lpmf = Camlcoq.intern_string "bernoulli_lpmf"
+let t_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (Stypes.Treal, Stypes.Tnil), Stypes.Treal)
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (i_uniform_lpdf, t_uniform_lpdf);
-Hashtbl.add transf_dist_idents "bernoulli", (i_bernoulli_lpmf, t_bernoulli_lpmf)
+Hashtbl.add transf_dist_idents "bernoulli" (i_bernoulli_lpmf, t_bernoulli_lpmf)
 
 (* <><><><><><><><><> bootstrapped variable type injection <><><><><><><><><><> *)
 (* let var_types = Hashtbl.create 300
@@ -55,11 +55,7 @@ let rec el_e e =
   | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i, Stypes.Treal)
   | Stan.Eunop (o,e) -> StanE.Eunop (o,el_e e)
   | Stan.Ebinop (e1,o,e2) -> StanE.Ebinop (el_e e1,o,el_e e2) 
-  | Stan.Ecall (i,el) ->
-    let (_i, _ty) = match Hashtbl.find_opt transf_dist_idents i with
-      | Some (ident, ty) -> (ident, ty)
-      | None -> (Camlcoq.intern_string i, ftype)
-    in StanE.Ecall (_i, List.map el_e el)
+  | Stan.Ecall (i,el) -> StanE.Ecall (Camlcoq.intern_string i, List.map el_e el)
   | Stan.Econdition (e1,e2,e3) -> StanE.Econdition(el_e e1, el_e e2, el_e e3)
   | Stan.Earray el -> StanE.Earray (List.map el_e el)
   | Stan.Erow el -> StanE.Erow (List.map el_e el)
@@ -99,7 +95,11 @@ let rec el_s s =
   | Stan.Sforeach (i,e,s) -> StanE.Sforeach (Camlcoq.intern_string i,el_e e, el_s s)
   | Stan.Starget e -> StanE.Starget (el_e e)
   | Stan.Stilde (e,i,el,(tr1,tr2)) ->
-    StanE.Stilde (el_e e, Camlcoq.intern_string i, map el_e el, (mapo tr1 el_e,mapo tr2 el_e) )
+    let (_i, _ty) = match Hashtbl.find_opt transf_dist_idents i with
+      | Some (ident, ty) -> (ident, ty)
+      | None -> raise (NIY_elab ("tilde called with invalid distribution: "^ i))
+    in
+    StanE.Stilde (el_e e, StanE.Evar (_i, _ty), map el_e el, (mapo tr1 el_e,mapo tr2 el_e) )
 
 let el_b b =
   match b with
