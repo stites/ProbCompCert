@@ -15,9 +15,9 @@ let rt = Some tdouble
 
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
 let i_uniform_lpdf   = Camlcoq.intern_string "uniform_lpdf"
-let t_uniform_lpdf   = Stypes.Tfunction (Stypes.Tcons (Stypes.Treal, Stypes.Tnil), Stypes.Treal)
+let t_uniform_lpdf   = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Stypes.Treal)
 let i_bernoulli_lpmf = Camlcoq.intern_string "bernoulli_lpmf"
-let t_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (Stypes.Treal, Stypes.Tnil), Stypes.Treal)
+let t_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Stypes.Treal)
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (i_uniform_lpdf, t_uniform_lpdf);
