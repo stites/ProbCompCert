@@ -38,17 +38,6 @@
             cmdstan
             gcc
           ];
-          # UNUSED: hack for zsh devshell use nix-direnv instead.
-          # -----------------------------------------------------
-          # bash.interactive = (pkgs.lib.optionalString true ''
-          #   temp_dir=$(mktemp -d)
-          #   cat <<'EOF' >"$temp_dir/.zshrc"
-          #   if [ -e ~/.zshrc ]; then . ~/.zshrc; fi
-          #   if [ -e ~/.config/zsh/.zshrc ]; then . ~/.config/zsh/.zshrc; fi
-          #   menu
-          #   EOF
-          #   ZDOTDIR=$temp_dir zsh -i
-          # '');
           commands = let
             watchexec = "${pkgs.watchexec}/bin/watchexec";
             cd-root = ''
@@ -67,7 +56,7 @@
                 runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${final-cmd})";
               in if build == null then runnable else "${build} && (${runnable})";
 
-            watch = {at-root ? true, exts ? "v,ml,Makefile", build ? null, cmd, finally ? null}: ''
+            watch = {at-root ? true, exts ? "v,ml,stan,c,Makefile", build ? null, cmd, finally ? null}: ''
               ${if at-root then cd-root else ""}
               if [ -z "$1" ]; then
                   ignore=""
@@ -120,6 +109,21 @@
               command = ''
                 ${cd-root}
                 ./out/bin/ccomp -c $current_dir/$1
+              '';
+            }
+            {
+              category = "build";
+              name = "ccompstan";
+              command = ''
+                ${cd-root}
+                cd stanfrontend
+                ccomp -c $current_dir/$1
+                ccomp -c ''${name}.s
+                ccomp -c Runtime.c
+                ccomp -c stanlib.c
+                ld -shared stanlib.o -o libstan.so
+                ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit
+                echo "compiled! ./stanfrontend/runit [int]"
               '';
             }
             {
