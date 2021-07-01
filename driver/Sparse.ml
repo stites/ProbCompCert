@@ -9,9 +9,9 @@ exception SNIY of string
 exception NIY_elab of string
 
 (* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
-let  tdouble = Stypes.Treal
+let tdouble = Stypes.Treal
 let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)
-let  tint = Stypes.Tint
+let tint = Stypes.Tint
 let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr)
 let rt = Some tdouble
 let to_charlist s = List.init (String.length s) (String.get s)
@@ -150,7 +150,13 @@ let elab elab_fun ol =
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let declareVariable v =
+let transf_v_init v =
+  match v with
+  | Stan.Bint -> [AST.Init_space (Camlcoq.coqint_of_camlint 4l)]
+  | Stan.Breal -> [AST.Init_space (Camlcoq.coqint_of_camlint 8l)]
+  | _ -> []
+
+let mkVariable v t =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -166,13 +172,15 @@ let declareVariable v =
     StanE.vd_type = el_b v.Stan.vd_type;
     StanE.vd_constraint = v.Stan.vd_constraint;
     StanE.vd_dims = List.map el_e v.Stan.vd_dims;
-    StanE.vd_init = None;
+    StanE.vd_init = mapo v.Stan.vd_init el_e;
     StanE.vd_global = true;
   } in
-  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = [];
+  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type;
                    gvar_readonly = readonly; gvar_volatile = volatile})
 
-let declareFundefWithExtras name body rt params extraVars =
+let declareVariable v = mkVariable v None
+
+let mkFunction name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
     a_storage = C.Storage_default;
@@ -201,7 +209,8 @@ let declareFundefWithExtras name body rt params extraVars =
   (id,  AST.Gfun(Ctypes.Internal fd))
 
 let declareFundef name body rt params =
-  declareFundefWithExtras name body rt params []
+  mkFunction name body rt params []
+
 
 let elaborate (p: Stan.program) =
   match p with
@@ -235,7 +244,7 @@ let elaborate (p: Stan.program) =
     let functions = (id_tr_params,f_tr_params) :: functions in
 
     let target = (Camlcoq.intern_string "target", Stypes.Treal) in
-    let (id_model,f_model) = declareFundefWithExtras "model" (get_code m) (Some Stypes.Treal) [] [target] in
+    let (id_model,f_model) = mkFunction "model" (get_code m) (Some Stypes.Treal) [] [target] in
 
     let functions = (id_model,f_model) :: functions in
 
