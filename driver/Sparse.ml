@@ -9,6 +9,10 @@ exception SNIY of string
 exception NIY_elab of string
 
 (* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
+let init_int = AST.Init_space (Camlcoq.coqint_of_camlint 4l)
+let init_dbl = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
+let init_ptr = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
+
 let tdouble = Stypes.Treal
 let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)
 let tint = Stypes.Tint
@@ -16,52 +20,55 @@ let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr)
 let rt = Some tdouble
 let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
+
+let mk_global_dist str ast_args_list c_args_ast =
+  AST.Gfun
+    (Ctypes.External
+       (AST.EF_external
+          (to_charlist str, {
+            AST.sig_args=ast_args_list;
+            AST.sig_res=AST.Tret AST.Tfloat;
+            AST.sig_cc=AST.cc_default;
+          }),
+       c_args_ast,
+       ctdouble,
+       AST.cc_default
+    ))
+
+
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Some Stypes.Treal)
-let gl_uniform_lpdf = AST.Gfun
-                         (Ctypes.External
-                            (AST.EF_external (*external_function*)
-                               (to_charlist st_uniform_lpdf, {
-                                 AST.sig_args=[AST.Tfloat; AST.Tfloat; AST.Tfloat];
-                                 AST.sig_res=AST.Tret AST.Tfloat;
-                                 AST.sig_cc=AST.cc_default;
-                               }),
-                            Ctypes.Tcons (ctdouble, Ctypes.Tcons (ctdouble, (Ctypes.Tcons (ctdouble, Ctypes.Tnil)))), (* typelist for params *)
-                            ctdouble, (* return type *)
-                            AST.cc_default
-                         ))
+let gl_uniform_lpdf =
+  mk_global_dist
+    st_uniform_lpdf
+    [AST.Tfloat; AST.Tfloat; AST.Tfloat]
+    (Ctypes.Tcons (ctdouble, Ctypes.Tcons (ctdouble, (Ctypes.Tcons (ctdouble, Ctypes.Tnil)))))
 
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Some Stypes.Treal)
-let gl_bernoulli_lpmf = AST.Gfun
-                         (Ctypes.External
-                            (AST.EF_external (*external_function*)
-                               (to_charlist st_bernoulli_lpmf, {
-                                 AST.sig_args=[AST.Tint; AST.Tfloat];
-                                 AST.sig_res=AST.Tret AST.Tfloat;
-                                 AST.sig_cc=AST.cc_default;
-                               }),
-                            Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))), (* typelist for params *)
-                            ctdouble, (* return type *)
-                            AST.cc_default
-                         ))
-
+let gl_bernoulli_lpmf =
+  mk_global_dist
+    st_bernoulli_lpmf
+    [AST.Tint; AST.Tfloat]
+    (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
 
 let id_printf = Camlcoq.intern_string "printf"
-let gl_printf = AST.Gfun (Ctypes.External
-                            (AST.EF_external
-                               (to_charlist "printf", {
-                                 AST.sig_args=[AST.Tlong];
-                                 AST.sig_res=AST.Tret AST.Tint;
-                                 AST.sig_cc={AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false};
-                               }),
-                            Ctypes.Tcons (Ctypes.Tpointer (Ctypes.Tvoid, Ctypes.noattr), Ctypes.Tnil),
-                            ctint,
-                            {AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false}
-                         ))
+let gl_printf =
+  AST.Gfun (Ctypes.External
+    (AST.EF_external
+          (to_charlist "printf", {
+            AST.sig_args=[AST.Tlong];
+            AST.sig_res=AST.Tret AST.Tint;
+            AST.sig_cc={AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false};
+          }),
+       Ctypes.Tcons (Ctypes.Tpointer (Ctypes.Tvoid, Ctypes.noattr), Ctypes.Tnil),
+       ctint,
+       {AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false}
+    ))
+
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -165,8 +172,8 @@ let elab elab_fun ol =
 
 let transf_v_init v =
   match v with
-  | Stan.Bint -> [AST.Init_space (Camlcoq.coqint_of_camlint 4l)]
-  | Stan.Breal -> [AST.Init_space (Camlcoq.coqint_of_camlint 8l)]
+  | Stan.Bint -> [init_int]
+  | Stan.Breal -> [init_dbl]
   | _ -> []
 
 let mkVariable v t =
