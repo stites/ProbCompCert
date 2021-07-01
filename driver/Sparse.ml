@@ -50,6 +50,19 @@ let gl_bernoulli_lpmf = AST.Gfun
                          ))
 
 
+let id_printf = Camlcoq.intern_string "printf"
+let gl_printf = AST.Gfun (Ctypes.External
+                            (AST.EF_external
+                               (to_charlist "printf", {
+                                 AST.sig_args=[AST.Tlong];
+                                 AST.sig_res=AST.Tret AST.Tint;
+                                 AST.sig_cc={AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false};
+                               }),
+                            Ctypes.Tcons (Ctypes.Tpointer (Ctypes.Tvoid, Ctypes.noattr), Ctypes.Tnil),
+                            ctint,
+                            {AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false}
+                         ))
+
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
 Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
