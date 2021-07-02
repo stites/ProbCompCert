@@ -35,13 +35,14 @@ with index :=
   | Iupfrom: expr -> index
   | Idownfrom: expr -> index
   | Ibetween: expr -> expr -> index. 
-	
+
 Inductive basic :=
   | Bint
   | Breal
   | Bvector: expr -> basic
   | Brow: expr -> basic
-  | Bmatrix: expr -> expr -> basic. 		       		      			
+  | Bmatrix: expr -> expr -> basic
+  | Bstruct: ident -> basic.
 
 Inductive printable := 
   | Pstring: ident -> printable 
@@ -94,6 +95,7 @@ Record program := mkprogram {
   pr_model: ident;
   pr_parameters: ident;
   pr_parameters_vars: list ident;
+  pr_parameters_struct: ident;
   pr_transformed_parameters: ident;
   pr_data: ident;
   pr_data_vars: list ident;

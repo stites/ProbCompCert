@@ -62,8 +62,8 @@ Inductive constraint :=
   | Ccholesky_corr
   | Ccholesky_cov
   | Ccorrelation
-  | Ccovariance. 		       
-		      			 
+  | Ccovariance.
+
 Record variable := mkvariable {
   vd_id: identifier;
   vd_type: basic;

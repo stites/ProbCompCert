@@ -69,6 +69,19 @@ let gl_printf =
        {AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false}
     ))
 
+let id_params_struct = Camlcoq.intern_string "Params"
+let gl_params_struct = AST.Gvar {
+  AST.gvar_readonly = false;
+  AST.gvar_volatile = false;
+  AST.gvar_init = [init_ptr];
+  AST.gvar_info = {
+    StanE.vd_type = StanE.Bstruct id_params_struct;
+    StanE.vd_constraint = Stan.Cidentity;
+    StanE.vd_dims = [];
+    StanE.vd_init = None;
+    StanE.vd_global = true;
+  };
+}
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -298,7 +311,7 @@ let elaborate (p: Stan.program) =
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=functions @ data_variables @ param_variables @ stanlib_functions;
+      StanE.pr_defs=[(id_params_struct, gl_params_struct)] @ functions @ data_variables @ param_variables @ stanlib_functions;
       StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
@@ -306,6 +319,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=List.map fst param_variables;
       StanE.pr_transformed_parameters=id_tr_params;
+      StanE.pr_parameters_struct=id_params_struct;
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
     }    

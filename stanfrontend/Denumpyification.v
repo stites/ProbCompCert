@@ -34,15 +34,14 @@ Fixpoint transf_type (t: Stypes.type) : res type :=
   (* | Tmatrix => Tpointer: type -> noattr *)
   (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
   | Stypes.Tfunction tl ret =>
-    do tl <- transf_typelist tl;
-    do oret <- option_mmap transf_type ret;
-    let ret :=
-        match oret with
-        | None => Ctypes.Tvoid
-        | Some ret => ret
-        end
-    in OK (Ctypes.Tfunction tl ret AST.cc_default)
-
+      do tl <- transf_typelist tl;
+      do oret <- option_mmap transf_type ret;
+      let ret :=
+          match oret with
+          | None => Ctypes.Tvoid
+          | Some ret => ret
+          end
+      in OK (Ctypes.Tfunction tl ret AST.cc_default)
   | _ => Error (msg "NYI: type")
   end
 with transf_typelist (tl: Stypes.typelist) : res Ctypes.typelist :=
@@ -285,6 +284,7 @@ Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
   | Bint => OK tint
   | Breal => OK tdouble
+  | Bstruct i => OK (Ctypes.Tstruct i Ctypes.noattr)
   | Bvector e =>
     Error (msg "Denumpyification.transf_basic (NYI): Bvector")
     (* do e <- transf_expression e; *)
@@ -365,8 +365,37 @@ Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :
       OK (External ef targs tres cc)
   end.
 
+Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
+  {|
+  CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
+  CStan.vd_constraint:= Stan.Cidentity;
+  CStan.vd_init:= None;
+  CStan.vd_global:= true;
+|}.
+
+Definition ident_eq_dec : forall (x y : AST.ident), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
+  match xs with
+  | nil => false
+  | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
+  end.
+
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+
+  let all_defs := AST.prog_defs p1 in
+  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
+  let pset  := p.(StanE.pr_parameters_vars) in
+  let stan_members := List.filter (fun tpl => ident_list_member pset (fst tpl)) all_members in
+  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
+  let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
+
+  do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
+
   OK {| 
       CStan.prog_defs := AST.prog_defs p1;
       CStan.prog_public:=p.(StanE.pr_public);
@@ -378,6 +407,6 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars);
       CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
-      CStan.prog_comp_env:=Maps.PTree.empty _;
+      CStan.prog_comp_env:=comp_env;
     |}.
 
