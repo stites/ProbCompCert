@@ -50,3 +50,14 @@ double bernoulli_lpmf(int x, double p)
     double k = (double) x;
     return k * log(p) + (1-k) * log(1-p);
 }
+
+
+double uniform_sample(double mu, double sigma)
+{
+  return randn(mu, sigma);
+}
+
+double bernoulli_sample(double p)
+{
+  return (((double) rand () / RAND_MAX) > p) ? 0 : 1;
+}

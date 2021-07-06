@@ -23,7 +23,6 @@ void transformed_data() {
 }
 
 void parameters() {
-  // state.mu = 0.5;
   state.mu = 0.5;
 }
 
@@ -61,7 +60,7 @@ struct Params candidate;
 
 void* propose() {
 
-  candidate.mu = state.mu + randn(0,1);
+  candidate.mu = state.mu + uniform_sample(0,1);
 
   return &candidate;
   

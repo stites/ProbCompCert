@@ -53,11 +53,11 @@ int main(int argc, char* argv[]) {
     generated_quantities();
 
     printf("iteration %d: ", i);
-    print_state();
+    // print_state();
   }
 
   printf("\t...completed execution!\n\nSummary:\n\t");
-  print_state();
+  // print_state();
   return 0;
   
 }
