@@ -78,10 +78,18 @@ let compile_stan_ast =
   let pipeline loc syntax =
     begin match Denumpyification.transf_program syntax with
     | Errors.OK p ->
-      begin match FirstTransform.transf_program p with
+      begin match TargetAndTilde.transf_program p with
       | Errors.OK p ->
-        begin match Sbackend.backend p with
-        | Errors.OK p -> clight_compilation loc p
+        begin match EmbedTarget.transf_program p with
+        | Errors.OK p ->
+          begin match CurrentTransform.transf_program p with
+          | Errors.OK p ->
+            begin match Sbackend.backend p with
+            | Errors.OK p -> clight_compilation loc p
+            | Errors.Error msg -> fatal_error loc "%a" print_error msg
+            end
+          | Errors.Error msg -> fatal_error loc "%a" print_error msg
+          end
         | Errors.Error msg -> fatal_error loc "%a" print_error msg
         end
       | Errors.Error msg -> fatal_error loc "%a" print_error msg
