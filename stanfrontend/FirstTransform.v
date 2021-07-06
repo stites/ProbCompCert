@@ -145,93 +145,10 @@ match s with
 
 end.
 
-Notation localvar := (prod AST.ident Ctypes.type).
-
-(* assuming that target is always symbol 0 to a model lets us remove this hack *)
-Definition get_target_ident (vars: list localvar) : mon AST.ident :=
-  match vars with
-  | nil => error (msg "impossible: 0")
-  | (t, ty)::nil => ret t
-  | _ => error (msg "impossible: >1")
-  end.
-
-Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
-  match e with
-  | CStan.Econst_int i t => ret (CStan.Econst_int i t)
-  | CStan.Econst_float f t => ret (CStan.Econst_float f t)
-  | CStan.Econst_single f t => ret (CStan.Econst_single f t)
-  | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
-  | CStan.Etempvar i t => ret (CStan.Etempvar i t)
-  | CStan.Ederef e t =>
-    do e <~ transf_target_expr tgt e;
-    ret (CStan.Ederef e t)
-  | CStan.Eunop uop e t =>
-    do e <~ transf_target_expr tgt e;
-    ret (CStan.Eunop uop e t)
-  | CStan.Ebinop bop e0 e1 t =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
-    ret (CStan.Ebinop bop e0 e1 t)
-  | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
-  | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-  | CStan.Etarget ty => ret (CStan.Evar tgt ty)
-end.
-
-Fixpoint transf_target_statement (tgt: AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
-match s with
-  | Sassign e0 e1 =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
-    ret (Sassign e0 e1)
-  | Sset i e => do e <~ transf_target_expr tgt e; ret (Sset i e)
-  | Scall oi e le =>
-    do e <~ transf_target_expr tgt e;
-    do le <~ mon_mmap (transf_target_expr tgt) le;
-    ret (Scall oi e le)
-  | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
-  | Ssequence s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Ssequence s0 s1)
-  | Sifthenelse e s0 s1 =>
-    do e <~ transf_target_expr tgt e;
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Sifthenelse e s0 s1)
-  | Sloop s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Sloop s0 s1)
-  | Sreturn oe =>
-    do oe <~ option_mon_mmap (transf_target_expr tgt) oe;
-    ret (Sreturn oe)
-  | Starget e =>
-    error (msg "Starget DNE in this stage of pipeline")
-  | Stilde e i le (oe0, oe1) =>
-    error (msg "Stilde DNE in this stage of pipeline")
-
-  | Sbreak => ret Sbreak
-  | Sskip => ret Sskip
-  | Scontinue => ret Scontinue
-end.
-
-Definition transf_model (f: function) (body : statement): mon statement :=
-  match f.(fn_blocktype) with
-  | BTOther => ret body
-  | BTModel =>
-    do tgt <~ get_target_ident f.(fn_vars);
-    let body :=
-      (Ssequence (Sassign (CStan.Etarget tdouble) (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
-        (Ssequence body
-          (Sreturn (Some (CStan.Etarget tdouble))))) in
-    transf_target_statement tgt body
-  end.
 
 Definition transf_statement_pipeline (f: function) : mon CStan.statement :=
   do body <~ transf_statement f.(fn_body); (* Stilde -> Starget; Error "Backend: tilde" *)
   do body <~ transf_statement body;        (* apply Starget transform *)
-  do body <~ transf_model f body;
   ret body.
 
 Definition transf_function (f: function): res function :=
