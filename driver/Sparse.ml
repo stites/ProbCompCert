@@ -55,20 +55,6 @@ let gl_bernoulli_lpmf =
     [AST.Tint; AST.Tfloat]
     (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
 
-let id_printf = Camlcoq.intern_string "printf"
-let gl_printf =
-  AST.Gfun (Ctypes.External
-    (AST.EF_external
-          (to_charlist "printf", {
-            AST.sig_args=[AST.Tlong];
-            AST.sig_res=AST.Tret AST.Tint;
-            AST.sig_cc={AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false};
-          }),
-       Ctypes.Tcons (Ctypes.Tpointer (Ctypes.Tvoid, Ctypes.noattr), Ctypes.Tnil),
-       ctint,
-       {AST.cc_vararg=true; AST.cc_unproto=false; AST.cc_structret=false}
-    ))
-
 let id_params_struct = Camlcoq.intern_string "Params"
 let gl_params_struct = AST.Gvar {
   AST.gvar_readonly = false;
