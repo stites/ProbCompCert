@@ -44,6 +44,9 @@
               current_dir=$PWD
               root_dir=$(${pkgs.git}/bin/git rev-parse --show-toplevel)
               stan_dir=$root_dir/stanfrontend
+            '';
+            cd-root-with-prog = ''
+              ${cd-root}
               prog=''${1##*/}
               name=''${prog%.*}
               parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
@@ -57,7 +60,7 @@
               in if build == null then runnable else "${build} && (${runnable})";
 
             watch = {at-root ? true, exts ? "v,ml,stan,c,Makefile", build ? null, cmd, finally ? null}: ''
-              ${if at-root then cd-root else ""}
+              ${if at-root then cd-root-with-prog else ""}
               if [ -z "$1" ]; then
                   ignore=""
               else
@@ -107,7 +110,7 @@
               category = "test";
               name = "test-stan";
               command = ''
-                ${cd-root}
+                ${cd-root-with-prog}
                 ./out/bin/ccomp -c $current_dir/$1
               '';
             }
@@ -115,7 +118,7 @@
               category = "build";
               name = "ccompstan";
               command = ''
-                ${cd-root}
+                ${cd-root-with-prog}
                 cd stanfrontend
                 ccomp -c $current_dir/$1
                 ccomp -c ''${name}.s
@@ -127,11 +130,23 @@
               '';
             }
             {
-              category = "make";
+              category = "build";
               name = "make-all";
               command = ''
                 ${cd-root}
                 make -j && make install
+              '';
+            }
+            {
+              category = "build";
+              name = "clean";
+              command = ''
+                ${cd-root}
+                rm -f *.s clightgen ccomp *.so *.o
+	              rm -f compcert.ini compcert.config .depend .lia.cache
+
+                cd ./stanfrontend
+                rm -f *.s *.so runit *.vo *.vok *.glob *.vos *.s *.o
               '';
             }
             {
