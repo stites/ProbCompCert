@@ -10,13 +10,16 @@ struct Params {
 struct Params state;
 
 struct Data {
-  int flip;
+  int flip[3];
 };
 
 struct Data observed;
 
 void data() {
-  observed.flip = 1;
+  for (int i = 0; i < 3; i++)
+  {
+    observed.flip[i] = 0;
+  }
 }
 
 void transformed_data() {
@@ -39,14 +42,16 @@ void set_state(void* pi) {
 }
 
 double model(void *pi) {
-
   double target = 0.0;
 
   struct Params* p = (struct Params*) pi;
   
   // uniform_sample(p->mu, 0, 1); // but also need to check the data block?
   target += uniform_lpdf(p->mu, 0, 1);
-  target += bernoulli_lpmf(observed.flip, p->mu);
+  for (int i = 0; i < 3; i++)
+  {
+    target += bernoulli_lpmf(observed.flip[i], p->mu);
+  }
 
   return target;  
   
