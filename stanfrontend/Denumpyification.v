@@ -8,16 +8,13 @@ Open Scope string_scope.
 Require Import Coqlib.
 Require Import Sops.
 Require Import Cop.
+Require Import Clightdefs.
 
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
    (at level 200, X ident, A at level 100, B at level 200)
    : gensym_monad_scope.
 
 Local Open Scope gensym_monad_scope.
-
-Definition tint := Tint I32 Signed noattr.
-Definition tbool := Tint I8 Unsigned noattr.
-Definition tdouble := Tfloat F64 noattr.
 
 Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
   match ox with
@@ -150,11 +147,10 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   | Eindexed e (cons i nil) =>
     do e <- transf_expression e;
     do i <- transf_index i;
-    (*FIXME how do i get the expression's address and turn it into a pointer*)
-    (*FIXME *)
-    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+    let ty := CStan.typeof e in
+    OK (CStan.Ederef (CStan.Ebinop Oadd e i (tptr ty)) ty)
   | Eindexed e (cons i l) =>
-    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+    Error (msg "Denumpyification.transf_expression (NYI): Eindexed [i, ...]")
   | Edist i el => Error (msg "Denumpyification.transf_expression (NYI): Edist")
   | Etarget => OK (CStan.Etarget Tvoid)
   end
@@ -256,29 +252,6 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
-
-(** The syntax of type expressions.  Some points to note:
-- Array types [Tarray n] carry the size [n] of the array.
-  Arrays with unknown sizes are represented by pointer types.
-- Function types [Tfunction targs tres] specify the number and types
-  of the function arguments (list [targs]), and the type of the
-  function result ([tres]).  Variadic functions and old-style unprototyped
-  functions are not supported.
-
-Inductive type : Type :=
-  | Tvoid: type                                    (**r the [void] type *)
-  | Tint: intsize -> signedness -> attr -> type    (**r integer types *)
-  | Tlong: signedness -> attr -> type              (**r 64-bit integer types *)
-  | Tfloat: floatsize -> attr -> type              (**r floating-point types *)
-  | Tpointer: type -> attr -> type                 (**r pointer types ([*ty]) *)
-  | Tarray: type -> Z -> attr -> type              (**r array types ([ty[len]]) *)
-  | Tfunction: typelist -> type -> calling_convention -> type    (**r function types *)
-  | Tstruct: ident -> attr -> type                 (**r struct types *)
-  | Tunion: ident -> attr -> type                  (**r union types *)
-with typelist : Type :=
-  | Tnil: typelist
-  | Tcons: type -> typelist -> typelist.
-*)
 
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with

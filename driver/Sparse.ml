@@ -262,8 +262,9 @@ let elaborate (p: Stan.program) =
     let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
     let functions = (id_tr_params,f_tr_params) :: functions in
 
-    let target = (Camlcoq.intern_string "target", Stypes.Treal) in
-    let (id_model,f_model) = mkFunction "model" (get_code m) (Some Stypes.Treal) [] [target] in
+    (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
+    let target_var = (Camlcoq.intern_string "target", Stypes.Treal) in
+    let (id_model,f_model) = mkFunction "model" (get_code m) (Some Stypes.Treal) [] [target_var] in
 
     let functions = (id_model,f_model) :: functions in
 
