@@ -133,9 +133,11 @@ Record program : Type := {
   prog_model: ident;
   prog_parameters: ident;
   prog_parameters_vars: list ident;
+  prog_parameters_struct: ident;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;
+  prog_data_struct: ident;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;

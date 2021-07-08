@@ -55,19 +55,23 @@ let gl_bernoulli_lpmf =
     [AST.Tint; AST.Tfloat]
     (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
 
-let id_params_struct = Camlcoq.intern_string "Params"
-let gl_params_struct = AST.Gvar {
+let mkGlobalStruct i = AST.Gvar {
   AST.gvar_readonly = false;
   AST.gvar_volatile = false;
   AST.gvar_init = [init_ptr];
   AST.gvar_info = {
-    StanE.vd_type = StanE.Bstruct id_params_struct;
+    StanE.vd_type = StanE.Bstruct i;
     StanE.vd_constraint = Stan.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
     StanE.vd_global = true;
   };
 }
+
+let id_params_struct = Camlcoq.intern_string "Params"
+let gl_params_struct = mkGlobalStruct id_params_struct
+let id_data_struct = Camlcoq.intern_string "Data"
+let gl_data_struct = mkGlobalStruct id_data_struct
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -264,6 +268,7 @@ let elaborate (p: Stan.program) =
 
     (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
     let target_var = (Camlcoq.intern_string "target", Stypes.Treal) in
+    (* let pi_param = ((Stypes.Aauto_diffable, Stypes.Treal), "pi") in *)
     let (id_model,f_model) = mkFunction "model" (get_code m) (Some Stypes.Treal) [] [target_var] in
 
     let functions = (id_model,f_model) :: functions in
@@ -296,17 +301,19 @@ let elaborate (p: Stan.program) =
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
+    let structs = [(id_params_struct, gl_params_struct);(id_data_struct, gl_data_struct)] in
 
     {
-      StanE.pr_defs=[(id_params_struct, gl_params_struct)] @ functions @ data_variables @ param_variables @ stanlib_functions;
+      StanE.pr_defs=structs @ functions @ data_variables @ param_variables @ stanlib_functions;
       StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
+      StanE.pr_data_struct=id_data_struct;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=List.map fst param_variables;
-      StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_parameters_struct=id_params_struct;
+      StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
     }    

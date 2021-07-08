@@ -286,10 +286,12 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_data:=p.(prog_data);
       prog_data_vars:=p.(prog_data_vars);
+      prog_data_struct:= p.(prog_data_struct);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
+      prog_parameters_struct:= p.(prog_parameters_struct);
       prog_transformed_parameters:=p.(prog_transformed_parameters);
 
       prog_generated_quantities:=p.(prog_generated_quantities);

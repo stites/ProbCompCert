@@ -99,6 +99,7 @@ Record program := mkprogram {
   pr_transformed_parameters: ident;
   pr_data: ident;
   pr_data_vars: list ident;
+  pr_data_struct: ident;
   pr_transformed_data: ident;
   pr_generated: ident
 }.
