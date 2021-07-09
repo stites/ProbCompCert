@@ -37,6 +37,8 @@ Inductive expr : Type :=
   | Evar: ident -> type -> expr           (**r variable *)
   | Etempvar: ident -> type -> expr       (**r temporary variable *)
   | Ederef: expr -> type -> expr          (**r pointer dereference (unary [*]) *)
+  | Ecast: expr -> type -> expr           (**r type cast ([(ty) e]) *)
+  | Efield: expr -> ident -> type -> expr  (**r access to a member of a struct or union *)
   | Eunop: unary_operation -> expr -> type -> expr  (**r unary operation *)
   | Ebinop: binary_operation -> expr -> expr -> type -> expr (**r binary operation *)
   | Esizeof: type -> type -> expr         (**r size of a type *)
@@ -52,6 +54,8 @@ Definition typeof (e: expr) : type :=
   | Evar _ ty => ty
   | Etempvar _ ty => ty
   | Ederef _ ty => ty
+  | Ecast _ ty => ty
+  | Efield _ _ ty => ty
   | Eunop _ _ ty => ty
   | Ebinop _ _ _ ty => ty
   | Esizeof _ ty => ty
@@ -133,11 +137,11 @@ Record program : Type := {
   prog_model: ident;
   prog_parameters: ident;
   prog_parameters_vars: list ident;
-  prog_parameters_struct: ident;
+  prog_parameters_struct: ident*ident;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;
-  prog_data_struct: ident;
+  prog_data_struct: ident*ident;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;

@@ -366,9 +366,15 @@ Fixpoint transf_expression (e: CStan.expr) {struct e}: res Clight.expr :=
   | CStan.Evar i t => OK (Evar i t)
   | CStan.Etempvar i t => OK (Etempvar i t)
   | CStan.Ederef e t => 
-    do e <- (transf_expression e); 							 
+    do e <- (transf_expression e);
     OK (Ederef e t)
-  | CStan.Eunop u e t => 
+  | CStan.Ecast e t =>
+    do e <- (transf_expression e);
+    OK (Ecast e t)
+  | CStan.Efield e i t =>
+    do e <- (transf_expression e);
+    OK (Efield e i t)
+  | CStan.Eunop u e t =>
     do e <- (transf_expression e); 
     OK (Eunop u e t)
   | CStan.Ebinop b e1 e2 t => 

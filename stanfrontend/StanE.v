@@ -95,11 +95,11 @@ Record program := mkprogram {
   pr_model: ident;
   pr_parameters: ident;
   pr_parameters_vars: list ident;
-  pr_parameters_struct: ident;
+  pr_parameters_struct: ident*ident;
   pr_transformed_parameters: ident;
   pr_data: ident;
   pr_data_vars: list ident;
-  pr_data_struct: ident;
+  pr_data_struct: ident*ident;
   pr_transformed_data: ident;
   pr_generated: ident
 }.

@@ -2,6 +2,7 @@ Require Import List.
 Require Import StanE.
 Require Import Ctypes.
 Require CStan.
+Require Import Integers.
 Require Import Errors.
 Require Import String.
 Open Scope string_scope.
@@ -26,7 +27,7 @@ Fixpoint transf_type (t: Stypes.type) : res type :=
   match t with
   | Stypes.Tint => OK tint
   | Stypes.Treal => OK tdouble
-  (* | Tvector => OK Tpointer: type -> noattr *)
+  (* | Stypes.Tvector => OK (tarray tdouble ) *)
   (* | Trow => Tpointer: type -> noattr *)
   (* | Tmatrix => Tpointer: type -> noattr *)
   (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
@@ -216,10 +217,10 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     let init := CStan.Sset i e1 in
 
     (* break condition of e1 == e2 *)
-    let cond := CStan.Ebinop Oeq (CStan.Evar i (CStan.typeof e1)) e2 type_bool in
+    let cond := CStan.Ebinop Oeq (CStan.Etempvar i (CStan.typeof e1)) e2 tbool in
 
     (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
-    let Eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
+    let Eincr := CStan.Ebinop Oadd (CStan.Etempvar i (CStan.typeof e1)) (CStan.Econst_int (Int.repr 1) tint) tint in
 
     let incr := CStan.Sset i Eincr in
     OK (CStan.Sfor init cond body incr)

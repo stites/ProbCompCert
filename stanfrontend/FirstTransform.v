@@ -12,6 +12,7 @@ Require Import Cop.
 Require Denumpyification.
 Require Import Globalenvs.
 Require Import Integers.
+Require Import Clightdefs.
 Require AST.
 Require SimplExpr.
 
@@ -34,7 +35,7 @@ Notation ret := SimplExpr.ret.
 Notation error := SimplExpr.error.
 Notation gensym := SimplExpr.gensym.
 
-Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
+Definition transf_expr (e: CStan.expr): mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
@@ -43,6 +44,8 @@ Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   | CStan.Evar i t => ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t => ret (CStan.Ederef e t)
+  | CStan.Ecast e t => ret (CStan.Ecast e t)
+  | CStan.Efield e i t => ret (CStan.Efield e i t)
   | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
@@ -145,15 +148,24 @@ match s with
 
 end.
 
+(** insert reserved symbols, including param / data structs *)
 Notation localvar := (prod AST.ident Ctypes.type).
 
 (* assuming that target is always symbol 0 to a model lets us remove this hack *)
 Definition get_target_ident (vars: list localvar) : mon AST.ident :=
   match vars with
-  | nil => error (msg "impossible: 0")
+  | nil => error (msg "impossible get_target_ident state: 0 params function (only called from model)")
   | (t, ty)::nil => ret t
-  | _ => error (msg "impossible: >1")
+  | _  => error (msg "impossible get_target_ident state: >1 params function (only called from model)")
   end.
+
+(* Definition get_param_struct_ident (params: list localvar) : mon localvar := *)
+(*   match params with *)
+(*   | nil => error (msg "impossible get_param_struct_ident state: 0 params function (only called from model)") *)
+(*   | t::nil => ret t *)
+(*   | _  => error (msg "impossible get_param_struct_ident state: >1 params function (only called from model)") *)
+(*   end. *)
+
 
 Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
@@ -166,6 +178,12 @@ Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CSt
   | CStan.Ederef e t =>
     do e <~ transf_target_expr tgt e;
     ret (CStan.Ederef e t)
+  | CStan.Ecast e t =>
+    do e <~ transf_target_expr tgt e;
+    ret (CStan.Ecast e t)
+  | CStan.Efield e i t =>
+    do e <~ transf_target_expr tgt e;
+    ret (CStan.Efield e i t)
   | CStan.Eunop uop e t =>
     do e <~ transf_target_expr tgt e;
     ret (CStan.Eunop uop e t)
@@ -216,30 +234,52 @@ match s with
   | Scontinue => ret Scontinue
 end.
 
-Definition transf_model (f: function) (body : statement): mon statement :=
+Definition transf_model (p:CStan.program) (f: function) (body : statement): mon statement :=
   match f.(fn_blocktype) with
   | BTOther => ret body
   | BTModel =>
     do tgt <~ get_target_ident f.(fn_vars);
+
+    let TParamStruct := Tstruct (fst p.(prog_parameters_struct)) noattr in
+    do _p <~ gensym (tptr TParamStruct);
     let body :=
-      (Ssequence (Sassign (CStan.Etarget tdouble) (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
-        (Ssequence body
-          (Sreturn (Some (CStan.Etarget tdouble))))) in
+      (Ssequence (Sassign (CStan.Etarget tdouble) (CStan.Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
+        (Ssequence (Sset _p
+                         (CStan.Ecast (CStan.Etempvar (snd p.(prog_parameters_struct)) (tptr tvoid))
+                                      (tptr TParamStruct)))
+          (Ssequence body
+            (Sreturn (Some (CStan.Etarget tdouble)))))) in
     transf_target_statement tgt body
   end.
 
-Definition transf_statement_pipeline (f: function) : mon CStan.statement :=
+Definition transf_statement_pipeline (p:CStan.program) (f: function) : mon CStan.statement :=
   do body <~ transf_statement f.(fn_body); (* Stilde -> Starget; Error "Backend: tilde" *)
   do body <~ transf_statement body;        (* apply Starget transform *)
-  do body <~ transf_model f body;
+  do body <~ transf_model p f body;
   ret body.
 
-Definition transf_function (f: function): res function :=
-  match transf_statement_pipeline f (SimplExpr.initial_generator tt) with
+Definition tstruct (i:AST.ident) : localvar :=
+  (i, Ctypes.Tstruct i Ctypes.noattr).
+
+Definition transf_model_params (p:CStan.program) (f: function): res (list localvar) :=
+  match f.(fn_blocktype) with
+  | BTOther => OK (f.(fn_params))
+  | BTModel =>
+    match f.(fn_params) with
+    | nil =>
+      let ptmp := snd p.(prog_parameters_struct) in
+      OK ((ptmp, tptr tvoid)::nil)
+    | _ => Error (msg "impossible")
+    end
+  end.
+
+Definition transf_function (p:CStan.program) (f: function): res function :=
+  do params <- transf_model_params p f;
+  match transf_statement_pipeline p f (SimplExpr.initial_generator tt) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params := f.(fn_params);
+      fn_params := params;
       fn_body := tbody;
 
       fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
@@ -253,7 +293,6 @@ Definition transf_function (f: function): res function :=
   end.
 
 
-
 (* ================================================================== *)
 (*                    Switch to Error Monad                           *)
 (* ================================================================== *)
@@ -265,10 +304,10 @@ Definition transf_external (ef: AST.external_function) : res AST.external_functi
   | _ => OK ef
   end.
 
-Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
+Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
   match fd with
   | Internal f =>
-      do tf <- transf_function f;
+      do tf <- transf_function p f;
       OK (Internal tf)
   | External ef targs tres cc =>
       do ef <- transf_external ef;
@@ -279,7 +318,7 @@ Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
   OK v.
 
 Definition transf_program(p: CStan.program): res CStan.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+  do p1 <- AST.transform_partial_program2 (transf_fundef p) transf_variable p;
   OK {|
       prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;

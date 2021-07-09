@@ -69,8 +69,10 @@ let mkGlobalStruct i = AST.Gvar {
 }
 
 let id_params_struct = Camlcoq.intern_string "Params"
+let id_params_struct_tmp = Camlcoq.intern_string "pi"
 let gl_params_struct = mkGlobalStruct id_params_struct
 let id_data_struct = Camlcoq.intern_string "Data"
+let id_data_struct_tmp = Camlcoq.intern_string "observed"
 let gl_data_struct = mkGlobalStruct id_data_struct
 
 let transf_dist_idents = Hashtbl.create 2;;
@@ -173,11 +175,18 @@ let elab elab_fun ol =
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
+(* let transf_size e =
+ *   match e with
+ *   | Stan.Econst_int i -> int_of_string i
+ *   | _ -> raise (NIY_elab ("initializing size is not of correct type")) *)
+
 let transf_v_init v =
   match v with
   | Stan.Bint -> [init_int]
   | Stan.Breal -> [init_dbl]
-  | _ -> []
+  | Stan.Bvector e -> []
+  | Stan.Brow e -> []
+  | Stan.Bmatrix (r,v) -> []
 
 let mkVariable v t =
   let id = Camlcoq.intern_string v.Stan.vd_id in
@@ -308,11 +317,11 @@ let elaborate (p: Stan.program) =
       StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
-      StanE.pr_data_struct=id_data_struct;
+      StanE.pr_data_struct=(id_data_struct, id_data_struct_tmp);
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=List.map fst param_variables;
-      StanE.pr_parameters_struct=id_params_struct;
+      StanE.pr_parameters_struct=(id_params_struct, id_params_struct_tmp);
       StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
