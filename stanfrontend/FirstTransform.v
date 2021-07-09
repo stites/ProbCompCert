@@ -173,8 +173,7 @@ Definition as_fieldp (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Cty
       (Tstruct _Params noattr))
     var ty).
 Definition as_field (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Ctypes.type) : CStan.expr :=
-  (Efield (Etempvar ref (tptr (Tstruct _Params noattr)))
-    var ty).
+  (Efield (Etempvar ref (tptr (Tstruct _Params noattr))) var ty).
 
 
 Fixpoint in_list (i:AST.ident) (ps:list AST.ident) : bool :=

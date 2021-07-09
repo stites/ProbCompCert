@@ -310,7 +310,7 @@ let elaborate (p: Stan.program) =
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
-    let structs = [(id_params_struct, gl_params_struct);(id_data_struct, gl_data_struct)] in
+    let structs = [(Camlcoq.intern_string "state", gl_params_struct);(Camlcoq.intern_string "observation", gl_data_struct)] in
 
     {
       StanE.pr_defs=structs @ functions @ data_variables @ param_variables @ stanlib_functions;

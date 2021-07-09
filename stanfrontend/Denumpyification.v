@@ -362,15 +362,21 @@ Definition transf_program(p: StanE.program): res CStan.program :=
 
   let all_defs := AST.prog_defs p1 in
   let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
+
   let pset  := p.(StanE.pr_parameters_vars) in
   let stan_members := List.filter (fun tpl => ident_list_member pset (fst tpl)) all_members in
   let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
-  let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
+  let params_struct := Composite (fst p.(StanE.pr_parameters_struct)) Ctypes.Struct ctype_members Ctypes.noattr in
 
-  do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
+  let dset  := p.(StanE.pr_parameters_vars) in
+  let stan_data_members := List.filter (fun tpl => ident_list_member dset (fst tpl)) all_members in
+  let ctype_data_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_data_members in
+  let data_struct := Composite (fst p.(StanE.pr_data_struct)) Ctypes.Struct ctype_data_members Ctypes.noattr in
+
+  do comp_env <- Ctypes.build_composite_env (data_struct::params_struct::nil);
 
   OK {| 
-      CStan.prog_defs := AST.prog_defs p1;
+      CStan.prog_defs := all_defs;
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
       CStan.prog_data:=p.(StanE.pr_data);
