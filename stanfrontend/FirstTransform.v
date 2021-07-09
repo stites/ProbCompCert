@@ -166,31 +166,40 @@ Definition get_target_ident (vars: list localvar) : mon AST.ident :=
 (*   | _  => error (msg "impossible get_param_struct_ident state: >1 params function (only called from model)") *)
 (*   end. *)
 
-Definition param_field (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Ctypes.type) : CStan.expr :=
+Definition as_fieldp (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Ctypes.type) : CStan.expr :=
   (Efield
     (Ederef
       (Etempvar ref (tptr (Tstruct _Params noattr)))
       (Tstruct _Params noattr))
     var ty).
+Definition as_field (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Ctypes.type) : CStan.expr :=
+  (Efield (Etempvar ref (tptr (Tstruct _Params noattr)))
+    var ty).
 
-Fixpoint in_param_list (i:AST.ident) (ps:list AST.ident) : bool :=
+
+Fixpoint in_list (i:AST.ident) (ps:list AST.ident) : bool :=
   match ps with
   | nil => false
-  | pi::ps => if Pos.eqb i pi then true else in_param_list i ps
+  | pi::ps => if Pos.eqb i pi then true else in_list i ps
   end.
-Definition target_from_reserved (res: AST.ident*AST.ident) := fst res.
-Definition params_from_reserved (res: AST.ident*AST.ident) := snd res.
+Definition Reserved := prod (prod AST.ident AST.ident) AST.ident.
+Definition target_from_reserved (res: Reserved) := match res with | (x,_,_) => x end.
+Definition params_from_reserved (res: Reserved) :=  match res with | (_,x,_) => x end.
+Definition data_from_reserved (res: Reserved) := match res with | (_,_,x) => x end.
 
-Fixpoint transf_reserved_expr (p:CStan.program) (res: AST.ident*AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
+Fixpoint transf_reserved_expr (p:CStan.program) (res: AST.ident*AST.ident*AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
   | CStan.Econst_single f t => ret (CStan.Econst_single f t)
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
   | CStan.Evar i t =>
-    if in_param_list i p.(prog_parameters_vars)
-    then ret (param_field (fst p.(prog_parameters_struct)) (params_from_reserved res) i t)
-    else ret (CStan.Evar i t)
+    if in_list i p.(prog_parameters_vars)
+    then ret (as_fieldp (fst p.(prog_parameters_struct)) (params_from_reserved res) i t)
+    else
+      if in_list i p.(prog_data_vars)
+      then ret (as_field (fst p.(prog_data_struct)) (data_from_reserved res) i t)
+      else ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t =>
     do e <~ transf_reserved_expr p res e;
@@ -213,7 +222,7 @@ Fixpoint transf_reserved_expr (p:CStan.program) (res: AST.ident*AST.ident) (e: C
   | CStan.Etarget ty => ret (CStan.Evar (target_from_reserved res) ty)
   end.
 
-Fixpoint transf_reserved_statement (p:CStan.program) (res: AST.ident*AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
+Fixpoint transf_reserved_statement (p:CStan.program) (res: AST.ident*AST.ident*AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sassign e0 e1 =>
     do e0 <~ transf_reserved_expr p res e0;
@@ -266,7 +275,7 @@ Definition transf_model (p:CStan.program) (f: function) (body : statement): mon 
                                       (tptr TParamStruct)))
           (Ssequence body
             (Sreturn (Some (CStan.Etarget tdouble)))))) in
-    transf_reserved_statement p (tgt, _p) body
+    transf_reserved_statement p (tgt, _p, snd p.(prog_data_struct)) body
   end.
 
 Definition transf_statement_pipeline (p:CStan.program) (f: function) : mon CStan.statement :=
