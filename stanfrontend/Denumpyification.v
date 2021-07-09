@@ -214,12 +214,11 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do body <- transf_statement s;
 
     (* set i to first pointer in array *)
-    let init := CStan.Sset i e1 in
+    let init := CStan.Sset i e1 in (*FIXME stan is 1-indexed. make that translation here.*)
 
     (* break condition of e1 == e2 *)
     let cond := CStan.Ebinop Oeq (CStan.Etempvar i (CStan.typeof e1)) e2 tbool in
 
-    (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
     let Eincr := CStan.Ebinop Oadd (CStan.Etempvar i (CStan.typeof e1)) (CStan.Econst_int (Int.repr 1) tint) tint in
 
     let incr := CStan.Sset i Eincr in

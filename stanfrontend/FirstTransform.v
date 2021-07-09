@@ -166,63 +166,80 @@ Definition get_target_ident (vars: list localvar) : mon AST.ident :=
 (*   | _  => error (msg "impossible get_param_struct_ident state: >1 params function (only called from model)") *)
 (*   end. *)
 
+Definition param_field (_Params:AST.ident) (ref:AST.ident) (var:AST.ident) (ty:Ctypes.type) : CStan.expr :=
+  (Efield
+    (Ederef
+      (Etempvar ref (tptr (Tstruct _Params noattr)))
+      (Tstruct _Params noattr))
+    var ty).
 
-Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
+Fixpoint in_param_list (i:AST.ident) (ps:list AST.ident) : bool :=
+  match ps with
+  | nil => false
+  | pi::ps => if Pos.eqb i pi then true else in_param_list i ps
+  end.
+Definition target_from_reserved (res: AST.ident*AST.ident) := fst res.
+Definition params_from_reserved (res: AST.ident*AST.ident) := snd res.
+
+Fixpoint transf_reserved_expr (p:CStan.program) (res: AST.ident*AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
   | CStan.Econst_single f t => ret (CStan.Econst_single f t)
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
+  | CStan.Evar i t =>
+    if in_param_list i p.(prog_parameters_vars)
+    then ret (param_field (fst p.(prog_parameters_struct)) (params_from_reserved res) i t)
+    else ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t =>
-    do e <~ transf_target_expr tgt e;
+    do e <~ transf_reserved_expr p res e;
     ret (CStan.Ederef e t)
   | CStan.Ecast e t =>
-    do e <~ transf_target_expr tgt e;
+    do e <~ transf_reserved_expr p res e;
     ret (CStan.Ecast e t)
   | CStan.Efield e i t =>
-    do e <~ transf_target_expr tgt e;
+    do e <~ transf_reserved_expr p res e;
     ret (CStan.Efield e i t)
   | CStan.Eunop uop e t =>
-    do e <~ transf_target_expr tgt e;
+    do e <~ transf_reserved_expr p res e;
     ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
+    do e0 <~ transf_reserved_expr p res e0;
+    do e1 <~ transf_reserved_expr p res e1;
     ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-  | CStan.Etarget ty => ret (CStan.Evar tgt ty)
-end.
+  | CStan.Etarget ty => ret (CStan.Evar (target_from_reserved res) ty)
+  end.
 
-Fixpoint transf_target_statement (tgt: AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
+Fixpoint transf_reserved_statement (p:CStan.program) (res: AST.ident*AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sassign e0 e1 =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
+    do e0 <~ transf_reserved_expr p res e0;
+    do e1 <~ transf_reserved_expr p res e1;
     ret (Sassign e0 e1)
-  | Sset i e => do e <~ transf_target_expr tgt e; ret (Sset i e)
+  | Sset i e => do e <~ transf_reserved_expr p res e; ret (Sset i e)
   | Scall oi e le =>
-    do e <~ transf_target_expr tgt e;
-    do le <~ mon_mmap (transf_target_expr tgt) le;
+    do e <~ transf_reserved_expr p res e;
+    do le <~ mon_mmap (transf_reserved_expr p res) le;
     ret (Scall oi e le)
   | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
   | Ssequence s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
+    do s0 <~ transf_reserved_statement p res s0;
+    do s1 <~ transf_reserved_statement p res s1;
     ret (Ssequence s0 s1)
   | Sifthenelse e s0 s1 =>
-    do e <~ transf_target_expr tgt e;
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
+    do e <~ transf_reserved_expr p res e;
+    do s0 <~ transf_reserved_statement p res s0;
+    do s1 <~ transf_reserved_statement p res s1;
     ret (Sifthenelse e s0 s1)
   | Sloop s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
+    do s0 <~ transf_reserved_statement p res s0;
+    do s1 <~ transf_reserved_statement p res s1;
     ret (Sloop s0 s1)
   | Sreturn oe =>
-    do oe <~ option_mon_mmap (transf_target_expr tgt) oe;
+    do oe <~ option_mon_mmap (transf_reserved_expr p res) oe;
     ret (Sreturn oe)
   | Starget e =>
     error (msg "Starget DNE in this stage of pipeline")
@@ -249,7 +266,7 @@ Definition transf_model (p:CStan.program) (f: function) (body : statement): mon 
                                       (tptr TParamStruct)))
           (Ssequence body
             (Sreturn (Some (CStan.Etarget tdouble)))))) in
-    transf_target_statement tgt body
+    transf_reserved_statement p (tgt, _p) body
   end.
 
 Definition transf_statement_pipeline (p:CStan.program) (f: function) : mon CStan.statement :=
