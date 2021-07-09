@@ -9,6 +9,8 @@ Require Import Coqlib.
 Require Import Sops.
 Require Import Cop.
 Require Import Clightdefs.
+Require Import Int.
+
 
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
    (at level 200, X ident, A at level 100, B at level 200)
@@ -252,17 +254,18 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
-
 Definition transf_basic (b: StanE.basic): res Ctypes.type :=
   match b with
   | Bint => OK tint
   | Breal => OK tdouble
   | Bstruct i => OK (Ctypes.Tstruct i Ctypes.noattr)
   | Bvector e =>
-    Error (msg "Denumpyification.transf_basic (NYI): Bvector")
-    (* do e <- transf_expression e; *)
-    (* (let Econst_int i := e in *)
-    (* OK (Tarray tdouble i noattr)) *)
+    do e <- transf_expression e;
+    match e with
+    | CStan.Econst_int i _ => OK (Clightdefs.tarray tdouble i.(Integers.Int.intval))
+    | _ => Error (msg "Denumpyification.transf_basic: malformed vector size")
+    end
+
   | Brow e =>
     Error (msg "Denumpyification.transf_basic (NYI): Brow")
     (* do e <- transf_expression e; *)

@@ -4,6 +4,7 @@ open C2C
 open Lexing
 open Sparser
 open Smessages
+open Int32
 
 exception SNIY of string
 exception NIY_elab of string
@@ -13,10 +14,11 @@ let init_int = AST.Init_space (Camlcoq.coqint_of_camlint 4l)
 let init_dbl = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 let init_ptr = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 
+let ctarray (t, sz) = Ctypes.Tarray (t, sz, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tdouble = Stypes.Treal
-let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)
+let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tint = Stypes.Tint
-let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr)
+let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let rt = Some tdouble
 let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
@@ -55,6 +57,17 @@ let gl_bernoulli_lpmf =
     [AST.Tint; AST.Tfloat]
     (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
 
+let transf_dist_idents = Hashtbl.create 2;;
+Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
+Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
+let stanlib_functions = [
+    (id_uniform_lpdf,   gl_uniform_lpdf);
+    (id_bernoulli_lpmf, gl_bernoulli_lpmf)
+  ]
+
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                               Struct work                                    *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 let id_params_struct = Camlcoq.intern_string "Params"
 let gl_params_struct = AST.Gvar {
   AST.gvar_readonly = false;
@@ -68,19 +81,34 @@ let gl_params_struct = AST.Gvar {
     StanE.vd_global = true;
   };
 }
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                               Global Arrays                                  *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let stype_to_inits ty =
+  match ty with
+  | Stypes.Treal -> init_dbl
+  | Stypes.Tint -> init_int
+  | _ -> AST.Init_space (Camlcoq.coqint_of_camlint 0l)
 
-let transf_dist_idents = Hashtbl.create 2;;
-Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
-Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
-let stanlib_functions = [
-    (id_uniform_lpdf,   gl_uniform_lpdf);
-    (id_bernoulli_lpmf, gl_bernoulli_lpmf)
-  ]
+let replicate n ls =
+    let rec f l = function
+        | 0 -> l
+        | n -> f (List.rev_append ls l) (n-1) in
+    List.rev (f [] n)
 
+let mk_global_array ty len = AST.Gvar {
+  AST.gvar_readonly = false;
+  AST.gvar_volatile = false;
+  AST.gvar_init = replicate (to_int len) ty;
+  AST.gvar_info = {
+    StanE.vd_type = StanE.Brow (StanE.Econst_int (Camlcoq.coqint_of_camlint len, tint));
+    StanE.vd_constraint = Stan.Cidentity;
+    StanE.vd_dims = [];
+    StanE.vd_init = None;
+    StanE.vd_global = true;
+  };
+}
 
-(* <><><><><><><><><> bootstrapped variable type injection <><><><><><><><><><> *)
-(* let var_types = Hashtbl.create 300
- * #val my_hash : ('_weak1, '_weak2) Hashtbl.t *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 
 let read_file sourcefile =
@@ -156,24 +184,43 @@ let rec el_s s =
     in
     StanE.Stilde (el_e e, StanE.Evar (_i, _ty), map el_e el, (mapo tr1 el_e,mapo tr2 el_e) )
 
-let el_b b =
-  match b with
-  | Stan.Bint -> StanE.Bint
-  | Stan.Breal -> StanE.Breal
-  | Stan.Bvector e -> StanE.Bvector (el_e e)
-  | Stan.Brow e -> StanE.Brow (el_e e)
-  | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2)
+let el_b b dims =
+  match (b, dims) with
+  | (Stan.Bint,  []) -> StanE.Bint
+  | (Stan.Breal, []) -> StanE.Breal
+  | (Stan.Bint,  [e]) -> StanE.Bvector (el_e e) (* FIXME we don't have the ability to add int vectors? *)
+  | (Stan.Breal, [e]) -> StanE.Bvector (el_e e)
+  | _ -> raise (NIY_elab "type conversion not yet implemented")
+  (* | Stan.Bvector e -> StanE.Bvector (el_e e)
+   * | Stan.Brow e -> StanE.Brow (el_e e)
+   * | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2) *)
 
 let elab elab_fun ol =
   match ol with
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let transf_v_init v =
-  match v with
-  | Stan.Bint -> [init_int]
-  | Stan.Breal -> [init_dbl]
+let g_init_int_zero =
+  AST.Init_int32 (Integers.Int.repr (Camlcoq.coqint_of_camlint 0l))
+let g_init_double_zero =
+  AST.Init_float64 (Floats.Float.of_bits (Integers.Int64.repr (Camlcoq.coqint_of_camlint 0l)))
+
+let transf_v_init v dims =
+  match (v, dims) with
+  | (Stan.Bint,  []) -> [g_init_int_zero]
+  | (Stan.Bint,  [Stan.Econst_int l]) -> replicate (int_of_string l) [g_init_int_zero]
+  | (Stan.Breal, []) -> [g_init_double_zero]
+  | (Stan.Breal, [Stan.Econst_int l]) -> replicate (int_of_string l) [g_init_double_zero]
   | _ -> []
+let str_to_coqint s =
+  (Camlcoq.coqint_of_camlint (of_int (int_of_string s)))
+
+let transf_v_type v dims =
+  match (v, dims) with
+  | (Stan.Bint,  [Stan.Econst_int l]) -> ctarray (ctint, str_to_coqint l)
+  | (Stan.Breal, [Stan.Econst_int l]) -> ctarray (ctdouble, str_to_coqint l)
+  (* | (ty,  []) -> ty *)
+  | _ -> raise (NIY_elab "type conversion not yet implemented")
 
 let mkVariable v t =
   let id = Camlcoq.intern_string v.Stan.vd_id in
@@ -188,13 +235,13 @@ let mkVariable v t =
   let volatile = false in
   let readonly = false in
   let vd = {
-    StanE.vd_type = el_b v.Stan.vd_type;
+    StanE.vd_type = el_b v.Stan.vd_type v.Stan.vd_dims;
     StanE.vd_constraint = v.Stan.vd_constraint;
     StanE.vd_dims = List.map el_e v.Stan.vd_dims;
     StanE.vd_init = mapo v.Stan.vd_init el_e;
     StanE.vd_global = true;
   } in
-  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type;
+  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type v.Stan.vd_dims;
                    gvar_readonly = readonly; gvar_volatile = volatile})
 
 let declareVariable v = mkVariable v None
