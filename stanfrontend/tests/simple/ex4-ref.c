@@ -46,17 +46,17 @@ void set_state(void* pi) {
 double model(void *pi) {
   double target = 0.0;
 
-  struct Params* p = (struct Params*) pi;
-  
+  // struct Params* p = (struct Params*) pi;
+
   // uniform_sample(p->mu, 0, 1); // but also need to check the data block?
   target += uniform_lpdf(mu, 0, 1);
-  for (int i = 0; i < 3; i++)
+  for (int i = 1 - 1; i < 3; i++)
   {
     target += bernoulli_lpmf(flips[i], mu);
   }
 
-  return target;  
-  
+  return target;
+
 }
 
 void generated_quantities() {
@@ -69,7 +69,7 @@ void* propose() {
   // candidate.mu = state.mu + uniform_sample(0,1);
   //
   // return &candidate;
-  
+
 }
 
 void print_state() {

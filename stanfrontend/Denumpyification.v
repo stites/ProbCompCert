@@ -30,8 +30,8 @@ Fixpoint transf_type (t: StanE.basic) : res type :=
   | StanE.Breal => OK tdouble
   | StanE.Bvector i => OK (tarray tint i)
   | StanE.Bstruct i => OK (Tstruct i noattr)
-  | StanE.Bmatrix r c => Error (msg "NYI transf_type: StanE.Bmatrix")
   | StanE.Brow s => Error (msg "NYI transf_type: StanE.Brow")
+  | StanE.Bmatrix r c => Error (msg "NYI transf_type: StanE.Bmatrix")
   | StanE.Bfunction tl ret =>
     do tl <- transf_typelist tl;
     do oret <- option_mmap transf_type ret;
@@ -149,7 +149,10 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
     do e <- transf_expression e;
     do i <- transf_index i;
     let ty := CStan.typeof e in
-    OK (CStan.Ederef (CStan.Ebinop Oadd e i (tptr ty)) ty)
+    match ty with
+    | Tarray ty sz _ => OK (CStan.Ederef (CStan.Ebinop Oadd e i (tptr ty)) ty)
+    | _              => Error (msg "can only index an array")
+    end
   | Eindexed e (cons i l) =>
     Error (msg "Denumpyification.transf_expression (NYI): Eindexed [i, ...]")
   | Edist i el => Error (msg "Denumpyification.transf_expression (NYI): Edist")
@@ -219,7 +222,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     let init := CStan.Sset i (CStan.Ebinop Osub e1 eone tint) in
 
     (* break condition of e1 == e2 *)
-    let cond := CStan.Ebinop Oeq (CStan.Etempvar i (CStan.typeof e1)) e2 type_bool in
+    let cond := CStan.Ebinop Olt (CStan.Etempvar i (CStan.typeof e1)) e2 type_bool in
 
     let eincr := CStan.Ebinop Oadd (CStan.Etempvar i (CStan.typeof e1)) eone tint in
 
