@@ -181,6 +181,7 @@ let rec el_s s =
   | Stan.Sifthenelse (e,s1,s2) -> StanE.Sifthenelse (el_e e, el_s s1, el_s s2)
   | Stan.Swhile (e,s) -> StanE.Swhile (el_e e, el_s s)
   | Stan.Sfor (i,e1,e2,s) ->
+    Hashtbl.add type_table i StanE.Bint;
     StanE.Sfor (Camlcoq.intern_string i,el_e e1, el_e e2, el_s s)
   | Stan.Sbreak -> StanE.Sbreak
   | Stan.Scontinue -> StanE.Scontinue
