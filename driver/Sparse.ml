@@ -6,6 +6,7 @@ open Sparser
 open Smessages
 open Int32
 
+
 exception SNIY of string
 exception NIY_elab of string
 
@@ -116,8 +117,16 @@ let mk_global_array ty len = AST.Gvar {
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 let type_table = Hashtbl.create 123456;;
 Hashtbl.add type_table "target" StanE.Breal
+module IdxTable =
+  struct
+    type t = BinNums.positive
+    let equal i j = i=j
+    let hash = Hashtbl.hash
+  end
+    (* let hash p = Camlcoq.P.to_int p *)
 
-
+module IdxHashtbl = Hashtbl.Make(IdxTable)
+let index_set = IdxHashtbl.create 123456;;
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 
@@ -181,8 +190,10 @@ let rec el_s s =
   | Stan.Sifthenelse (e,s1,s2) -> StanE.Sifthenelse (el_e e, el_s s1, el_s s2)
   | Stan.Swhile (e,s) -> StanE.Swhile (el_e e, el_s s)
   | Stan.Sfor (i,e1,e2,s) ->
+    let isym = Camlcoq.intern_string i in
+    IdxHashtbl.add index_set isym ();
     Hashtbl.add type_table i StanE.Bint;
-    StanE.Sfor (Camlcoq.intern_string i,el_e e1, el_e e2, el_s s)
+    StanE.Sfor (isym, el_e e1, el_e e2, el_s s)
   | Stan.Sbreak -> StanE.Sbreak
   | Stan.Scontinue -> StanE.Scontinue
   | Stan.Sreturn oe -> StanE.Sreturn (mapo oe el_e)
@@ -270,7 +281,6 @@ let mkVariable v t =
                    gvar_readonly = readonly; gvar_volatile = volatile})
 
 let declareVariable v = mkVariable v None
-
 let mkFunction name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
@@ -294,7 +304,7 @@ let mkFunction name body rt params extraVars =
     StanE.fn_callconv = AST.cc_default;
     StanE.fn_params = params;
     StanE.fn_blocktype = blocktypeFundef name;
-    StanE.fn_vars = extraVars;
+    StanE.fn_vars = List.concat [extraVars; (IdxHashtbl.fold (fun k v acc -> (k,StanE.Bint)::acc) index_set [])];
     StanE.fn_temps = [];
     StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
@@ -332,33 +342,42 @@ let elaborate (p: Stan.program) =
 
     let functions = [] in
 
+    IdxHashtbl.clear index_set;
     let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
     let functions = (id_data,f_data) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_tr_data,f_tr_data) = declareFundef "transformed_data" (get_code td) None [] in
     let functions = (id_tr_data,f_tr_data) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_params,f_params) = declareFundef "parameters" [Stan.Sskip] None [] in
     let functions = (id_params,f_params) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
     let functions = (id_tr_params,f_tr_params) :: functions in
 
+    IdxHashtbl.clear index_set;
     (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
     let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
     let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
 
     let functions = (id_model,f_model) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
     let functions = (id_gen_quant,f_gen_quant) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in
     let functions = (id_propose,f_propose) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in
     let functions = (id_get,f_get) :: functions in
 
+    IdxHashtbl.clear index_set;
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
@@ -374,8 +393,12 @@ let elaborate (p: Stan.program) =
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=[(id_params_struct, gl_params_struct)] @ functions @ data_variables @ param_variables @ stanlib_functions;
-      StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
+      StanE.pr_defs=[(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
+      StanE.pr_public=
+        List.map fst functions
+        (* TODO remove these when data and params live on structs *)
+        @ List.map fst data_variables @ List.map fst param_variables
+        @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;

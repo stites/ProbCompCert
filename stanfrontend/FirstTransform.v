@@ -79,10 +79,11 @@ match s with
   | Sassign e0 e1 =>
     do e0 <~ transf_expr e0;
     do e1 <~ transf_expr e1;
-    match maybe_ident e0 with
-      | Some i => ret (Sset i e1)
-      | None => ret (Sassign e0 e1)
-    end
+    ret (Sassign e0 e1)
+    (* match maybe_ident e0 with *)
+    (*   | Some i => ret (Sset i e1) *)
+    (*   | None => ret (Sassign e0 e1) *)
+    (* end *)
   | Sset i e =>
     do e <~ transf_expr e;
     ret (Sset i e)
@@ -151,8 +152,8 @@ Notation localvar := (prod AST.ident Ctypes.type).
 Definition get_target_ident (vars: list localvar) : mon AST.ident :=
   match vars with
   | nil => error (msg "impossible: 0")
-  | (t, ty)::nil => ret t
-  | _ => error (msg "impossible: >1")
+  | (t, ty)::_ => ret t
+  (* | _ => error (msg "impossible: >1") *)
   end.
 
 Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=

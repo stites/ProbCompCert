@@ -128,7 +128,13 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
   | Econst_int i ty => do ty <- transf_type ty; OK (CStan.Econst_int i ty)
   | Econst_float f ty => do ty <- transf_type ty; OK (CStan.Econst_float f ty)
-  | Evar i ty => do ty <- transf_type ty; OK (CStan.Evar i ty)
+  | Evar i ty =>
+    do ty <- transf_type ty;
+    match ty with
+    | Tfunction _ _ _ => OK (CStan.Evar i ty)
+    (* | _ =>  OK (CStan.Etempvar i ty) (* consistently use tempvars for non-function calls *) *)
+    | _ =>  OK (CStan.Evar i ty)
+    end
   | Eunop o e =>
     do o <- transf_unary_operator o;
     do e <- transf_expression e;
@@ -219,14 +225,14 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     let one := Integers.Int.repr 1 in
     let eone := CStan.Econst_int one tint in
     (* set i to first pointer in array: convert 1-idx to 0-idx *)
-    let init := CStan.Sset i (CStan.Ebinop Osub e1 eone tint) in
+    let init := CStan.Sassign (CStan.Evar i tint) (CStan.Ebinop Osub e1 eone tint) in
 
     (* break condition of e1 == e2 *)
-    let cond := CStan.Ebinop Olt (CStan.Etempvar i (CStan.typeof e1)) e2 type_bool in
+    let cond := CStan.Ebinop Olt (CStan.Evar i (CStan.typeof e1)) e2 tint in
 
-    let eincr := CStan.Ebinop Oadd (CStan.Etempvar i (CStan.typeof e1)) eone tint in
+    let eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) eone tint in
 
-    let incr := CStan.Sset i eincr in
+    let incr := CStan.Sassign (CStan.Evar i tint) eincr in
     OK (CStan.Sfor init cond body incr)
   | Sbreak => OK CStan.Sbreak
   | Scontinue => OK CStan.Scontinue

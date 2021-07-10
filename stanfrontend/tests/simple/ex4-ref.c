@@ -9,9 +9,9 @@ struct Params {
 double mu = 0;
 /* struct Params state; */
 
-struct Data {
-//  int flip[3];
-};
+// struct Data {
+// //  int flip[3];
+// };
 
 /* struct Data observed; */
 
@@ -34,7 +34,7 @@ void parameters() {
 void transformed_parameters(void *p) {
 }
 
-void* get_state() {
+void get_state() {
   //return &state;
 }
 
@@ -63,18 +63,19 @@ void generated_quantities() {
 
 }
 
-struct Params candidate;
+// struct Params candidate;
 
-void* propose() {
+void propose() {
   // candidate.mu = state.mu + uniform_sample(0,1);
   //
   // return &candidate;
 
 }
 
-void print_state() {
-  struct Params* s = (struct Params*) get_state();
-  printf("{");
-  printf("mu: %f", mu);
-  printf("}\n");
-}
+// void print_state() {
+//   struct Params* s = (struct Params*) get_state();
+//   printf("{");
+//   printf("mu: %f", mu);
+//   printf("}\n");
+// }
+//
