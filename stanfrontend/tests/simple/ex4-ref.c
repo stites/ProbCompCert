@@ -4,41 +4,43 @@
 #include "stanlib.h"
 
 struct Params {
-  double mu;
+  //double mu;
 };
-
-struct Params state;
+double mu = 0;
+/* struct Params state; */
 
 struct Data {
-  int flip[3];
+//  int flip[3];
 };
 
-struct Data observed;
+/* struct Data observed; */
+
+int flips[3] = {0,0,0};
 
 void data() {
-  for (int i = 0; i < 3; i++)
-  {
-    observed.flip[i] = 0;
-  }
+  //for (int i = 0; i < 3; i++)
+  //{
+  //  observed.flip[i] = 0;
+  //}
 }
 
 void transformed_data() {
 }
 
 void parameters() {
-  state.mu = 0.5;
+  // state.mu = 0.5;
 }
 
 void transformed_parameters(void *p) {
 }
 
 void* get_state() {
-  return &state; 
+  //return &state;
 }
 
 void set_state(void* pi) {
-  struct Params* p = (struct Params*) pi;
-  state = *p;
+  // struct Params* p = (struct Params*) pi;
+  // state = *p;
 }
 
 double model(void *pi) {
@@ -47,10 +49,10 @@ double model(void *pi) {
   struct Params* p = (struct Params*) pi;
   
   // uniform_sample(p->mu, 0, 1); // but also need to check the data block?
-  target += uniform_lpdf(p->mu, 0, 1);
+  target += uniform_lpdf(mu, 0, 1);
   for (int i = 0; i < 3; i++)
   {
-    target += bernoulli_lpmf(observed.flip[i], p->mu);
+    target += bernoulli_lpmf(flips[i], mu);
   }
 
   return target;  
@@ -64,16 +66,15 @@ void generated_quantities() {
 struct Params candidate;
 
 void* propose() {
-
-  candidate.mu = state.mu + uniform_sample(0,1);
-
-  return &candidate;
+  // candidate.mu = state.mu + uniform_sample(0,1);
+  //
+  // return &candidate;
   
 }
 
 void print_state() {
   struct Params* s = (struct Params*) get_state();
   printf("{");
-  printf("mu: %f", s->mu);
+  printf("mu: %f", mu);
   printf("}\n");
 }

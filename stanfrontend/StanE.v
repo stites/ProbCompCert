@@ -10,12 +10,26 @@ Require CStan.
 Require Import Sops.
 Require Import Cop.
 Require Import Stypes.
-  
+
+(* NOTE basic is a StanE type, see variable.vd_type *)
+Inductive basic :=
+  | Bint
+  | Breal
+  | Bvector: Z -> basic
+  | Brow: Z -> basic
+  | Bmatrix: Z -> Z -> basic
+  | Bstruct: ident -> basic
+  | Bfunction: basiclist -> option basic -> basic
+with basiclist : Type :=
+  | Bnil: basiclist
+  | Bcons: basic -> basiclist -> basiclist.
+
 Inductive expr :=
   (* Classical expressions that exist in C *)
-  | Econst_int: int -> type -> expr
-  | Econst_float: float -> type -> expr
-  | Evar: ident -> type -> expr
+  (* NOTE basic is a StanE type, see variable.vd_type *)
+  | Econst_int: int -> basic -> expr
+  | Econst_float: float -> basic -> expr
+  | Evar: ident -> basic -> expr
   (* FIXME: add types to all proceeding as well? *)
   | Eunop: operator -> expr -> expr
   | Ebinop: expr -> operator -> expr -> expr
@@ -34,17 +48,9 @@ with index :=
   | Isingle: expr -> index
   | Iupfrom: expr -> index
   | Idownfrom: expr -> index
-  | Ibetween: expr -> expr -> index. 
+  | Ibetween: expr -> expr -> index.
 
-Inductive basic :=
-  | Bint
-  | Breal
-  | Bvector: expr -> basic
-  | Brow: expr -> basic
-  | Bmatrix: expr -> expr -> basic
-  | Bstruct: ident -> basic.
-
-Inductive printable := 
+Inductive printable :=
   | Pstring: ident -> printable 
   | Pexpr: expr -> printable.
 
@@ -78,13 +84,13 @@ Inductive statement :=
 
 
 Record function := mkfunction {
-  fn_return: option(type); 
-  fn_params: list (autodifftype * type * ident);
+  fn_return: option(basic);
+  fn_params: list (autodifftype * basic * ident);
   fn_body: statement;
   fn_blocktype: CStan.blocktype;
   fn_callconv: AST.calling_convention;
-  fn_temps: list (ident * type);
-  fn_vars: list (ident * type); 
+  fn_temps: list (ident * basic);
+  fn_vars: list (ident * basic);
 }.
 
 Definition fundef := Ctypes.fundef function.

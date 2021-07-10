@@ -24,29 +24,28 @@ Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y
   | Some x => do x <- f x; OK (Some x)
   end.
 
-Fixpoint transf_type (t: Stypes.type) : res type :=
+Fixpoint transf_type (t: StanE.basic) : res type :=
   match t with
-  | Stypes.Tint => OK tint
-  | Stypes.Treal => OK tdouble
-  (* | Tvector => OK Tpointer: type -> noattr *)
-  (* | Trow => Tpointer: type -> noattr *)
-  (* | Tmatrix => Tpointer: type -> noattr *)
-  (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
-  | Stypes.Tfunction tl ret =>
-      do tl <- transf_typelist tl;
-      do oret <- option_mmap transf_type ret;
-      let ret :=
-          match oret with
-          | None => Ctypes.Tvoid
-          | Some ret => ret
-          end
-      in OK (Ctypes.Tfunction tl ret AST.cc_default)
-  | _ => Error (msg "NYI: type")
+  | StanE.Bint => OK tint
+  | StanE.Breal => OK tdouble
+  | StanE.Bvector i => OK (tarray tint i)
+  | StanE.Bstruct i => OK (Tstruct i noattr)
+  | StanE.Bmatrix r c => Error (msg "NYI transf_type: StanE.Bmatrix")
+  | StanE.Brow s => Error (msg "NYI transf_type: StanE.Brow")
+  | StanE.Bfunction tl ret =>
+    do tl <- transf_typelist tl;
+    do oret <- option_mmap transf_type ret;
+    let ret :=
+        match oret with
+        | None => Ctypes.Tvoid
+        | Some ret => ret
+        end
+    in OK (Ctypes.Tfunction tl ret AST.cc_default)
   end
-with transf_typelist (tl: Stypes.typelist) : res Ctypes.typelist :=
+with transf_typelist (tl: StanE.basiclist) : res Ctypes.typelist :=
   match tl with
-  | Stypes.Tnil =>  OK Ctypes.Tnil
-  | Stypes.Tcons t tl =>
+  | StanE.Bnil =>  OK Ctypes.Tnil
+  | StanE.Bcons t tl =>
     do t <- transf_type t;
     do tl <- transf_typelist tl;
     OK (Ctypes.Tcons t tl)
@@ -214,14 +213,14 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e2 <- transf_expression e2;
     do body <- transf_statement s;
 
-    (* set i to first pointer in array *)
-    let init := CStan.Sset i e1 in
+    (* set i to first pointer in array: convert 1-idx to 0-idx *)
+    let init := CStan.Sset i (CStan.Ebinop Osub e1 (CStan.Econst_int (Integers.Int.repr 1) tint) tint) in
 
     (* break condition of e1 == e2 *)
-    let cond := CStan.Ebinop Oeq (CStan.Evar i (CStan.typeof e1)) e2 type_bool in
+    let cond := CStan.Ebinop Oeq (CStan.Etempvar i (CStan.typeof e1)) e2 type_bool in
 
     (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
-    let Eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
+    let Eincr := CStan.Ebinop Oadd (CStan.Etempvar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
 
     let incr := CStan.Sset i Eincr in
     OK (CStan.Sfor init cond body incr)
@@ -254,30 +253,8 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
-Definition transf_basic (b: StanE.basic): res Ctypes.type :=
-  match b with
-  | Bint => OK tint
-  | Breal => OK tdouble
-  | Bstruct i => OK (Ctypes.Tstruct i Ctypes.noattr)
-  | Bvector e =>
-    do e <- transf_expression e;
-    match e with
-    | CStan.Econst_int i _ => OK (Clightdefs.tarray tdouble i.(Integers.Int.intval))
-    | _ => Error (msg "Denumpyification.transf_basic: malformed vector size")
-    end
-
-  | Brow e =>
-    Error (msg "Denumpyification.transf_basic (NYI): Brow")
-    (* do e <- transf_expression e; *)
-    (* match e with *)
-    (* | Econst_int i => OK (Tarray tdouble i noattr) *)
-    (* | _ => Error (msg "Denumpyification.transf_basic: expected an int") *)
-    (* end *)
-  | Bmatrix _ _ => Error (msg "Denumpyification.transf_basic (NYI): Bmatrix")
-  end.
-
 Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
-  do ty <- transf_basic (StanE.vd_type v);
+  do ty <- transf_type (StanE.vd_type v);
   do oe <- option_mmap transf_expression (StanE.vd_init v);
   OK {|
     CStan.vd_type := ty;
@@ -294,23 +271,23 @@ Fixpoint mapM {X Y:Type} (f: X -> res Y) (xs: list X) : res (list Y) :=
     do l <- mapM f l;
     OK (cons y l)
   end.
-
-Definition transf_var (v: AST.ident * Stypes.type) : res (AST.ident * type) :=
+(**********************************************************************************************************)
+Definition transf_var (v: AST.ident * StanE.basic) : res (AST.ident * type) :=
   match v with
     | (i, t) => do t <- transf_type t; OK (i, t)
   end.
 
-Fixpoint transf_vars (vs: list (AST.ident * Stypes.type)) : res (list (AST.ident * type)) :=
+Fixpoint transf_vars (vs: list (AST.ident * StanE.basic)) : res (list (AST.ident * type)) :=
   mapM transf_var vs.
 
 (* FIXME: lambdas are too general? typechecker seems to want something more concrete... *)
-Definition transf_param (p: Stypes.autodifftype * Stypes.type * AST.ident) : res (AST.ident * type) :=
+Definition transf_param (p: Stypes.autodifftype * StanE.basic * AST.ident) : res (AST.ident * type) :=
   match p with
     | (ad, t, i) => do t <- transf_type t; OK (i, t)
   end.
 
 (* FIXME: don't discard AD information! *)
-Definition transf_params (ps: list (Stypes.autodifftype * Stypes.type * AST.ident)) : res (list (AST.ident * type)) :=
+Definition transf_params (ps: list (Stypes.autodifftype * StanE.basic * AST.ident)) : res (list (AST.ident * type)) :=
   mapM transf_param ps.
 
 Definition transf_function (f: StanE.function): res CStan.function :=
