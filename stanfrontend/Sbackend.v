@@ -455,8 +455,8 @@ Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef 
 Definition backend (p: CStan.program): res Clight.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
   OK {| 
-      Ctypes.prog_defs :=List.app global_definitions (AST.prog_defs p1);
-      Ctypes.prog_public:=List.app p.(CStan.prog_public) public_idents;
+      Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
+      Ctypes.prog_public:=List.app public_idents p.(CStan.prog_public);
       Ctypes.prog_main:= xH;
       Ctypes.prog_types:=nil;
       Ctypes.prog_comp_env:=p.(CStan.prog_comp_env);

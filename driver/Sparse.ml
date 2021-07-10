@@ -87,12 +87,6 @@ let gl_params_struct = AST.Gvar {
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Global Arrays                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let stype_to_inits ty =
-  match ty with
-  | Stypes.Treal -> init_dbl
-  | Stypes.Tint -> init_int
-  | _ -> AST.Init_space (Camlcoq.coqint_of_camlint 0l)
-
 let replicate n ls =
     let rec f l = function
         | 0 -> l
@@ -104,7 +98,7 @@ let mk_global_array ty len = AST.Gvar {
   AST.gvar_volatile = false;
   AST.gvar_init = replicate (to_int len) ty;
   AST.gvar_info = {
-    StanE.vd_type = StanE.Brow (Camlcoq.coqint_of_camlint len);
+    StanE.vd_type = StanE.Bvector (Camlcoq.coqint_of_camlint len);
     StanE.vd_constraint = Stan.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
@@ -233,12 +227,17 @@ let g_init_int_zero =
 let g_init_double_zero =
   AST.Init_float64 (Floats.Float.of_bits (Integers.Int64.repr (Camlcoq.coqint_of_camlint 0l)))
 
+let g_init_space sz =
+  AST.Init_space (Camlcoq.coqint_of_camlint (Int32.of_int sz))
+let g_init_uninit_array l sz =
+  g_init_space ((int_of_string l) * sz)
+
 let transf_v_init v dims =
   match (v, dims) with
-  | (Stan.Bint,  []) -> [g_init_int_zero]
-  | (Stan.Bint,  [Stan.Econst_int l]) -> replicate (int_of_string l) [g_init_int_zero]
-  | (Stan.Breal, []) -> [g_init_double_zero]
-  | (Stan.Breal, [Stan.Econst_int l]) -> replicate (int_of_string l) [g_init_double_zero]
+  | (Stan.Bint,  []) -> [g_init_space 4]
+  | (Stan.Bint, [Stan.Econst_int l]) -> [g_init_uninit_array l 4]
+  | (Stan.Breal, []) -> [g_init_space 8]
+  | (Stan.Breal, [Stan.Econst_int l]) -> [g_init_uninit_array l 8]
   | _ -> []
 let str_to_coqint s =
   (Camlcoq.coqint_of_camlint (of_int (int_of_string s)))
@@ -396,7 +395,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_defs=[(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
       StanE.pr_public=
         List.map fst functions
-        (* TODO remove these when data and params live on structs *)
+        (* TODO remove these when data and params live on structs? *)
         @ List.map fst data_variables @ List.map fst param_variables
         @ List.map fst stanlib_functions;
       StanE.pr_data=id_data;

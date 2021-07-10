@@ -6,7 +6,7 @@
 struct Params {
   //double mu;
 };
-double mu = 0;
+double mu;
 /* struct Params state; */
 
 // struct Data {
@@ -15,7 +15,7 @@ double mu = 0;
 
 /* struct Data observed; */
 
-int flips[3] = {0,0,0};
+int flips[3];
 
 void data() {
   //for (int i = 0; i < 3; i++)
