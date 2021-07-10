@@ -295,6 +295,8 @@ let mkFunction name body rt params extraVars =
 
   let blocktypeFundef = function
     | "model" -> CStan.BTModel
+    | "parameters" -> CStan.BTParams
+    | "data" -> CStan.BTData
     | _ -> CStan.BTOther
   in
 

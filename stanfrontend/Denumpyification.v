@@ -347,14 +347,17 @@ Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
   | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
   end.
 
+Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*Ctypes.type) :=
+  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
+  let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
+  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
+  ctype_members.
+
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
   let all_defs := AST.prog_defs p1 in
-  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
-  let pset  := p.(StanE.pr_parameters_vars) in
-  let stan_members := List.filter (fun tpl => ident_list_member pset (fst tpl)) all_members in
-  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
+  let ctype_members := filter_globvars all_defs p.(StanE.pr_parameters_vars) in
   let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
 
   do comp_env <- Ctypes.build_composite_env (cons params_struct nil);

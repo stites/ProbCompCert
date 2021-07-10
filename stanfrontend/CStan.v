@@ -101,7 +101,7 @@ Record type := mkvariable {
   vd_global: bool
 }.
 
-Inductive blocktype := BTModel | BTOther.
+Inductive blocktype := BTModel | BTData | BTParams | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type; 
