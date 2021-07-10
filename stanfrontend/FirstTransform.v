@@ -235,12 +235,16 @@ Definition transf_statement_pipeline (f: function) : mon CStan.statement :=
   do body <~ transf_model f body;
   ret body.
 
-Definition transf_function (f: function): res function :=
+Definition transf_function (p:CStan.program) (f: function): res function :=
   match transf_statement_pipeline f (SimplExpr.initial_generator tt) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params := f.(fn_params);
+      fn_params :=
+        match f.(fn_blocktype) with
+        | BTOther => f.(fn_params)
+        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
+        end;
       fn_body := tbody;
 
       fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
@@ -266,10 +270,10 @@ Definition transf_external (ef: AST.external_function) : res AST.external_functi
   | _ => OK ef
   end.
 
-Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
+Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
   match fd with
   | Internal f =>
-      do tf <- transf_function f;
+      do tf <- transf_function p f;
       OK (Internal tf)
   | External ef targs tres cc =>
       do ef <- transf_external ef;
@@ -280,7 +284,7 @@ Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
   OK v.
 
 Definition transf_program(p: CStan.program): res CStan.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+  do p1 <- AST.transform_partial_program2 (transf_fundef p) transf_variable p;
   OK {|
       prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;
@@ -291,6 +295,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
+      prog_parameters_struct:= p.(prog_parameters_struct);
       prog_transformed_parameters:=p.(prog_transformed_parameters);
 
       prog_generated_quantities:=p.(prog_generated_quantities);

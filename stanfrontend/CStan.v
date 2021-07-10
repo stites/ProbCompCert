@@ -133,6 +133,7 @@ Record program : Type := {
   prog_model: ident;
   prog_parameters: ident;
   prog_parameters_vars: list ident;
+  prog_parameters_struct: ident * ident;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;

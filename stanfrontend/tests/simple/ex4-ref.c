@@ -10,7 +10,7 @@ double mu;
 /* struct Params state; */
 
 // struct Data {
-// //  int flip[3];
+// //  int flips[3];
 // };
 
 /* struct Data observed; */
@@ -18,16 +18,18 @@ double mu;
 int flips[3];
 
 void data() {
-  //for (int i = 0; i < 3; i++)
-  //{
-  //  observed.flip[i] = 0;
-  //}
+  // for (int i = 0; i < 3; i++)
+  // {
+  //   flips[i] = 0;
+  //   observed.flips[i] = 0;
+  // }
 }
 
 void transformed_data() {
 }
 
 void parameters() {
+  mu = 0.5;
   // state.mu = 0.5;
 }
 

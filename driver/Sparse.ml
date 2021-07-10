@@ -404,7 +404,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=List.map fst param_variables;
       StanE.pr_transformed_parameters=id_tr_params;
-      StanE.pr_parameters_struct=id_params_struct;
+      StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
     }    
