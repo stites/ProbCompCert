@@ -249,7 +249,26 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     Error (msg "Denumpyification.transf_statement (NYI): Scall")
   | Sruntime _ _ => Error (msg "Denumpyification.transf_statement (NYI): Sruntime")
   | Sforeach i e s =>
-    Error (msg "Denumpyification.transf_statement (NYI): Sforeach")
+    do arr <- transf_expression e;
+    do body <- transf_statement s;
+
+    match CStan.typeof arr with
+    | Tarray ty sz _ =>
+      let zero := Integers.Int.repr 0 in
+      let init := CStan.Sassign (CStan.Evar i tint) (CStan.Econst_int zero tint) in
+
+      (* break condition of e1 == e2 *)
+      let size := Integers.Int.repr sz in
+      let cond := CStan.Ebinop Olt (CStan.Evar i tint) (CStan.Econst_int size tint) tint in
+
+      let one := Integers.Int.repr 1 in
+      let eincr := CStan.Ebinop Oadd (CStan.Evar i tint) (CStan.Econst_int one tint) tint in
+      let incr := CStan.Sassign (CStan.Evar i tint) eincr in
+
+      OK (CStan.Sfor init cond body incr)
+    | _ => Error (msg "Denumpyification.transf_statement: foreach applied to non-array type")
+    end
+
   | Starget e =>
     do e <- transf_expression e;
     OK (CStan.Starget e)
@@ -296,7 +315,6 @@ Definition transf_param (p: Stypes.autodifftype * StanE.basic * AST.ident) : res
     | (ad, t, i) => do t <- transf_type t; OK (i, t)
   end.
 
-(* FIXME: don't discard AD information! *)
 Definition transf_params (ps: list (Stypes.autodifftype * StanE.basic * AST.ident)) : res (list (AST.ident * type)) :=
   mapM transf_param ps.
 

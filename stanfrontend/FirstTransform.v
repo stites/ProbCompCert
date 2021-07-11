@@ -217,22 +217,6 @@ match s with
   | Scontinue => ret Scontinue
 end.
 
-Definition transf_type_to_initializer (ty:Ctypes.type) : mon expr :=
-  match ty with
-  | Tint _ _ _ => ret (CStan.Econst_int (Int.repr 0) ty)
-  | Tfloat _ _ => ret (CStan.Econst_float (Float.of_int (Int.repr 0)) ty)
-  | _ => error (msg "NYI: type to initializing expr")
-  end.
-
-Fixpoint transf_localvar_to_initializers (vars : list (AST.ident*Ctypes.type)) : mon statement :=
-  match vars with
-  | nil => ret Sskip
-  | (i, ty)::tl =>
-    do e <~ transf_type_to_initializer ty;
-    do nxt <~ transf_localvar_to_initializers tl;
-    ret (Ssequence (Sassign (Evar i ty) e) nxt)
-  end.
-
 Definition transf_model (p:program) (f: function) (body : statement): mon statement :=
   match f.(fn_blocktype) with
   | BTModel =>
@@ -242,9 +226,6 @@ Definition transf_model (p:program) (f: function) (body : statement): mon statem
         (Ssequence body
           (Sreturn (Some (CStan.Etarget tdouble))))) in
     transf_target_statement tgt body
-  | BTParams =>
-    let vars := filter_globvars p.(prog_defs) p.(prog_parameters_vars) in
-    (transf_localvar_to_initializers vars)
   | _ => ret body
   end.
 

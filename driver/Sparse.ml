@@ -195,7 +195,11 @@ let rec el_s s =
   | Stan.Scall (i,el) -> StanE.Scall (Camlcoq.intern_string i,List.map el_e el)
   | Stan.Sprint lp -> raise (NIY_elab "statement: print")
   | Stan.Sreject lp -> raise (NIY_elab "statement: reject")
-  | Stan.Sforeach (i,e,s) -> StanE.Sforeach (Camlcoq.intern_string i,el_e e, el_s s)
+  | Stan.Sforeach (i,e,s) ->
+    let isym = Camlcoq.intern_string i in
+    IdxHashtbl.add index_set isym ();
+    Hashtbl.add type_table i StanE.Bint;
+    StanE.Sforeach (isym,el_e e, el_s s)
   | Stan.Starget e -> StanE.Starget (el_e e)
   | Stan.Stilde (e,i,el,(tr1,tr2)) ->
     let (_i, _ty) = match Hashtbl.find_opt transf_dist_idents i with
@@ -206,6 +210,7 @@ let rec el_s s =
 
 let coqZ_of_string s =
   Integers.Int.intval (Camlcoq.coqint_of_camlint (of_int (int_of_string s)))
+
 let el_b b dims =
   match (b, dims) with
   | (Stan.Bint,  []) -> StanE.Bint
@@ -295,8 +300,6 @@ let mkFunction name body rt params extraVars =
 
   let blocktypeFundef = function
     | "model" -> CStan.BTModel
-    | "parameters" -> CStan.BTParams
-    | "data" -> CStan.BTData
     | _ -> CStan.BTOther
   in
 
@@ -323,7 +326,29 @@ let fromMaybe default mval =
   | None -> default
   | Some v -> v
 
+let maybe default fn mval =
+  fromMaybe default (mapMaybe fn mval)
+
 let sparam2stanEparam ((ad, ty), v) = ((ad, stype2basic ty), v)
+
+let initOneVariable var =
+  if not var.Stan.vd_global
+  then Stan.Sskip
+  else
+    let evar = Stan.Evar var.Stan.vd_id in
+    begin match var.Stan.vd_init with
+    | Some e -> Stan.Sassign (evar, None, e)
+    | None ->
+      begin match (var.Stan.vd_type, var.Stan.vd_dims) with
+      | (Stan.Bint,  []) -> Stan.Sassign (evar, None, Stan.Econst_int "0")
+      | (Stan.Breal, []) -> Stan.Sassign (evar, None, Stan.Econst_float "0")
+      | (Stan.Bint,  [Stan.Econst_int sz]) ->
+        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_int "0"))
+      | (Stan.Breal,  [Stan.Econst_int sz]) ->
+        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
+      | _ -> Stan.Sskip
+      end
+    end
 
 let elaborate (p: Stan.program) =
   match p with
@@ -344,7 +369,7 @@ let elaborate (p: Stan.program) =
     let functions = [] in
 
     IdxHashtbl.clear index_set;
-    let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
+    let (id_data,f_data) = declareFundef "data" (maybe [] (List.map initOneVariable) d) None [] in
     let functions = (id_data,f_data) :: functions in
 
     IdxHashtbl.clear index_set;
@@ -352,7 +377,7 @@ let elaborate (p: Stan.program) =
     let functions = (id_tr_data,f_tr_data) :: functions in
 
     IdxHashtbl.clear index_set;
-    let (id_params,f_params) = declareFundef "parameters" [Stan.Sskip] None [] in
+    let (id_params,f_params) = declareFundef "parameters" (maybe [] (List.map initOneVariable) p) None [] in
     let functions = (id_params,f_params) :: functions in
 
     IdxHashtbl.clear index_set;

@@ -18,18 +18,18 @@ double mu;
 int flips[3];
 
 void data() {
-  // for (int i = 0; i < 3; i++)
-  // {
-  //   flips[i] = 0;
-  //   observed.flips[i] = 0;
-  // }
+  for (int i = 0; i < 3; i++)
+  {
+    flips[i] = 0;
+    //  observed.flips[i] = 0;
+  }
 }
 
 void transformed_data() {
 }
 
 void parameters() {
-  mu = 0.5;
+  mu = 0;
   // state.mu = 0.5;
 }
 
