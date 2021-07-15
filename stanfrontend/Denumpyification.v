@@ -282,12 +282,39 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
+Definition transf_constraint (c : StanE.constraint) : res CStan.constraint :=
+  match c with
+  | StanE.Cidentity => OK CStan.Cidentity
+  | StanE.Cordered => OK CStan.Cordered
+  | StanE.Cpositive_ordered => OK CStan.Cpositive_ordered
+  | StanE.Csimplex => OK CStan.Csimplex
+  | StanE.Cunit_vector => OK CStan.Cunit_vector
+  | StanE.Ccholesky_corr => OK CStan.Ccholesky_corr
+  | StanE.Ccholesky_cov => OK CStan.Ccholesky_cov
+  | StanE.Ccorrelation => OK CStan.Ccorrelation
+  | StanE.Ccovariance => OK CStan.Ccovariance
+
+  | StanE.Clower e => do e <- transf_expression e; OK (CStan.Clower e)
+  | StanE.Cupper e => do e <- transf_expression e; OK (CStan.Cupper e)
+  | StanE.Coffset e => do e <- transf_expression e; OK (CStan.Coffset e)
+  | StanE.Cmultiplier e => do e <- transf_expression e; OK (CStan.Cmultiplier e)
+  | StanE.Clower_upper e0 e1 =>
+    do e0 <- transf_expression e0;
+    do e1 <- transf_expression e1;
+    OK (CStan.Clower_upper e0 e1)
+  | StanE.Coffset_multiplier e0 e1 =>
+    do e0 <- transf_expression e0;
+    do e1 <- transf_expression e1;
+    OK (CStan.Coffset_multiplier e0 e1)
+  end.
+ 
 Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
   do ty <- transf_type (StanE.vd_type v);
   do oe <- option_mmap transf_expression (StanE.vd_init v);
+  do c <- transf_constraint (StanE.vd_constraint v);
   OK {|
     CStan.vd_type := ty;
-    CStan.vd_constraint := StanE.vd_constraint v;
+    CStan.vd_constraint := c;
     CStan.vd_init := oe;
     CStan.vd_global := StanE.vd_global v;
   |}.
@@ -349,7 +376,7 @@ Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :
 Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
   {|
   CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
-  CStan.vd_constraint:= Stan.Cidentity;
+  CStan.vd_constraint:= CStan.Cidentity;
   CStan.vd_init:= None;
   CStan.vd_global:= true;
 |}.

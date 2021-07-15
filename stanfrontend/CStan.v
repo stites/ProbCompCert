@@ -94,6 +94,23 @@ Definition Sfor
   (s4: statement) (* postprocessing statement *)
   := Ssequence s1 (Sloop (Ssequence (Sifthenelse e2 Sskip Sbreak) s3) s4).
 
+Inductive constraint :=
+  | Cidentity
+  | Clower: expr -> constraint
+  | Cupper: expr -> constraint
+  | Clower_upper: expr -> expr -> constraint
+  | Coffset: expr -> constraint
+  | Cmultiplier: expr -> constraint
+  | Coffset_multiplier: expr -> expr -> constraint
+  | Cordered
+  | Cpositive_ordered
+  | Csimplex
+  | Cunit_vector
+  | Ccholesky_corr
+  | Ccholesky_cov
+  | Ccorrelation
+  | Ccovariance.
+
 Record type := mkvariable {
   vd_type: Ctypes.type;
   vd_constraint: constraint;

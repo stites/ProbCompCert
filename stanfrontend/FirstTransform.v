@@ -144,6 +144,50 @@ match s with
           (Starget etmp))
 end.
 
+(* FIXME replace with calls to math *)
+Definition float_zero : float := Float.of_int (Int.repr 0).
+Definition stan_log(e: expr) : expr := Ebinop Oadd e (Econst_float float_zero tdouble) tdouble.
+Definition stan_exp(e: expr) : expr := Ebinop Osub e (Econst_float float_zero tdouble) tdouble.
+
+Definition constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): mon expr :=
+  match c with
+  | Cidentity => ret e
+  | Clower a => ret (stan_log (Ebinop Osub e a t))
+  | Cupper e => error (msg "NYI constrained_to_unconstrained: Cupper")
+  | Clower_upper l u => error (msg "NYI constrained_to_unconstrained: Clower_upper")
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Definition inv_constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): mon expr :=
+  match c with
+  | Cidentity => ret e
+  | Clower a => ret (Ebinop Oadd (stan_exp e) a t)
+  | Cupper e => error (msg "NYI constrained_to_unconstrained: Cupper")
+  | Clower_upper l u => error (msg "NYI constrained_to_unconstrained: Clower_upper")
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+
 Fixpoint transf_constraints_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)

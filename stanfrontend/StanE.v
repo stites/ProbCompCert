@@ -54,9 +54,26 @@ Inductive printable :=
   | Pstring: ident -> printable 
   | Pexpr: expr -> printable.
 
+Inductive constraint :=
+  | Cidentity
+  | Clower: expr -> constraint
+  | Cupper: expr -> constraint
+  | Clower_upper: expr -> expr -> constraint
+  | Coffset: expr -> constraint
+  | Cmultiplier: expr -> constraint
+  | Coffset_multiplier: expr -> expr -> constraint
+  | Cordered
+  | Cpositive_ordered
+  | Csimplex
+  | Cunit_vector
+  | Ccholesky_corr
+  | Ccholesky_cov
+  | Ccorrelation
+  | Ccovariance.
+
 Record variable := mkvariable {
   vd_type: basic;
-  vd_constraint: Stan.constraint;
+  vd_constraint: constraint;
   vd_dims: list(expr);
   vd_init: option expr;
   vd_global: bool;

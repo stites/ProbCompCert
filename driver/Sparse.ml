@@ -78,7 +78,7 @@ let gl_params_struct = AST.Gvar {
   AST.gvar_init = [init_ptr];
   AST.gvar_info = {
     StanE.vd_type = StanE.Bstruct id_params_struct;
-    StanE.vd_constraint = Stan.Cidentity;
+    StanE.vd_constraint = StanE.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
     StanE.vd_global = true;
@@ -99,7 +99,7 @@ let mk_global_array ty len = AST.Gvar {
   AST.gvar_init = replicate (to_int len) ty;
   AST.gvar_info = {
     StanE.vd_type = StanE.Bvector (Camlcoq.coqint_of_camlint len);
-    StanE.vd_constraint = Stan.Cidentity;
+    StanE.vd_constraint = StanE.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
     StanE.vd_global = true;
@@ -111,6 +111,7 @@ let mk_global_array ty len = AST.Gvar {
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 let type_table = Hashtbl.create 123456;;
 Hashtbl.add type_table "target" StanE.Breal
+
 module IdxTable =
   struct
     type t = BinNums.positive
@@ -260,6 +261,24 @@ let stype2basic s =
   | Stypes.Treal -> StanE.Breal
   | _ -> raise (NIY_elab "do not call stype2basic on complex data representations")
 
+let el_c c =
+  match c with
+  | Stan.Cidentity -> StanE.Cidentity
+  | Stan.Clower e -> StanE.Clower (el_e e)
+  | Stan.Cupper e -> StanE.Cupper (el_e e)
+  | Stan.Clower_upper (l, u) -> StanE.Clower_upper (el_e l, el_e u)
+  | Stan.Coffset e -> StanE.Coffset (el_e e)
+  | Stan.Cmultiplier e -> StanE.Cmultiplier (el_e e)
+  | Stan.Coffset_multiplier (l, u) -> StanE.Coffset_multiplier (el_e l, el_e u)
+  | Stan.Cordered -> StanE.Cordered
+  | Stan.Cpositive_ordered -> StanE.Cpositive_ordered
+  | Stan.Csimplex -> StanE.Csimplex
+  | Stan.Cunit_vector -> StanE.Cunit_vector
+  | Stan.Ccholesky_corr -> StanE.Ccholesky_corr
+  | Stan.Ccholesky_cov -> StanE.Ccholesky_cov
+  | Stan.Ccorrelation -> StanE.Ccorrelation
+  | Stan.Ccovariance -> StanE.Ccovariance
+
 let mkVariable v t =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
@@ -276,7 +295,7 @@ let mkVariable v t =
   Hashtbl.add type_table v.Stan.vd_id basic;
   let vd = {
     StanE.vd_type = basic;
-    StanE.vd_constraint = v.Stan.vd_constraint;
+    StanE.vd_constraint = el_c(v.Stan.vd_constraint);
     StanE.vd_dims = List.map el_e v.Stan.vd_dims;
     StanE.vd_init = mapo v.Stan.vd_init el_e;
     StanE.vd_global = true;
