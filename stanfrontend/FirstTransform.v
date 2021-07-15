@@ -28,6 +28,7 @@ Local Open Scope gensym_monad_scope.
 
 Definition tdouble := Tfloat F64 noattr.
 Definition float_one := Floats.Float.of_int Int.one.
+Definition float_zero := Floats.Float.of_int Int.zero.
 
 Notation mon := SimplExpr.mon.
 Notation ret := SimplExpr.ret.
@@ -145,16 +146,23 @@ match s with
 end.
 
 (* FIXME replace with calls to math *)
-Definition float_zero : float := Float.of_int (Int.repr 0).
 Definition stan_log(e: expr) : expr := Ebinop Oadd e (Econst_float float_zero tdouble) tdouble.
 Definition stan_exp(e: expr) : expr := Ebinop Osub e (Econst_float float_zero tdouble) tdouble.
+Definition stan_logit(e: expr) : expr := Ebinop Oadd e (Econst_float float_zero tdouble) tdouble.
+Definition stan_expit(e: expr) : expr := Ebinop Osub e (Econst_float float_zero tdouble) tdouble.
 
 Definition constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): mon expr :=
   match c with
   | Cidentity => ret e
   | Clower a => ret (stan_log (Ebinop Osub e a t))
-  | Cupper e => error (msg "NYI constrained_to_unconstrained: Cupper")
-  | Clower_upper l u => error (msg "NYI constrained_to_unconstrained: Clower_upper")
+  | Cupper b => ret (stan_log (Ebinop Osub b e t))
+  | Clower_upper a b =>
+    ret (stan_logit
+          (Ebinop Odiv
+            (Ebinop Osub e a t)
+            (Ebinop Osub b a t)
+            t))
+
   | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
   | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
   | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
@@ -172,8 +180,33 @@ Definition inv_constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): 
   match c with
   | Cidentity => ret e
   | Clower a => ret (Ebinop Oadd (stan_exp e) a t)
-  | Cupper e => error (msg "NYI constrained_to_unconstrained: Cupper")
-  | Clower_upper l u => error (msg "NYI constrained_to_unconstrained: Clower_upper")
+  | Cupper b => ret (Ebinop Osub b (stan_exp e) t)
+  | Clower_upper a b => ret (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (stan_expit e) t) t)
+
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Definition density_of_transformed_var (e: expr) (c: constraint) (t: Ctypes.type): mon statement :=
+  match c with
+  | Cidentity => ret Sskip
+  | Clower _ => ret (Starget (stan_exp e))
+  | Cupper _ => ret (Starget (stan_exp e))
+  | Clower_upper a b =>
+    ret (Starget
+          (Ebinop Oadd
+            (Ebinop Omul (Ebinop Omul b a t) (stan_expit e) t)
+            (Ebinop Osub (Econst_float float_one t) (stan_expit e) t) t))
+
   | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
   | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
   | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
