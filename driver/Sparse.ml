@@ -26,7 +26,16 @@ let rt = Some tdouble
 let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
 
-let mk_global_dist str ast_args_list c_args_ast =
+let ast_to_ctype x =
+  match x with
+  | AST.Tfloat -> ctdouble
+  | AST.Tint -> ctint
+  | _ -> raise (NIY_elab "impossible")
+
+let mk_ctypelist xs =
+  List.fold_left (fun tail h -> Ctypes.Tcons (h, tail)) Ctypes.Tnil xs
+
+let mk_global_func str ast_args_list =
   AST.Gfun
     (Ctypes.External
        (AST.EF_external
@@ -35,30 +44,21 @@ let mk_global_dist str ast_args_list c_args_ast =
             AST.sig_res=AST.Tret AST.Tfloat;
             AST.sig_cc=AST.cc_default;
           }),
-       c_args_ast,
+       mk_ctypelist (List.map ast_to_ctype ast_args_list),
        ctdouble,
        AST.cc_default
     ))
 
-
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
-let gl_uniform_lpdf =
-  mk_global_dist
-    st_uniform_lpdf
-    [AST.Tfloat; AST.Tfloat; AST.Tfloat]
-    (Ctypes.Tcons (ctdouble, Ctypes.Tcons (ctdouble, (Ctypes.Tcons (ctdouble, Ctypes.Tnil)))))
+let gl_uniform_lpdf = mk_global_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
 
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
-let gl_bernoulli_lpmf =
-  mk_global_dist
-    st_bernoulli_lpmf
-    [AST.Tint; AST.Tfloat]
-    (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
+let gl_bernoulli_lpmf = mk_global_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -67,6 +67,15 @@ let stanlib_functions = [
     (id_uniform_lpdf,   gl_uniform_lpdf);
     (id_bernoulli_lpmf, gl_bernoulli_lpmf)
   ]
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                              math functions                                  *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat])
+let (st_log, id_log, gl_log)       = unary_math_fn "log"
+let (st_exp, id_exp, gl_exp)       = unary_math_fn "exp"
+let (st_logit, id_logit, gl_logit) = unary_math_fn "logit"
+let (st_expit, id_expit, gl_expit) = unary_math_fn "expit"
+let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit)]
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Struct work                                    *)
@@ -439,12 +448,12 @@ let elaborate (p: Stan.program) =
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=[(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
+      StanE.pr_defs=all_math_fns @ [(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
       StanE.pr_public=
         List.map fst functions
         (* TODO remove these when data and params live on structs? *)
         @ List.map fst data_variables @ List.map fst param_variables
-        @ List.map fst stanlib_functions;
+        @ List.map fst stanlib_functions @ List.map fst all_math_fns;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;
@@ -454,7 +463,9 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
-    }    
+      StanE.pr_math_functions=[(CStan.MFLog, id_log);(CStan.MFLogit, id_logit);(CStan.MFExp, id_exp);(CStan.MFExpit, id_expit)];
+      StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
+    }
 
 let location t =
   match t with
