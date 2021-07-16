@@ -145,7 +145,19 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
   end.
 
 Inductive math_func := MFLog | MFExp | MFLogit | MFExpit.
+Definition math_func_eq_dec : forall (x y : math_func), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+
 Inductive dist_func := DBern | DUnif.
+Definition dist_func_eq_dec : forall (x y : dist_func), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+
 
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);

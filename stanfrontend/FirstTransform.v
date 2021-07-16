@@ -145,67 +145,62 @@ match s with
           (Starget etmp))
 end.
 
-(* FIXME replace with calls to math *)
-Definition stan_log(e: expr) : expr := Ebinop Oadd e (Econst_float float_zero tdouble) tdouble.
-Definition stan_exp(e: expr) : expr := Ebinop Osub e (Econst_float float_zero tdouble) tdouble.
-Definition stan_logit(e: expr) : expr := Ebinop Oadd e (Econst_float float_zero tdouble) tdouble.
-Definition stan_expit(e: expr) : expr := Ebinop Osub e (Econst_float float_zero tdouble) tdouble.
-
-Definition constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): mon expr :=
-  match c with
-  | Cidentity => ret e
-  | Clower a => ret (stan_log (Ebinop Osub e a t))
-  | Cupper b => ret (stan_log (Ebinop Osub b e t))
-  | Clower_upper a b =>
-    ret (stan_logit
-          (Ebinop Odiv
-            (Ebinop Osub e a t)
-            (Ebinop Osub b a t)
-            t))
-
-  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
-  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
-  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
-  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
-  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
-  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
-  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
-  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
-  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
-  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
-  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+Fixpoint getmathfunc (t:math_func) (fs: list (math_func * AST.ident * Ctypes.type)) : mon (AST.ident * Ctypes.type) :=
+  match fs with
+  | nil => error (msg "impossible")
+  | h::tl => if math_func_eq_dec (fst (fst h)) t then ret (snd (fst h), snd h) else getmathfunc t tl
   end.
 
-Definition inv_constraint_transform (e: expr) (c: constraint) (t: Ctypes.type): mon expr :=
-  match c with
-  | Cidentity => ret e
-  | Clower a => ret (Ebinop Oadd (stan_exp e) a t)
-  | Cupper b => ret (Ebinop Osub b (stan_exp e) t)
-  | Clower_upper a b => ret (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (stan_expit e) t) t)
+Definition callmath (p: program) (t: math_func) (args : list expr) : mon (AST.ident * statement) :=
+  do rt <~ gensym tdouble;
+  do fty <~ getmathfunc t p.(prog_math_functions);
+  ret (rt, Scall (Some rt) (Evar (fst fty) (snd fty)) args).
 
-  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
-  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
-  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
-  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
-  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
-  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
-  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
-  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
-  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
-  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
-  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
-  end.
+Definition stan_log (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFLog (e::nil).
+Definition stan_exp (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFExp (e::nil).
 
-Definition density_of_transformed_var (e: expr) (c: constraint) (t: Ctypes.type): mon statement :=
+Definition stan_logit (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFLogit (e::nil).
+Definition stan_expit (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFExpit (e::nil).
+
+Definition constraint_transform (p:program) (evar: expr) (c: constraint) (t: Ctypes.type): mon statement :=
   match c with
   | Cidentity => ret Sskip
-  | Clower _ => ret (Starget (stan_exp e))
-  | Cupper _ => ret (Starget (stan_exp e))
+  (* | Clower a => ret (stan_log (Ebinop Osub e a t)) *)
+  | Clower a => error (msg "NYI constrained_to_unconstrained: Clower")
+  (* | Cupper b => ret (stan_log (Ebinop Osub b e t)) *)
+  | Cupper b => error (msg "NYI constrained_to_unconstrained: Cupper")
   | Clower_upper a b =>
-    ret (Starget
-          (Ebinop Oadd
-            (Ebinop Omul (Ebinop Omul b a t) (stan_expit e) t)
-            (Ebinop Osub (Econst_float float_one t) (stan_expit e) t) t))
+    do rt_call <~
+      stan_logit p (Ebinop Odiv
+        (Ebinop Osub evar a t)
+        (Ebinop Osub b a t)
+      t);
+    ret (snd rt_call)
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Definition inv_constraint_transform (p:program) (evar: expr) (c: constraint) (t: Ctypes.type): mon statement :=
+  match c with
+  | Cidentity => error (msg "NYI: Cidentity:  ret e")
+  | Clower a => error (msg "NYI: Clower:  ret (Ebinop Oadd (stan_exp e) a t)")
+  | Cupper b => error (msg "NYI: Cupper:  ret (Ebinop Osub b (stan_exp e) t)")
+  | Clower_upper a b =>
+    do rt_call <~ stan_expit p evar;
+    let rt := fst rt_call in
+    let call := snd rt_call in
+    let r := (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t) t) in
+    ret (Ssequence call (Sset rt r))
+
 
   | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
   | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
@@ -220,6 +215,34 @@ Definition density_of_transformed_var (e: expr) (c: constraint) (t: Ctypes.type)
   | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
   end.
 
+Definition density_of_transformed_var (p:program) (e: expr) (c: constraint) (t: Ctypes.type): mon statement :=
+  match c with
+  | Cidentity => ret Sskip
+  | Clower _ => do rt_call <~ stan_expit p e; ret (Ssequence (snd rt_call) (Starget (Etempvar (fst rt_call) tdouble)))
+  | Cupper _ => do rt_call <~ stan_expit p e; ret (Ssequence (snd rt_call) (Starget (Etempvar (fst rt_call) tdouble)))
+  | Clower_upper a b =>
+    do rt_call <~ stan_expit p e;
+    let rt := fst rt_call in
+    let call := snd rt_call in
+    ret (Ssequence
+          call
+          (Starget
+            (Ebinop Oadd
+              (Ebinop Omul (Ebinop Omul b a t) (Etempvar rt tdouble) t)
+              (Ebinop Osub (Econst_float float_one t) (Etempvar rt tdouble) t) t)))
+
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
 
 Fixpoint transf_constraints_expr (p: CStan.program) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
