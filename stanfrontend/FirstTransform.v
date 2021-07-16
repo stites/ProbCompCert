@@ -265,14 +265,26 @@ Definition density_of_transformed_var (p:program) (i: AST.ident) (c: constraint)
   | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
   end.
 
-Fixpoint transf_constraints_expr (p: CStan.program) (e: CStan.expr) {struct e}: mon CStan.expr :=
+Fixpoint transf_constraints_expr (pmap: AST.ident -> option AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
   | CStan.Econst_single f t => ret (CStan.Econst_single f t)
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
-  | CStan.Etempvar i t => ret (CStan.Etempvar i t)
+
+  (* TODO only works because all params are global right now. *)
+  | CStan.Evar i t =>
+    match pmap i with
+    | None => ret (CStan.Evar i t)
+    | Some i => ret (CStan.Etempvar i t)
+    end
+  | CStan.Etempvar i t =>
+    match pmap i with
+    | None => ret (CStan.Etempvar i t)
+    | Some i => ret (CStan.Etempvar i t)
+    end
+  (* In the future ^^^ will need to turn into vvv *)
+
   | CStan.Ederef e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Ederef e t) (* a transformation downstream would be invalid*)
   | CStan.Eunop uop e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t =>
@@ -496,8 +508,8 @@ Definition transf_model (p:program) (f: function) (body : statement): mon statem
 
 Definition transf_statement_pipeline (p:program) (f: function) : mon CStan.statement :=
   do body <~ transf_statement f.(fn_body);          (* Stilde -> Starget; Error "Backend: tilde" *)
+  do body <~ transf_constraints p f body;           (* apply constraint transformations *)
   do body <~ transf_statement body;                 (* apply Starget transform *)
-  do body <~ transf_constraints_statement p body;     (* apply constraint transformations *)
   do body <~ transf_model p f body;                 (* add target preamble and replace Etarget with Evar target_ident *)
   ret body.
 
