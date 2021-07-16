@@ -204,20 +204,25 @@ Definition inv_constraint_transform (p:program) (i: AST.ident) (c: constraint) :
   | Clower a =>
     do rt_call <~ stan_exp p evar;
     match rt_call with
-    | (rt, call) => ret (Some (rt, Ssequence call (Sset rt (Ebinop Oadd (Etempvar rt t) a t))))
+    | (rt, call) =>
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o (Ebinop Oadd (Etempvar rt t) a t))))
     end
   | Cupper b =>
     do rt_call <~ stan_exp p evar;
     match rt_call with
-    | (rt, call) => ret (Some (rt, Ssequence call (Sset rt (Ebinop Osub b (Etempvar rt t) t))))
+    | (rt, call) =>
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o (Ebinop Osub b (Etempvar rt t) t))))
     end
   | Clower_upper a b =>
     do rt_call <~ stan_expit p evar;
-    let rt := fst rt_call in
-    let call := snd rt_call in
-    let r := (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t) t) in
-    ret (Some (rt, Ssequence call (Sset rt r)))
-
+    match rt_call with
+    | (rt, call) =>
+      let r := (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t) t) in
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o r)))
+    end
 
   | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
   | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
