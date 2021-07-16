@@ -86,7 +86,7 @@
             })
             (mk-watcher "watch-clightgen" {
               command = watch {
-                build = "make -j clightgen";
+                build = "make -j && make install";
                 cmd = "./clightgen $current_dir/$1";
               };
             })
