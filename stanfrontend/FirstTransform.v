@@ -254,7 +254,7 @@ Definition density_of_transformed_var (p:program) (i: AST.ident) (c: constraint)
           call
           (Starget
             (Ebinop Oadd
-              (Ebinop Omul (Ebinop Omul b a t) (Etempvar rt tdouble) t)
+              (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t)
               (Ebinop Osub (Econst_float float_one t) (Etempvar rt tdouble) t) t))))
 
   | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
