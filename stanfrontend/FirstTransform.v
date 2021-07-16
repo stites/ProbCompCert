@@ -431,4 +431,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_model:=p.(prog_model);
 
       prog_comp_env:=p.(prog_comp_env);
+
+      prog_math_functions:= p.(prog_math_functions);
+      prog_dist_functions:= p.(prog_dist_functions);
     |}.

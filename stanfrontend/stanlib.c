@@ -61,3 +61,13 @@ double bernoulli_sample(double p)
 {
   return (((double) rand () / RAND_MAX) > p) ? 0 : 1;
 }
+
+double logit(double p)
+{
+  return (p <= 0 || p >= 1) ? INFINITY : log(p) - log(1-p);
+}
+
+double expit(double a)
+{
+  return 1 / (1 + exp(-a));
+}

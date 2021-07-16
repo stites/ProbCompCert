@@ -144,6 +144,9 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
   | External id args res cc => Tfunction args res cc
   end.
 
+Inductive math_func := MFLog | MFExp | MFLogit | MFExpit.
+Inductive dist_func := DBern | DUnif.
+
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
@@ -157,6 +160,8 @@ Record program : Type := {
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;
+  prog_math_functions: list (math_func * ident);
+  prog_dist_functions: list (dist_func * ident);
 }.
 
 Definition program_of_program (p: program) : AST.program fundef type :=

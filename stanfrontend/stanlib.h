@@ -8,4 +8,6 @@ double bernoulli_lpmf(int x, double p);
 double uniform_sample(double mu, double sigma);
 double bernoulli_sample(double p);
 
+double logit(double p);
+double expit(double a);
 #endif // STANLIB_H_

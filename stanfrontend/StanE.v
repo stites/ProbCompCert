@@ -11,6 +11,7 @@ Require Import Sops.
 Require Import Cop.
 Require Import Stypes.
 
+
 (* NOTE basic is a StanE type, see variable.vd_type *)
 Inductive basic :=
   | Bint
@@ -111,7 +112,7 @@ Record function := mkfunction {
 }.
 
 Definition fundef := Ctypes.fundef function.
-  
+
 Record program := mkprogram {
   pr_defs: list (ident * globdef fundef variable);
   pr_public: list ident;
@@ -123,7 +124,9 @@ Record program := mkprogram {
   pr_data: ident;
   pr_data_vars: list ident;
   pr_transformed_data: ident;
-  pr_generated: ident
+  pr_generated: ident;
+  pr_math_functions: list (CStan.math_func * ident);
+  pr_dist_functions: list (CStan.dist_func * ident);
 }.
 
 Definition program_of_program (p: program) : AST.program fundef variable :=
