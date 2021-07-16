@@ -35,9 +35,10 @@ let ast_to_ctype x =
 let mk_ctypelist xs =
   List.fold_left (fun tail h -> Ctypes.Tcons (h, tail)) Ctypes.Tnil xs
 
+let mk_cfunc ast_args_list = Ctypes.Tfunction (mk_ctypelist (List.map ast_to_ctype ast_args_list), ctdouble, AST.cc_default)
+
 let mk_global_func str ast_args_list =
-  AST.Gfun
-    (Ctypes.External
+    AST.Gfun (Ctypes.External
        (AST.EF_external
           (to_charlist str, {
             AST.sig_args=ast_args_list;
@@ -70,11 +71,11 @@ let stanlib_functions = [
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                              math functions                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat])
-let (st_log, id_log, gl_log)       = unary_math_fn "log"
-let (st_exp, id_exp, gl_exp)       = unary_math_fn "exp"
-let (st_logit, id_logit, gl_logit) = unary_math_fn "logit"
-let (st_expit, id_expit, gl_expit) = unary_math_fn "expit"
+let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat], mk_cfunc [AST.Tfloat])
+let (st_log, id_log, gl_log, clog)       = unary_math_fn "log"
+let (st_exp, id_exp, gl_exp, cexp)       = unary_math_fn "exp"
+let (st_logit, id_logit, gl_logit, clogit) = unary_math_fn "logit"
+let (st_expit, id_expit, gl_expit, cexpit) = unary_math_fn "expit"
 let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit)]
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
@@ -463,7 +464,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
-      StanE.pr_math_functions=[(CStan.MFLog, id_log);(CStan.MFLogit, id_logit);(CStan.MFExp, id_exp);(CStan.MFExpit, id_expit)];
+      StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
       StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
     }
 

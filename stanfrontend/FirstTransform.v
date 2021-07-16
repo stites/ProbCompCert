@@ -221,7 +221,7 @@ Definition density_of_transformed_var (e: expr) (c: constraint) (t: Ctypes.type)
   end.
 
 
-Fixpoint transf_constraints_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
+Fixpoint transf_constraints_expr (p: CStan.program) (e: CStan.expr) {struct e}: mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
@@ -229,43 +229,43 @@ Fixpoint transf_constraints_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
   | CStan.Evar i t => ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
-  | CStan.Ederef e t => do e <~ transf_constraints_expr e; ret (CStan.Ederef e t)
-  | CStan.Eunop uop e t => do e <~ transf_constraints_expr e; ret (CStan.Eunop uop e t)
+  | CStan.Ederef e t => do e <~ transf_constraints_expr p e; ret (CStan.Ederef e t)
+  | CStan.Eunop uop e t => do e <~ transf_constraints_expr p e; ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t =>
-    do e0 <~ transf_constraints_expr e0;
-    do e1 <~ transf_constraints_expr e1;
+    do e0 <~ transf_constraints_expr p e0;
+    do e1 <~ transf_constraints_expr p e1;
     ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
   | CStan.Etarget ty => ret (CStan.Etarget ty)
 end.
 
-Fixpoint transf_constraints_statement (s: CStan.statement) {struct s}: mon CStan.statement :=
+Fixpoint transf_constraints_statement (p: CStan.program) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sassign e0 e1 =>
-    do e0 <~ transf_constraints_expr e0;
-    do e1 <~ transf_constraints_expr e1;
+    do e0 <~ transf_constraints_expr p e0;
+    do e1 <~ transf_constraints_expr p e1;
     ret (Sassign e0 e1)
-  | Sset i e => do e <~ transf_constraints_expr e; ret (Sset i e)
+  | Sset i e => do e <~ transf_constraints_expr p e; ret (Sset i e)
   | Scall oi e le =>
-    do e <~ transf_constraints_expr e;
-    do le <~ mon_mmap (transf_constraints_expr) le;
+    do e <~ transf_constraints_expr p e;
+    do le <~ mon_mmap (transf_constraints_expr p) le;
     ret (Scall oi e le)
   | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
   | Ssequence s0 s1 =>
-    do s0 <~ transf_constraints_statement s0;
-    do s1 <~ transf_constraints_statement s1;
+    do s0 <~ transf_constraints_statement p s0;
+    do s1 <~ transf_constraints_statement p s1;
     ret (Ssequence s0 s1)
   | Sifthenelse e s0 s1 =>
-    do e <~ transf_constraints_expr e;
-    do s0 <~ transf_constraints_statement s0;
-    do s1 <~ transf_constraints_statement s1;
+    do e <~ transf_constraints_expr p e;
+    do s0 <~ transf_constraints_statement p s0;
+    do s1 <~ transf_constraints_statement p s1;
     ret (Sifthenelse e s0 s1)
   | Sloop s0 s1 =>
-    do s0 <~ transf_constraints_statement s0;
-    do s1 <~ transf_constraints_statement s1;
+    do s0 <~ transf_constraints_statement p s0;
+    do s1 <~ transf_constraints_statement p s1;
     ret (Sloop s0 s1)
-  | Sreturn oe => do oe <~ option_mon_mmap (transf_constraints_expr) oe; ret (Sreturn oe)
+  | Sreturn oe => do oe <~ option_mon_mmap (transf_constraints_expr p) oe; ret (Sreturn oe)
   | Starget e => error (msg "Starget DNE in this stage of pipeline")
   | Stilde e i le (oe0, oe1) => error (msg "Stilde DNE in this stage of pipeline")
   | Sbreak => ret Sbreak
@@ -360,7 +360,7 @@ Definition transf_model (p:program) (f: function) (body : statement): mon statem
 Definition transf_statement_pipeline (p:program) (f: function) : mon CStan.statement :=
   do body <~ transf_statement f.(fn_body);          (* Stilde -> Starget; Error "Backend: tilde" *)
   do body <~ transf_statement body;                 (* apply Starget transform *)
-  do body <~ transf_constraints_statement body;     (* apply constraint transformations *)
+  do body <~ transf_constraints_statement p body;     (* apply constraint transformations *)
   do body <~ transf_model p f body;                 (* add target preamble and replace Etarget with Evar target_ident *)
   ret body.
 

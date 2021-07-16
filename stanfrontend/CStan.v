@@ -160,7 +160,7 @@ Record program : Type := {
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;
-  prog_math_functions: list (math_func * ident);
+  prog_math_functions: list (math_func * ident * Ctypes.type);
   prog_dist_functions: list (dist_func * ident);
 }.
 

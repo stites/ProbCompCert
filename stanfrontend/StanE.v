@@ -125,7 +125,7 @@ Record program := mkprogram {
   pr_data_vars: list ident;
   pr_transformed_data: ident;
   pr_generated: ident;
-  pr_math_functions: list (CStan.math_func * ident);
+  pr_math_functions: list (CStan.math_func * ident * Ctypes.type);
   pr_dist_functions: list (CStan.dist_func * ident);
 }.
 
