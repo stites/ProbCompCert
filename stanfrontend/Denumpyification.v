@@ -392,9 +392,13 @@ Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
   | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
   end.
 
-Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*Ctypes.type) :=
+Definition filter_stan_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*CStan.type) :=
   let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
   let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
+  stan_members.
+
+Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*Ctypes.type) :=
+  let stan_members := filter_stan_globvars all_defs vars in
   let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
   ctype_members.
 
