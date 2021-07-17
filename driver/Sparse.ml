@@ -35,7 +35,10 @@ let ast_to_ctype x =
 let mk_ctypelist xs =
   List.fold_left (fun tail h -> Ctypes.Tcons (h, tail)) Ctypes.Tnil xs
 
-let mk_cfunc ast_args_list = Ctypes.Tfunction (mk_ctypelist (List.map ast_to_ctype ast_args_list), ctdouble, AST.cc_default)
+let mk_ctypelist_from_astlist xs =
+    mk_ctypelist (List.rev (List.map ast_to_ctype xs))
+
+let mk_cfunc xs = Ctypes.Tfunction (mk_ctypelist_from_astlist xs, ctdouble, AST.cc_default)
 
 let mk_global_func str ast_args_list =
     AST.Gfun (Ctypes.External
@@ -45,7 +48,7 @@ let mk_global_func str ast_args_list =
             AST.sig_res=AST.Tret AST.Tfloat;
             AST.sig_cc=AST.cc_default;
           }),
-       mk_ctypelist (List.map ast_to_ctype ast_args_list),
+       mk_ctypelist_from_astlist ast_args_list,
        ctdouble,
        AST.cc_default
     ))

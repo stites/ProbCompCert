@@ -30,9 +30,9 @@ Require Import Cop.
 Require Import Stan.
 
 Inductive expr : Type :=
-  | Econst_int: int -> type -> expr       (**r integer literal *)
+  | Econst_int: int -> type -> expr       (**r integer literal *)       (*FIXME: I think we can remove this *)
   | Econst_float: float -> type -> expr   (**r double float literal *)
-  | Econst_single: float32 -> type -> expr (**r single float literal *)
+  | Econst_single: float32 -> type -> expr (**r single float literal *) (*FIXME: I think we can remove this *)
   | Econst_long: int64 -> type -> expr    (**r long integer literal *)
   | Evar: ident -> type -> expr           (**r variable *)
   | Etempvar: ident -> type -> expr       (**r temporary variable *)
