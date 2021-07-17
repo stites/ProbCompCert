@@ -373,10 +373,10 @@ let initOneVariable var =
     | None ->
       begin match (var.Stan.vd_type, var.Stan.vd_dims) with
       | (Stan.Bint,  []) -> Stan.Sassign (evar, None, Stan.Econst_int "0")
-      | (Stan.Breal, []) -> Stan.Sassign (evar, None, Stan.Econst_float "0")
+      | (Stan.Breal, []) -> Stan.Sassign (evar, None, Stan.Econst_float "0.5")
       | (Stan.Bint,  [Stan.Econst_int sz]) ->
         (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_int "0")) *)
-        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Evar "i"))
+        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
       | (Stan.Breal,  [Stan.Econst_int sz]) ->
         Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
       | _ -> Stan.Sskip

@@ -33,7 +33,7 @@ double randn (double mu, double sigma)
 
 double uniform_lpdf(double x, double a, double b)
 {
-    printf("uniform_lpdf(%f, %f, %f)\n", x, a, b);
+    /* printf("uniform_lpdf(%f, %f, %f)\n", x, a, b); */
     return (x < a || x > b) ? INFINITY : 0;
 }
 
@@ -46,7 +46,7 @@ double uniform_lpmf(int x, double a, double b)
 
 double bernoulli_lpmf(int x, double p)
 {
-    printf("bernoulli_lpmf(%d, %f)\n", x, p);
+    /* printf("bernoulli_lpmf(%d, %f)\n", x, p); */
     double k = (double) x;
     return k * log(p) + (1-k) * log(1-p);
 }
