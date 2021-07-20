@@ -377,8 +377,8 @@ let initOneVariable var =
       | (Stan.Bint,  [Stan.Econst_int sz]) ->
         (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_int "0")) *)
         Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
-      | (Stan.Breal,  [Stan.Econst_int sz]) ->
-        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
+      | (Stan.Breal,  [Stan.Econst_int sz]) -> Stan.Sskip
+        (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0")) *)
       | _ -> Stan.Sskip
       end
     end

@@ -17,17 +17,33 @@ void generated_quantities();
 
 void* propose();
 
+double expit(double x) {
+  return exp(x) / (1 + exp(x));
+}
+double inv_upper_lower(double a, double b, double y) {
+  return a + (b-a) * expit(y);
+}
+
 double mu;
 void print_state() {
-  printf("{ mu: %f }\n", mu);
+  printf("{ mu: %f }\n", inv_upper_lower(0, 1, mu));
 };
 
 int flips[100];
+void init_data() {
+  int num_elements = sizeof(flips) / sizeof(int);
+  int mod = 6;
+  printf("num_items: %d\n", num_elements);
+  for (int i = 0; i <= num_elements; ++i) {
+    *( flips+i ) = (i % mod == 0) ? 1 : 0;
+  }
+  printf("%% 1s: %f\n", (double) ceil((double) num_elements / (double) mod) / 100);
+}
 void print_data() {
   int num_elements = sizeof(flips) / sizeof(int);
   printf("flips: [");
   for (int i = 0; i < num_elements; ++i) {
-    printf("%i, ", *( flips+i ));
+    printf("%i, ", *(flips+i));
   }
   printf("\b\b]\n");
 }
@@ -62,13 +78,17 @@ int main(int argc, char* argv[]) {
   }
 
   int n = atoi(argv[1]);
-  
   data();
   transformed_data();
+
+  init_data();
   print_data();
 
   parameters();
-  
+
+  printf("initial state: ");
+
+  print_state();
   for (int i = 0; i < n; ++i) {
 
     void* parameters = get_state();
