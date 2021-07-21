@@ -5,17 +5,23 @@ Require Import Errors.
 Require Import Smallstep.
 Require Import Asm. 
 Require Import Stemplate.
+Require Import String.
+
 Require Import Compiler.
 Require Import Denumpyification.
-Require Import FirstTransform.
-Require Import String.
+Require Import Sampling.
+Require Import Constraints.
+Require Import Target.
 Require Import Sbackend.
+
 Open Scope string_scope.						     
 
 Definition transf_stan_program(p: StanE.program): res Clight.program :=
   OK p
   @@@ time "Denumpyification" Denumpyification.transf_program
-  @@@ time "FirstTransform" FirstTransform.transf_program
+  @@@ time "Sampling" Sampling.transf_program
+  (* @@@ time "Constraints" Constraints.transf_program *)
+  (* @@@ time "Target" Target.transf_program *)
   @@@ time "Backend" backend.
   
 Theorem transf_stan_program_correct:

@@ -19,7 +19,7 @@ open Clflags
 open CommonOptions
 open Driveraux
 open Frontend
-open Sparse
+(* open Sparse *)
 open Diagnostics
 
 let tool_name = "Clight generator"
@@ -74,21 +74,21 @@ let compile_ast pipeline sourcename syntax ofile =
                              clight sourcename !option_normalize;
   close_out oc
 
-let compile_stan_ast =
-  let pipeline loc syntax =
-    begin match Denumpyification.transf_program syntax with
-    | Errors.OK p ->
-      begin match FirstTransform.transf_program p with
-      | Errors.OK p ->
-        begin match Sbackend.backend p with
-        | Errors.OK p -> clight_compilation loc p
-        | Errors.Error msg -> fatal_error loc "%a" print_error msg
-        end
-      | Errors.Error msg -> fatal_error loc "%a" print_error msg
-      end
-    | Errors.Error msg -> fatal_error loc "%a" print_error msg
-    end
-  in compile_ast pipeline
+(* let compile_stan_ast =
+ *   let pipeline loc syntax =
+ *     begin match Denumpyification.transf_program syntax with
+ *     | Errors.OK p ->
+ *       begin match Sampling.transf_program p with
+ *       | Errors.OK p ->
+ *         begin match Sbackend.backend p with
+ *         | Errors.OK p -> clight_compilation loc p
+ *         | Errors.Error msg -> fatal_error loc "%a" print_error msg
+ *         end
+ *       | Errors.Error msg -> fatal_error loc "%a" print_error msg
+ *       end
+ *     | Errors.Error msg -> fatal_error loc "%a" print_error msg
+ *     end
+ *   in compile_ast pipeline *)
 
 
 (* From C source to Clight *)
@@ -113,7 +113,7 @@ let compile_file (compile_ast, parse_file, source_ext) sourcename ifile ofile =
   set_dest PrintClight.destination option_dclight (".light" ^ source_ext);
   compile_ast sourcename (parse_file sourcename ifile) ofile
 
-let compile_stan_file = compile_file (compile_stan_ast, parse_stan_file, ".stan")
+(* let compile_stan_file = compile_file (compile_stan_ast, parse_stan_file, ".stan") *)
 
 let output_filename sourcename suff =
   let prefixname = Filename.chop_suffix sourcename suff in
@@ -151,7 +151,7 @@ let process_file (compile_file, source_ext) sourcename =
     compile_file sourcename preproname ofile
   end
 
-let process_stan_file = process_file (compile_stan_file, ".stan")
+(* let process_stan_file = process_file (compile_stan_file, ".stan") *)
 
 (* Processing of a .i file *)
 
@@ -242,8 +242,8 @@ let cmdline_actions =
 (* File arguments *)
   Suffix ".c", Self (fun s ->
       incr num_input_files; push_action process_c_file s);
-  Suffix ".stan", Self (fun s ->
-      incr num_input_files; push_action process_stan_file s);
+  (* Suffix ".stan", Self (fun s ->
+   *     incr num_input_files; push_action process_stan_file s); *)
   Suffix ".i", Self (fun s ->
       incr num_input_files; push_action process_i_file s);
   Suffix ".p", Self (fun s ->
