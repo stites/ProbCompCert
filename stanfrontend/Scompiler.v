@@ -20,7 +20,7 @@ Definition transf_stan_program(p: StanE.program): res Clight.program :=
   OK p
   @@@ time "Denumpyification" Denumpyification.transf_program
   @@@ time "Sampling" Sampling.transf_program
-  (* @@@ time "Constraints" Constraints.transf_program *)
+  @@@ time "Constraints" Constraints.transf_program
   (* @@@ time "Target" Target.transf_program *)
   @@@ time "Backend" backend.
   

@@ -129,27 +129,11 @@ match s with
   | Starget e =>
     do e <~ transf_expr e;
     ret (Sassign (Etarget tdouble)
-              (Ebinop Cop.Oadd
-                      (Etarget tdouble) e tdouble))
-
-  (* | Stilde e f (*function var*)  le (oe0, oe1) => *)
-  (*   do tmp <~ gensym tdouble; *)
-
-  (*   (* simulate function call: *) *)
-  (*   let etmp := (Etempvar tmp tdouble) in *)
-  (*   ret (Ssequence *)
-  (*         (Scall (Some tmp) f (e::le)) *)
-  (*         (Starget etmp)) *)
+          (Ebinop Cop.Oadd
+            (Etarget tdouble) e tdouble))
 
   | Stilde e d le (oe0, oe1) =>
-    do tmp <~ gensym tdouble;
-
-    (* simulate function call: *)
-    let etmp := (Etempvar tmp tdouble) in
-    let params := e::le in
-    ret (Ssequence
-          (Scall (Some tmp) d params)
-          (Starget etmp))
+    error (msg "Constraints: Stilde DNE in this stage of pipeline")
 end.
 
 Fixpoint getmathfunc (t:math_func) (fs: list (math_func * AST.ident * Ctypes.type)) : mon (AST.ident * Ctypes.type) :=
@@ -528,10 +512,10 @@ Definition transf_model (p:program) (f: function) (body : statement): mon statem
   end.
 
 Definition transf_statement_pipeline (p:program) (f: function) : mon CStan.statement :=
-  do body <~ transf_statement f.(fn_body);          (* Stilde -> Starget; Error "Backend: tilde" *)
+  let body := f.(fn_body) in
   do body <~ transf_constraints p f body;           (* apply constraint transformations *)
   do body <~ transf_statement body;                 (* apply Starget transform *)
-  do body <~ transf_model p f body;                 (* add target preamble and replace Etarget with Evar target_ident *)
+  do body <~ transf_model p f body;          (* add target preamble and replace Etarget with Evar target_ident *)
   ret body.
 
 Definition transf_function (p:CStan.program) (f: function): res function :=
