@@ -11,7 +11,7 @@ void data();
 void transformed_data();
 void parameters();
 void transformed_parameters(void* p);
-double model(double target, void* p);
+double model(void* p);
 void generated_quantities();
 
 void* propose();
@@ -36,13 +36,11 @@ int main(int argc, char* argv[]) {
 
     void* parameters = get_state();
     transformed_parameters(parameters);
-    double target = 0.0;
-    double lp_parameters = model(target, parameters);
-
+    double lp_parameters = model(parameters);
+    
     void* candidate = propose();
     transformed_parameters(candidate);
-    target = 0.0;
-    double lp_candidate = model(target, candidate);
+    double lp_candidate = model(candidate);
 
     double u = ((double) rand() / RAND_MAX);
     
