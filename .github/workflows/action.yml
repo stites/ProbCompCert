@@ -26,12 +26,12 @@ jobs:
         dune-cache:
           - false
         include:
-          - os: ubuntu-latest
-            ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-32bit
-            dune-cache: true
-          - os: ubuntu-latest
-            ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-flambda,ocaml-option-musl,ocaml-option-static
-            dune-cache: true
+          #- os: ubuntu-latest
+          #  ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-32bit
+          #  dune-cache: true
+          #- os: ubuntu-latest
+          #  ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-flambda,ocaml-option-musl,ocaml-option-static
+          #  dune-cache: true
           - os: ubuntu-latest
             ocaml-compiler: ocaml-variants.4.10.0+domains
             dune-cache: true
@@ -39,13 +39,13 @@ jobs:
               multicore: https://github.com/ocaml-multicore/multicore-opam.git
               coq-released: https://coq.inria.fr/opam/released
               default: https://github.com/ocaml/opam-repository.git
-          - os: ubuntu-latest
-            ocaml-compiler: ocaml-variants.4.10.0+domains+effects
-            dune-cache: true
-            opam-repositories: |
-              coq-released: https://coq.inria.fr/opam/released
-              multicore: https://github.com/ocaml-multicore/multicore-opam.git
-              default: https://github.com/ocaml/opam-repository.git
+          #- os: ubuntu-latest
+          #  ocaml-compiler: ocaml-variants.4.10.0+domains+effects
+          #  dune-cache: true
+          #  opam-repositories: |
+          #    coq-released: https://coq.inria.fr/opam/released
+          #    multicore: https://github.com/ocaml-multicore/multicore-opam.git
+          #    default: https://github.com/ocaml/opam-repository.git
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -54,7 +54,7 @@ jobs:
         with:
           key: ${{ secrets.SSH_KEY }}
           name: id_rsa # optional
-          #known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
           #config: ${{ secrets.CONFIG }} # ssh_config; optional
           if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
       - name: Checkout repository and submodules
