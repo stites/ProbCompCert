@@ -4,11 +4,7 @@ Inductive type :=
   | Tvector
   | Trow
   | Tmatrix
-  | Tarray: type -> type
-  | Tfunction: typelist -> option type -> type
-with typelist : Type :=
-  | Tnil: typelist
-  | Tcons: type -> typelist -> typelist.
+  | Tarray: type -> type.
 
 Inductive autodifftype :=
   | Adata_only 

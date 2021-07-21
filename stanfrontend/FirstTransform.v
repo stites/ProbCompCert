@@ -9,7 +9,6 @@ Open Scope string_scope.
 Require Import Coqlib.
 Require Import Sops.
 Require Import Cop.
-Require Denumpyification.
 Require Import Globalenvs.
 Require Import Integers.
 Require AST.
@@ -28,6 +27,7 @@ Local Open Scope gensym_monad_scope.
 
 Definition tdouble := Tfloat F64 noattr.
 Definition float_one := Floats.Float.of_int Int.one.
+Definition float_zero := Floats.Float.of_int Int.zero.
 
 Notation mon := SimplExpr.mon.
 Notation ret := SimplExpr.ret.
@@ -50,6 +50,14 @@ Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   | CStan.Etarget t => ret (CStan.Etarget t)
 end.
 Notation error_mmap := Errors.mmap.
+
+Definition mon_fmap {A B : Type} (f: A -> B) (m: mon A)  : mon B := do a <~ m; ret (f a).
+
+Definition option_fmap {X Y:Type} (f: X -> Y) (o: option X) : option Y :=
+  match o with
+  | None => None
+  | Some x => Some (f x)
+  end.
 
 Fixpoint mon_mmap {A B : Type} (f: A -> mon B) (l: list A) {struct l} : mon (list B) :=
   match l with
@@ -79,10 +87,11 @@ match s with
   | Sassign e0 e1 =>
     do e0 <~ transf_expr e0;
     do e1 <~ transf_expr e1;
-    match maybe_ident e0 with
-      | Some i => ret (Sset i e1)
-      | None => ret (Sassign e0 e1)
-    end
+    ret (Sassign e0 e1)
+    (* match maybe_ident e0 with *)
+    (*   | Some i => ret (Sset i e1) *)
+    (*   | None => ret (Sassign e0 e1) *)
+    (* end *)
   | Sset i e =>
     do e <~ transf_expr e;
     ret (Sset i e)
@@ -141,9 +150,299 @@ match s with
     ret (Ssequence
           (Scall (Some tmp) d params)
           (Starget etmp))
-
-
 end.
+
+Fixpoint getmathfunc (t:math_func) (fs: list (math_func * AST.ident * Ctypes.type)) : mon (AST.ident * Ctypes.type) :=
+  match fs with
+  | nil => error (msg "impossible")
+  | h::tl => if math_func_eq_dec (fst (fst h)) t then ret (snd (fst h), snd h) else getmathfunc t tl
+  end.
+
+Definition callmath (p: program) (t: math_func) (args : list expr) : mon (AST.ident * statement) :=
+  do rt <~ gensym tdouble;
+  do fty <~ getmathfunc t p.(prog_math_functions);
+  ret (rt, Scall (Some rt) (Evar (fst fty) (snd fty)) args).
+
+Definition stan_log (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFLog (e::nil).
+Definition stan_exp (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFExp (e::nil).
+
+Definition stan_logit (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFLogit (e::nil).
+Definition stan_expit (p: program) (e: expr) : mon (AST.ident * statement) := callmath p MFExpit (e::nil).
+
+Definition int2float (e:expr) : mon expr :=
+  match e with
+  | CStan.Econst_float _ _ => ret e
+  | CStan.Econst_int i _ => ret (CStan.Econst_float (Float.of_int i) tdouble)
+  | CStan.Econst_single f t => ret (CStan.Econst_float (Float.of_single f) tdouble)
+  | CStan.Econst_long i t => ret (CStan.Econst_float (Float.of_long i) tdouble)
+  | _ => error (msg "should never happen: incorrect use of this function")
+  end.
+
+
+Definition constraint_transform (p:program) (i: AST.ident) (c: constraint) : mon (option (AST.ident * statement)) :=
+  let evar := Evar i tdouble in
+  let t := tdouble in
+  match c with
+  | Cidentity => ret None
+  | Clower a => do a <~ int2float a; mon_fmap Some (stan_log p (Ebinop Osub evar a t))
+  | Cupper b => do b <~ int2float b; mon_fmap Some (stan_log p (Ebinop Osub b evar t))
+  | Clower_upper a b =>
+    mon_fmap Some (
+      stan_logit p (Ebinop Odiv
+        (Ebinop Osub evar a t)
+        (Ebinop Osub b a t)
+      t)
+    )
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Definition inv_constraint_transform (p:program) (i: AST.ident) (c: constraint) : mon (option (AST.ident * statement)) :=
+  let evar := Evar i tdouble in
+  let t := tdouble in
+  match c with
+  | Cidentity => ret None
+  | Clower a =>
+    do rt_call <~ stan_exp p evar;
+    do a <~ int2float a;
+    match rt_call with
+    | (rt, call) =>
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o (Ebinop Oadd (Etempvar rt t) a t))))
+    end
+  | Cupper b =>
+    do rt_call <~ stan_exp p evar;
+    do b <~ int2float b;
+    match rt_call with
+    | (rt, call) =>
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o (Ebinop Osub b (Etempvar rt t) t))))
+    end
+  | Clower_upper a b =>
+    do rt_call <~ stan_expit p evar;
+    do a <~ int2float a;
+    do b <~ int2float b;
+    match rt_call with
+    | (rt, call) =>
+      let r := (Ebinop Oadd a (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t) t) in
+      do o <~ gensym t;
+      ret (Some (o, Ssequence call (Sset o r)))
+    end
+
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Definition density_of_transformed_var (p:program) (i: AST.ident) (c: constraint): mon (option statement) :=
+  let e := Evar i tdouble in
+  let t := tdouble in
+  match c with
+  | Cidentity => ret None
+  | Clower _ => do rt_call <~ stan_expit p e; ret (Some (Ssequence (snd rt_call) (Starget (Etempvar (fst rt_call) tdouble))))
+  | Cupper _ => do rt_call <~ stan_expit p e; ret (Some (Ssequence (snd rt_call) (Starget (Etempvar (fst rt_call) tdouble))))
+  | Clower_upper a b =>
+    do rt_call <~ stan_expit p e;
+    let rt := fst rt_call in
+    let call := snd rt_call in
+    do a <~ int2float a;
+    do b <~ int2float b;
+    ret
+      (Some
+        (Ssequence
+          call
+          (Starget
+            (Ebinop Oadd
+              (Ebinop Omul (Ebinop Osub b a t) (Etempvar rt tdouble) t)
+              (Ebinop Osub (Econst_float float_one t) (Etempvar rt tdouble) t) t))))
+
+  | Coffset e => error (msg "NYI constrained_to_unconstrained: Coffset")
+  | Cmultiplier e => error (msg "NYI constrained_to_unconstrained: Cmultiplier")
+  | Coffset_multiplier e0 e1 => error (msg "NYI constrained_to_unconstrained: Coffset_multiplier")
+  | Cordered => error (msg "NYI constrained_to_unconstrained: Cordered")
+  | Cpositive_ordered => error (msg "NYI constrained_to_unconstrained: Cpositive")
+  | Csimplex => error (msg "NYI constrained_to_unconstrained: Csimplex")
+  | Cunit_vector => error (msg "NYI constrained_to_unconstrained: Cunit")
+  | Ccholesky_corr => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccholesky_cov => error (msg "NYI constrained_to_unconstrained: Ccholesky")
+  | Ccorrelation => error (msg "NYI constrained_to_unconstrained: Ccorrelation")
+  | Ccovariance => error (msg "NYI constrained_to_unconstrained: Ccovariance")
+  end.
+
+Fixpoint transf_constraints_expr (pmap: AST.ident -> option AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
+  match e with
+  | CStan.Econst_int i t => ret (CStan.Econst_int i t)
+  | CStan.Econst_float f t => ret (CStan.Econst_float f t)
+  | CStan.Econst_single f t => ret (CStan.Econst_single f t)
+  | CStan.Econst_long i t => ret (CStan.Econst_long i t)
+
+  (* TODO only works because all params are global right now. *)
+  | CStan.Evar i t =>
+    match pmap i with
+    | None => ret (CStan.Evar i t)
+    | Some i => ret (CStan.Etempvar i t)
+    end
+  | CStan.Etempvar i t =>
+    match pmap i with
+    | None => ret (CStan.Etempvar i t)
+    | Some i => ret (CStan.Etempvar i t)
+    end
+  (* In the future ^^^ will need to turn into vvv *)
+
+  | CStan.Ederef e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Ederef e t) (* a transformation downstream would be invalid*)
+  | CStan.Eunop uop e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Eunop uop e t)
+  | CStan.Ebinop bop e0 e1 t =>
+    do e0 <~ transf_constraints_expr pmap e0;
+    do e1 <~ transf_constraints_expr pmap e1;
+    ret (CStan.Ebinop bop e0 e1 t)
+  | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
+  | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
+  | CStan.Etarget ty => ret (CStan.Etarget ty)
+end.
+
+
+Fixpoint transf_constraints_statement (pmap: AST.ident -> option AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
+match s with
+  | Sassign e0 e1 =>
+    do e0 <~ transf_constraints_expr pmap e0;
+    do e1 <~ transf_constraints_expr pmap e1;
+    ret (Sassign e0 e1)
+  | Sset i e => do e <~ transf_constraints_expr pmap e; ret (Sset i e)
+  | Scall oi e le =>
+    do e <~ transf_constraints_expr pmap e;
+    do le <~ mon_mmap (transf_constraints_expr pmap) le;
+    ret (Scall oi e le)
+  | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
+  | Ssequence s0 s1 =>
+    do s0 <~ transf_constraints_statement pmap s0;
+    do s1 <~ transf_constraints_statement pmap s1;
+    ret (Ssequence s0 s1)
+  | Sifthenelse e s0 s1 =>
+    do e <~ transf_constraints_expr pmap e;
+    do s0 <~ transf_constraints_statement pmap s0;
+    do s1 <~ transf_constraints_statement pmap s1;
+    ret (Sifthenelse e s0 s1)
+  | Sloop s0 s1 =>
+    do s0 <~ transf_constraints_statement pmap s0;
+    do s1 <~ transf_constraints_statement pmap s1;
+    ret (Sloop s0 s1)
+  | Sreturn oe => do oe <~ option_mon_mmap (transf_constraints_expr pmap) oe; ret (Sreturn oe)
+  | Starget e => do e <~ transf_constraints_expr pmap e; ret (Starget e)
+  | Stilde e i le (oe0, oe1) => error (msg "Stilde DNE in this stage of pipeline")
+  | Sbreak => ret Sbreak
+  | Sskip => ret Sskip
+  | Scontinue => ret Scontinue
+end.
+
+(************************************************************************************************************************************************************)
+(* copied from denumpification because I can't figure out imports correctly : /                                                                             *)
+(************************************************************************************************************************************************************)
+Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
+  match gty with
+  | AST.Gfun f => {|  (* FIXME this is wrong and should be filtered*)
+    CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
+    CStan.vd_constraint:= CStan.Cidentity;
+    CStan.vd_init:= None;
+    CStan.vd_global:= true;
+  |}
+  | AST.Gvar gv => {|
+    CStan.vd_type := gv.(AST.gvar_info).(vd_type);
+    CStan.vd_constraint:= gv.(AST.gvar_info).(vd_constraint);
+    CStan.vd_init:= gv.(AST.gvar_info).(vd_init);
+    CStan.vd_global:= gv.(AST.gvar_info).(vd_global);
+  |}
+  end.
+
+Definition ident_eq_dec : forall (x y : AST.ident), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
+  match xs with
+  | nil => false
+  | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
+  end.
+
+Fixpoint only_globvars (gs: list (AST.ident * AST.globdef CStan.fundef CStan.type)) : list (AST.ident * CStan.type) :=
+  match gs with
+  | nil => nil
+  | (i, g)::gs =>
+    match g with
+    | AST.Gfun f => only_globvars gs
+    | AST.Gvar gv => (i, gv.(AST.gvar_info))::(only_globvars gs)
+    end
+  end.
+
+Definition filter_stan_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*CStan.type) :=
+  let all_members := only_globvars all_defs in
+  let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
+  stan_members.
+(************************************************************************************************************************************************************)
+
+Fixpoint catMaybes {X : Type} (xs : list (option X)) : list X :=
+  match xs with
+  | nil => nil
+  | (Some x)::xs => x::(catMaybes xs)
+  | None::xs => catMaybes xs
+  end.
+
+Fixpoint sequence (xs : list statement) : option statement :=
+  match xs with
+  | nil => None
+  | h::tail =>
+    (* lookahead *)
+    match sequence tail with
+    | None => Some h
+    | Some n => Some (Ssequence h n)
+    end
+  end.
+
+Definition transform_with_original_ident (transform : program -> AST.ident -> constraint -> mon (option (AST.ident * statement))) (p:program) (i_ty : AST.ident * CStan.type) : mon (option (AST.ident * (AST.ident * statement))) :=
+  do mtpl <~ transform p (fst i_ty) (snd i_ty).(vd_constraint);
+  ret (option_fmap (fun tpl => (fst i_ty, tpl)) mtpl).
+
+Definition parameter_transformed_map (ts : list (AST.ident * AST.ident)) (i : AST.ident) : option AST.ident :=
+  option_fmap snd (List.find (fun lr => ident_eq_dec i (fst lr)) ts).
+
+
+Definition transf_constraints (p:program) (f: function) (body : statement): mon statement :=
+  match f.(fn_blocktype) with
+  | BTModel =>
+    let params_typed := filter_stan_globvars (p.(prog_defs)) (p.(prog_parameters_vars)) in (*: list (AST.ident*CStan.type)*)
+    do params_transformed <~ mon_fmap catMaybes (mon_mmap (transform_with_original_ident inv_constraint_transform p) params_typed);
+    let params_map  := List.map (fun fr_to => (fst fr_to, fst (snd fr_to))) params_transformed in
+    let params_stmts := List.map (fun fr_to => snd (snd fr_to)) params_transformed in
+    do target_additions <~ mon_fmap catMaybes ((mon_mmap (fun i_ty => density_of_transformed_var p (fst i_ty) (snd i_ty).(vd_constraint)) params_typed));
+    match sequence params_stmts with
+    | None => ret body
+    | Some params =>
+      match sequence target_additions with
+      | None => error (msg "FIXME: impossible, should reorganize this branch")
+      | Some stgts =>
+        do body <~ transf_constraints_statement (parameter_transformed_map params_map) body;
+        ret (Ssequence params (Ssequence stgts body))
+      end
+    end
+  | _ => ret body
+  end.
 
 Notation localvar := (prod AST.ident Ctypes.type).
 
@@ -151,8 +450,8 @@ Notation localvar := (prod AST.ident Ctypes.type).
 Definition get_target_ident (vars: list localvar) : mon AST.ident :=
   match vars with
   | nil => error (msg "impossible: 0")
-  | (t, ty)::nil => ret t
-  | _ => error (msg "impossible: >1")
+  | (t, ty)::_ => ret t
+  (* | _ => error (msg "impossible: >1") *)
   end.
 
 Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
@@ -216,9 +515,8 @@ match s with
   | Scontinue => ret Scontinue
 end.
 
-Definition transf_model (f: function) (body : statement): mon statement :=
+Definition transf_model (p:program) (f: function) (body : statement): mon statement :=
   match f.(fn_blocktype) with
-  | BTOther => ret body
   | BTModel =>
     do tgt <~ get_target_ident f.(fn_vars);
     let body :=
@@ -226,20 +524,26 @@ Definition transf_model (f: function) (body : statement): mon statement :=
         (Ssequence body
           (Sreturn (Some (CStan.Etarget tdouble))))) in
     transf_target_statement tgt body
+  | _ => ret body
   end.
 
-Definition transf_statement_pipeline (f: function) : mon CStan.statement :=
-  do body <~ transf_statement f.(fn_body); (* Stilde -> Starget; Error "Backend: tilde" *)
-  do body <~ transf_statement body;        (* apply Starget transform *)
-  do body <~ transf_model f body;
+Definition transf_statement_pipeline (p:program) (f: function) : mon CStan.statement :=
+  do body <~ transf_statement f.(fn_body);          (* Stilde -> Starget; Error "Backend: tilde" *)
+  do body <~ transf_constraints p f body;           (* apply constraint transformations *)
+  do body <~ transf_statement body;                 (* apply Starget transform *)
+  do body <~ transf_model p f body;                 (* add target preamble and replace Etarget with Evar target_ident *)
   ret body.
 
-Definition transf_function (f: function): res function :=
-  match transf_statement_pipeline f (SimplExpr.initial_generator tt) with
+Definition transf_function (p:CStan.program) (f: function): res function :=
+  match transf_statement_pipeline p f (SimplExpr.initial_generator tt) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params := f.(fn_params);
+      fn_params :=
+        match f.(fn_blocktype) with
+        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
+        | _ => f.(fn_params)
+        end;
       fn_body := tbody;
 
       fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
@@ -265,10 +569,10 @@ Definition transf_external (ef: AST.external_function) : res AST.external_functi
   | _ => OK ef
   end.
 
-Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
+Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
   match fd with
   | Internal f =>
-      do tf <- transf_function f;
+      do tf <- transf_function p f;
       OK (Internal tf)
   | External ef targs tres cc =>
       do ef <- transf_external ef;
@@ -279,7 +583,7 @@ Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
   OK v.
 
 Definition transf_program(p: CStan.program): res CStan.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+  do p1 <- AST.transform_partial_program2 (transf_fundef p) transf_variable p;
   OK {|
       prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;
@@ -290,10 +594,14 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
+      prog_parameters_struct:= p.(prog_parameters_struct);
       prog_transformed_parameters:=p.(prog_transformed_parameters);
 
       prog_generated_quantities:=p.(prog_generated_quantities);
       prog_model:=p.(prog_model);
 
       prog_comp_env:=p.(prog_comp_env);
+
+      prog_math_functions:= p.(prog_math_functions);
+      prog_dist_functions:= p.(prog_dist_functions);
     |}.

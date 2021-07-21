@@ -10,12 +10,27 @@ Require CStan.
 Require Import Sops.
 Require Import Cop.
 Require Import Stypes.
-  
+
+
+(* NOTE basic is a StanE type, see variable.vd_type *)
+Inductive basic :=
+  | Bint
+  | Breal
+  | Bvector: Z -> basic
+  | Brow: Z -> basic
+  | Bmatrix: Z -> Z -> basic
+  | Bstruct: ident -> basic
+  | Bfunction: basiclist -> option basic -> basic
+with basiclist : Type :=
+  | Bnil: basiclist
+  | Bcons: basic -> basiclist -> basiclist.
+
 Inductive expr :=
   (* Classical expressions that exist in C *)
-  | Econst_int: int -> type -> expr
-  | Econst_float: float -> type -> expr
-  | Evar: ident -> type -> expr
+  (* NOTE basic is a StanE type, see variable.vd_type *)
+  | Econst_int: int -> basic -> expr
+  | Econst_float: float -> basic -> expr
+  | Evar: ident -> basic -> expr
   (* FIXME: add types to all proceeding as well? *)
   | Eunop: operator -> expr -> expr
   | Ebinop: expr -> operator -> expr -> expr
@@ -34,23 +49,32 @@ with index :=
   | Isingle: expr -> index
   | Iupfrom: expr -> index
   | Idownfrom: expr -> index
-  | Ibetween: expr -> expr -> index. 
+  | Ibetween: expr -> expr -> index.
 
-Inductive basic :=
-  | Bint
-  | Breal
-  | Bvector: expr -> basic
-  | Brow: expr -> basic
-  | Bmatrix: expr -> expr -> basic
-  | Bstruct: ident -> basic.
-
-Inductive printable := 
+Inductive printable :=
   | Pstring: ident -> printable 
   | Pexpr: expr -> printable.
 
+Inductive constraint :=
+  | Cidentity
+  | Clower: expr -> constraint
+  | Cupper: expr -> constraint
+  | Clower_upper: expr -> expr -> constraint
+  | Coffset: expr -> constraint
+  | Cmultiplier: expr -> constraint
+  | Coffset_multiplier: expr -> expr -> constraint
+  | Cordered
+  | Cpositive_ordered
+  | Csimplex
+  | Cunit_vector
+  | Ccholesky_corr
+  | Ccholesky_cov
+  | Ccorrelation
+  | Ccovariance.
+
 Record variable := mkvariable {
   vd_type: basic;
-  vd_constraint: Stan.constraint;
+  vd_constraint: constraint;
   vd_dims: list(expr);
   vd_init: option expr;
   vd_global: bool;
@@ -78,29 +102,31 @@ Inductive statement :=
 
 
 Record function := mkfunction {
-  fn_return: option(type); 
-  fn_params: list (autodifftype * type * ident);
+  fn_return: option(basic);
+  fn_params: list (autodifftype * basic * ident);
   fn_body: statement;
   fn_blocktype: CStan.blocktype;
   fn_callconv: AST.calling_convention;
-  fn_temps: list (ident * type);
-  fn_vars: list (ident * type); 
+  fn_temps: list (ident * basic);
+  fn_vars: list (ident * basic);
 }.
 
 Definition fundef := Ctypes.fundef function.
-  
+
 Record program := mkprogram {
   pr_defs: list (ident * globdef fundef variable);
   pr_public: list ident;
   pr_model: ident;
   pr_parameters: ident;
   pr_parameters_vars: list ident;
-  pr_parameters_struct: ident;
+  pr_parameters_struct: ident * ident;
   pr_transformed_parameters: ident;
   pr_data: ident;
   pr_data_vars: list ident;
   pr_transformed_data: ident;
-  pr_generated: ident
+  pr_generated: ident;
+  pr_math_functions: list (CStan.math_func * ident * Ctypes.type);
+  pr_dist_functions: list (CStan.dist_func * ident);
 }.
 
 Definition program_of_program (p: program) : AST.program fundef variable :=

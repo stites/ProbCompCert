@@ -4,6 +4,8 @@ open C2C
 open Lexing
 open Sparser
 open Smessages
+open Int32
+
 
 exception SNIY of string
 exception NIY_elab of string
@@ -13,61 +15,54 @@ let init_int = AST.Init_space (Camlcoq.coqint_of_camlint 4l)
 let init_dbl = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 let init_ptr = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 
+let ctarray (t, sz) = Ctypes.Tarray (t, sz, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tdouble = Stypes.Treal
-let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)
+let bdouble = StanE.Breal
+let ctdouble = Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tint = Stypes.Tint
-let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr)
+let bint = StanE.Bint
+let ctint = Ctypes.Tint (Ctypes.I32, Ctypes.Signed, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let rt = Some tdouble
 let to_charlist s = List.init (String.length s) (String.get s)
 let ftype = Ctypes.Tfunction (Ctypes.Tnil, (Ctypes.Tfloat (Ctypes.F64, Ctypes.noattr)), AST.cc_default)
 
-let mk_global_dist str ast_args_list c_args_ast =
-  AST.Gfun
-    (Ctypes.External
+let ast_to_ctype x =
+  match x with
+  | AST.Tfloat -> ctdouble
+  | AST.Tint -> ctint
+  | _ -> raise (NIY_elab "impossible")
+
+let mk_ctypelist xs =
+  List.fold_left (fun tail h -> Ctypes.Tcons (h, tail)) Ctypes.Tnil xs
+
+let mk_ctypelist_from_astlist xs =
+    mk_ctypelist (List.rev (List.map ast_to_ctype xs))
+
+let mk_cfunc xs = Ctypes.Tfunction (mk_ctypelist_from_astlist xs, ctdouble, AST.cc_default)
+
+let mk_global_func str ast_args_list =
+    AST.Gfun (Ctypes.External
        (AST.EF_external
           (to_charlist str, {
             AST.sig_args=ast_args_list;
             AST.sig_res=AST.Tret AST.Tfloat;
             AST.sig_cc=AST.cc_default;
           }),
-       c_args_ast,
+       mk_ctypelist_from_astlist ast_args_list,
        ctdouble,
        AST.cc_default
     ))
 
-
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
-let ty_uniform_lpdf = Stypes.Tfunction (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, (Stypes.Tcons (tdouble, Stypes.Tnil))))), Some Stypes.Treal)
-let gl_uniform_lpdf =
-  mk_global_dist
-    st_uniform_lpdf
-    [AST.Tfloat; AST.Tfloat; AST.Tfloat]
-    (Ctypes.Tcons (ctdouble, Ctypes.Tcons (ctdouble, (Ctypes.Tcons (ctdouble, Ctypes.Tnil)))))
+let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
+let gl_uniform_lpdf = mk_global_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
 
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
-let ty_bernoulli_lpmf = Stypes.Tfunction (Stypes.Tcons (tint, (Stypes.Tcons (tdouble, Stypes.Tnil))), Some Stypes.Treal)
-let gl_bernoulli_lpmf =
-  mk_global_dist
-    st_bernoulli_lpmf
-    [AST.Tint; AST.Tfloat]
-    (Ctypes.Tcons (ctint, (Ctypes.Tcons (ctdouble, Ctypes.Tnil))))
-
-let id_params_struct = Camlcoq.intern_string "Params"
-let gl_params_struct = AST.Gvar {
-  AST.gvar_readonly = false;
-  AST.gvar_volatile = false;
-  AST.gvar_init = [init_ptr];
-  AST.gvar_info = {
-    StanE.vd_type = StanE.Bstruct id_params_struct;
-    StanE.vd_constraint = Stan.Cidentity;
-    StanE.vd_dims = [];
-    StanE.vd_init = None;
-    StanE.vd_global = true;
-  };
-}
+let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
+let gl_bernoulli_lpmf = mk_global_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
 
 let transf_dist_idents = Hashtbl.create 2;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -76,11 +71,71 @@ let stanlib_functions = [
     (id_uniform_lpdf,   gl_uniform_lpdf);
     (id_bernoulli_lpmf, gl_bernoulli_lpmf)
   ]
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                              math functions                                  *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat], mk_cfunc [AST.Tfloat])
+let (st_log, id_log, gl_log, clog)       = unary_math_fn "log"
+let (st_exp, id_exp, gl_exp, cexp)       = unary_math_fn "exp"
+let (st_logit, id_logit, gl_logit, clogit) = unary_math_fn "logit"
+let (st_expit, id_expit, gl_expit, cexpit) = unary_math_fn "expit"
+let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit)]
 
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                               Struct work                                    *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let id_params_struct = Camlcoq.intern_string "Params"
+let gl_params_struct = AST.Gvar {
+  AST.gvar_readonly = false;
+  AST.gvar_volatile = false;
+  AST.gvar_init = [init_ptr];
+  AST.gvar_info = {
+    StanE.vd_type = StanE.Bstruct id_params_struct;
+    StanE.vd_constraint = StanE.Cidentity;
+    StanE.vd_dims = [];
+    StanE.vd_init = None;
+    StanE.vd_global = true;
+  };
+}
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                               Global Arrays                                  *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let replicate n ls =
+    let rec f l = function
+        | 0 -> l
+        | n -> f (List.rev_append ls l) (n-1) in
+    List.rev (f [] n)
 
-(* <><><><><><><><><> bootstrapped variable type injection <><><><><><><><><><> *)
-(* let var_types = Hashtbl.create 300
- * #val my_hash : ('_weak1, '_weak2) Hashtbl.t *)
+let mk_global_array ty len = AST.Gvar {
+  AST.gvar_readonly = false;
+  AST.gvar_volatile = false;
+  AST.gvar_init = replicate (to_int len) ty;
+  AST.gvar_info = {
+    StanE.vd_type = StanE.Bvector (Camlcoq.coqint_of_camlint len);
+    StanE.vd_constraint = StanE.Cidentity;
+    StanE.vd_dims = [];
+    StanE.vd_init = None;
+    StanE.vd_global = true;
+  };
+}
+
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+(*                                 Type Lookup                                  *)
+(* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
+let type_table = Hashtbl.create 123456;;
+Hashtbl.add type_table "target" StanE.Breal
+
+module IdxTable =
+  struct
+    type t = BinNums.positive
+    let equal i j = i=j
+    let hash = Hashtbl.hash
+  end
+    (* let hash p = Camlcoq.P.to_int p *)
+
+module IdxHashtbl = Hashtbl.Make(IdxTable)
+let index_set = IdxHashtbl.create 123456;;
+
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 
 let read_file sourcefile =
@@ -105,9 +160,13 @@ let mapo o f =
 
 let rec el_e e =
   match e with
-  | Stan.Econst_int i -> StanE.Econst_int (Camlcoq.Z.of_sint (int_of_string i), Stypes.Tint)
-  | Stan.Econst_float f -> StanE.Econst_float (Camlcoq.coqfloat_of_camlfloat (float_of_string f), Stypes.Treal)
-  | Stan.Evar i -> StanE.Evar (Camlcoq.intern_string i, Stypes.Treal)
+  | Stan.Econst_int i -> StanE.Econst_int (Camlcoq.Z.of_sint (int_of_string i), StanE.Bint)
+  | Stan.Econst_float f -> StanE.Econst_float (Camlcoq.coqfloat_of_camlfloat (float_of_string f), StanE.Breal)
+  | Stan.Evar i ->
+    begin match Hashtbl.find_opt type_table i with
+    | None -> StanE.Evar (Camlcoq.intern_string i, StanE.Breal)
+    | Some ty -> StanE.Evar (Camlcoq.intern_string i, ty)
+    end
   | Stan.Eunop (o,e) -> StanE.Eunop (o,el_e e)
   | Stan.Ebinop (e1,o,e2) -> StanE.Ebinop (el_e e1,o,el_e e2) 
   | Stan.Ecall (i,el) -> StanE.Ecall (Camlcoq.intern_string i, List.map el_e el)
@@ -139,7 +198,10 @@ let rec el_s s =
   | Stan.Sifthenelse (e,s1,s2) -> StanE.Sifthenelse (el_e e, el_s s1, el_s s2)
   | Stan.Swhile (e,s) -> StanE.Swhile (el_e e, el_s s)
   | Stan.Sfor (i,e1,e2,s) ->
-    StanE.Sfor (Camlcoq.intern_string i,el_e e1, el_e e2, el_s s)
+    let isym = Camlcoq.intern_string i in
+    IdxHashtbl.add index_set isym ();
+    Hashtbl.add type_table i StanE.Bint;
+    StanE.Sfor (isym, el_e e1, el_e e2, el_s s)
   | Stan.Sbreak -> StanE.Sbreak
   | Stan.Scontinue -> StanE.Scontinue
   | Stan.Sreturn oe -> StanE.Sreturn (mapo oe el_e)
@@ -147,7 +209,11 @@ let rec el_s s =
   | Stan.Scall (i,el) -> StanE.Scall (Camlcoq.intern_string i,List.map el_e el)
   | Stan.Sprint lp -> raise (NIY_elab "statement: print")
   | Stan.Sreject lp -> raise (NIY_elab "statement: reject")
-  | Stan.Sforeach (i,e,s) -> StanE.Sforeach (Camlcoq.intern_string i,el_e e, el_s s)
+  | Stan.Sforeach (i,e,s) ->
+    let isym = Camlcoq.intern_string i in
+    IdxHashtbl.add index_set isym ();
+    Hashtbl.add type_table i StanE.Bint;
+    StanE.Sforeach (isym,el_e e, el_s s)
   | Stan.Starget e -> StanE.Starget (el_e e)
   | Stan.Stilde (e,i,el,(tr1,tr2)) ->
     let (_i, _ty) = match Hashtbl.find_opt transf_dist_idents i with
@@ -156,24 +222,75 @@ let rec el_s s =
     in
     StanE.Stilde (el_e e, StanE.Evar (_i, _ty), map el_e el, (mapo tr1 el_e,mapo tr2 el_e) )
 
-let el_b b =
-  match b with
-  | Stan.Bint -> StanE.Bint
-  | Stan.Breal -> StanE.Breal
-  | Stan.Bvector e -> StanE.Bvector (el_e e)
-  | Stan.Brow e -> StanE.Brow (el_e e)
-  | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2)
+let coqZ_of_string s =
+  Integers.Int.intval (Camlcoq.coqint_of_camlint (of_int (int_of_string s)))
+
+let el_b b dims =
+  match (b, dims) with
+  | (Stan.Bint,  []) -> StanE.Bint
+  | (Stan.Breal, []) -> StanE.Breal
+  | (Stan.Bint,  [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
+  | (Stan.Breal, [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
+  | _ -> raise (NIY_elab "type conversion not yet implemented")
+  (* | Stan.Bvector e -> StanE.Bvector (el_e e)
+   * | Stan.Brow e -> StanE.Brow (el_e e)
+   * | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2) *)
 
 let elab elab_fun ol =
   match ol with
   | None -> None
   | Some l -> Some (List.map elab_fun l)
 
-let transf_v_init v =
-  match v with
-  | Stan.Bint -> [init_int]
-  | Stan.Breal -> [init_dbl]
+let g_init_int_zero =
+  AST.Init_int32 (Integers.Int.repr (Camlcoq.coqint_of_camlint 0l))
+let g_init_double_zero =
+  AST.Init_float64 (Floats.Float.of_bits (Integers.Int64.repr (Camlcoq.coqint_of_camlint 0l)))
+
+let g_init_space sz =
+  AST.Init_space (Camlcoq.coqint_of_camlint (Int32.of_int sz))
+let g_init_uninit_array l sz =
+  g_init_space ((int_of_string l) * sz)
+
+let transf_v_init v dims =
+  match (v, dims) with
+  | (Stan.Bint,  []) -> [g_init_space 4]
+  | (Stan.Bint, [Stan.Econst_int l]) -> [g_init_uninit_array l 4]
+  | (Stan.Breal, []) -> [g_init_space 8]
+  | (Stan.Breal, [Stan.Econst_int l]) -> [g_init_uninit_array l 8]
   | _ -> []
+let str_to_coqint s =
+  (Camlcoq.coqint_of_camlint (of_int (int_of_string s)))
+
+let transf_v_type v dims =
+  match (v, dims) with
+  | (Stan.Bint,  [Stan.Econst_int l]) -> ctarray (ctint, str_to_coqint l)
+  | (Stan.Breal, [Stan.Econst_int l]) -> ctarray (ctdouble, str_to_coqint l)
+  (* | (ty,  []) -> ty *)
+  | _ -> raise (NIY_elab "type conversion not yet implemented")
+
+let stype2basic s =
+  match s with
+  | Stypes.Tint -> StanE.Bint
+  | Stypes.Treal -> StanE.Breal
+  | _ -> raise (NIY_elab "do not call stype2basic on complex data representations")
+
+let el_c c =
+  match c with
+  | Stan.Cidentity -> StanE.Cidentity
+  | Stan.Clower e -> StanE.Clower (el_e e)
+  | Stan.Cupper e -> StanE.Cupper (el_e e)
+  | Stan.Clower_upper (l, u) -> StanE.Clower_upper (el_e l, el_e u)
+  | Stan.Coffset e -> StanE.Coffset (el_e e)
+  | Stan.Cmultiplier e -> StanE.Cmultiplier (el_e e)
+  | Stan.Coffset_multiplier (l, u) -> StanE.Coffset_multiplier (el_e l, el_e u)
+  | Stan.Cordered -> StanE.Cordered
+  | Stan.Cpositive_ordered -> StanE.Cpositive_ordered
+  | Stan.Csimplex -> StanE.Csimplex
+  | Stan.Cunit_vector -> StanE.Cunit_vector
+  | Stan.Ccholesky_corr -> StanE.Ccholesky_corr
+  | Stan.Ccholesky_cov -> StanE.Ccholesky_cov
+  | Stan.Ccorrelation -> StanE.Ccorrelation
+  | Stan.Ccovariance -> StanE.Ccovariance
 
 let mkVariable v t =
   let id = Camlcoq.intern_string v.Stan.vd_id in
@@ -187,18 +304,19 @@ let mkVariable v t =
       a_loc = (v.Stan.vd_id,0) };
   let volatile = false in
   let readonly = false in
+  let basic = el_b v.Stan.vd_type v.Stan.vd_dims in
+  Hashtbl.add type_table v.Stan.vd_id basic;
   let vd = {
-    StanE.vd_type = el_b v.Stan.vd_type;
-    StanE.vd_constraint = v.Stan.vd_constraint;
+    StanE.vd_type = basic;
+    StanE.vd_constraint = el_c(v.Stan.vd_constraint);
     StanE.vd_dims = List.map el_e v.Stan.vd_dims;
     StanE.vd_init = mapo v.Stan.vd_init el_e;
     StanE.vd_global = true;
   } in
-  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type;
+  (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type v.Stan.vd_dims;
                    gvar_readonly = readonly; gvar_volatile = volatile})
 
 let declareVariable v = mkVariable v None
-
 let mkFunction name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
@@ -222,7 +340,7 @@ let mkFunction name body rt params extraVars =
     StanE.fn_callconv = AST.cc_default;
     StanE.fn_params = params;
     StanE.fn_blocktype = blocktypeFundef name;
-    StanE.fn_vars = extraVars;
+    StanE.fn_vars = List.concat [extraVars; (IdxHashtbl.fold (fun k v acc -> (k,StanE.Bint)::acc) index_set [])];
     StanE.fn_temps = [];
     StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
@@ -230,6 +348,40 @@ let mkFunction name body rt params extraVars =
 let declareFundef name body rt params =
   mkFunction name body rt params []
 
+let mapMaybe fn mval =
+  match mval with
+  | None -> None
+  | Some v -> Some (fn v)
+
+let fromMaybe default mval =
+  match mval with
+  | None -> default
+  | Some v -> v
+
+let maybe default fn mval =
+  fromMaybe default (mapMaybe fn mval)
+
+let sparam2stanEparam ((ad, ty), v) = ((ad, stype2basic ty), v)
+
+let initOneVariable var =
+  if not var.Stan.vd_global
+  then Stan.Sskip
+  else
+    let evar = Stan.Evar var.Stan.vd_id in
+    begin match var.Stan.vd_init with
+    | Some e -> Stan.Sassign (evar, None, e)
+    | None ->
+      begin match (var.Stan.vd_type, var.Stan.vd_dims) with
+      | (Stan.Bint,  []) -> Stan.Sassign (evar, None, Stan.Econst_int "0")
+      | (Stan.Breal, []) -> Stan.Sassign (evar, None, Stan.Econst_float "0.5")
+      | (Stan.Bint,  [Stan.Econst_int sz]) ->
+        (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_int "0")) *)
+        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
+      | (Stan.Breal,  [Stan.Econst_int sz]) -> Stan.Sskip
+        (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0")) *)
+      | _ -> Stan.Sskip
+      end
+    end
 
 let elaborate (p: Stan.program) =
   match p with
@@ -241,74 +393,83 @@ let elaborate (p: Stan.program) =
       Stan.pr_model=m;
       Stan.pr_generated=g;
     } ->
-
-    let get_code c =
-      match c with
-      | None -> [Stan.Sskip]
-      | Some c -> c
-    in
-
-    let functions = [] in
-
-    let (id_data,f_data) = declareFundef "data" [Stan.Sskip] None [] in
-    let functions = (id_data,f_data) :: functions in
-
-    let (id_tr_data,f_tr_data) = declareFundef "transformed_data" (get_code td) None [] in
-    let functions = (id_tr_data,f_tr_data) :: functions in
-
-    let (id_params,f_params) = declareFundef "parameters" [Stan.Sskip] None [] in
-    let functions = (id_params,f_params) :: functions in
-
-    let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
-    let functions = (id_tr_params,f_tr_params) :: functions in
-
-    let target = (Camlcoq.intern_string "target", Stypes.Treal) in
-    let (id_model,f_model) = mkFunction "model" (get_code m) (Some Stypes.Treal) [] [target] in
-
-    let functions = (id_model,f_model) :: functions in
-
-    let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
-    let functions = (id_gen_quant,f_gen_quant) :: functions in
-
-    let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in
-    let functions = (id_propose,f_propose) :: functions in
-
-    let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in
-    let functions = (id_get,f_get) :: functions in
-
-    let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
-    let functions = (id_set,f_set) :: functions in
-
-    let unop f =
-      match f with
-      | None -> []
-      | Some f -> f
-    in
-
-    let functions =
-      List.fold_left
-        (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body] ff.Stan.fn_return ff.Stan.fn_params) :: acc)
-        functions (unop f) in
+    let get_code x = fromMaybe [Stan.Sskip] x in
+    let unop x = fromMaybe [] x in
 
     let data_variables = List.map declareVariable (unop d) in
     let param_variables = List.map declareVariable (unop p) in
+
+    let functions = [] in
+
+    IdxHashtbl.clear index_set;
+    let (id_data,f_data) = declareFundef "data" (maybe [] (List.map initOneVariable) d) None [] in
+    let functions = (id_data,f_data) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_tr_data,f_tr_data) = declareFundef "transformed_data" (get_code td) None [] in
+    let functions = (id_tr_data,f_tr_data) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_params,f_params) = declareFundef "parameters" (maybe [] (List.map initOneVariable) p) None [] in
+    let functions = (id_params,f_params) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
+    let functions = (id_tr_params,f_tr_params) :: functions in
+
+    IdxHashtbl.clear index_set;
+    (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
+    let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
+    let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
+
+    let functions = (id_model,f_model) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
+    let functions = (id_gen_quant,f_gen_quant) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in
+    let functions = (id_propose,f_propose) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in
+    let functions = (id_get,f_get) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
+    let functions = (id_set,f_set) :: functions in
+
+
+    let functions =
+      List.fold_left
+        (fun acc -> fun ff -> (declareFundef ff.Stan.fn_name [ff.Stan.fn_body]
+                                 (mapMaybe stype2basic ff.Stan.fn_return)
+                                 (List.map sparam2stanEparam ff.Stan.fn_params)) :: acc)
+        functions (unop f) in
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=[(id_params_struct, gl_params_struct)] @ functions @ data_variables @ param_variables @ stanlib_functions;
-      StanE.pr_public=List.map fst functions @ List.map fst stanlib_functions;
+      StanE.pr_defs=all_math_fns @ [(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
+      StanE.pr_public=
+        List.map fst functions
+        (* TODO remove these when data and params live on structs? *)
+        @ List.map fst data_variables @ List.map fst param_variables
+        @ List.map fst stanlib_functions @ List.map fst all_math_fns;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=List.map fst param_variables;
       StanE.pr_transformed_parameters=id_tr_params;
-      StanE.pr_parameters_struct=id_params_struct;
+      StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
-    }    
+      StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
+      StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
+    }
 
 let location t =
   match t with

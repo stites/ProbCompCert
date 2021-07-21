@@ -38,9 +38,7 @@ void set_state(void* pi) {
   state = *p;
 }
 
-double model(void *pi) {
-
-  double target = 0.0;
+double model(double target, void *pi) {
 
   struct Params* p = (struct Params*) pi;
   

@@ -8,6 +8,9 @@ Open Scope string_scope.
 Require Import Coqlib.
 Require Import Sops.
 Require Import Cop.
+Require Import Clightdefs.
+Require Import Int.
+
 
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
    (at level 200, X ident, A at level 100, B at level 200)
@@ -15,39 +18,34 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
 
-Definition tint := Tint I32 Signed noattr.
-Definition tbool := Tint I8 Unsigned noattr.
-Definition tdouble := Tfloat F64 noattr.
-
 Definition option_mmap {X Y:Type} (f: X -> res Y) (ox: option X) : res (option Y) :=
   match ox with
   | None => OK None
   | Some x => do x <- f x; OK (Some x)
   end.
 
-Fixpoint transf_type (t: Stypes.type) : res type :=
+Fixpoint transf_type (t: StanE.basic) : res type :=
   match t with
-  | Stypes.Tint => OK tint
-  | Stypes.Treal => OK tdouble
-  (* | Tvector => OK Tpointer: type -> noattr *)
-  (* | Trow => Tpointer: type -> noattr *)
-  (* | Tmatrix => Tpointer: type -> noattr *)
-  (* | Tarray => Tarray: CTypes.F64 (* Z *) noattr *)
-  | Stypes.Tfunction tl ret =>
-      do tl <- transf_typelist tl;
-      do oret <- option_mmap transf_type ret;
-      let ret :=
-          match oret with
-          | None => Ctypes.Tvoid
-          | Some ret => ret
-          end
-      in OK (Ctypes.Tfunction tl ret AST.cc_default)
-  | _ => Error (msg "NYI: type")
+  | StanE.Bint => OK tint
+  | StanE.Breal => OK tdouble
+  | StanE.Bvector i => OK (tarray tint i)
+  | StanE.Bstruct i => OK (Tstruct i noattr)
+  | StanE.Brow s => Error (msg "NYI transf_type: StanE.Brow")
+  | StanE.Bmatrix r c => Error (msg "NYI transf_type: StanE.Bmatrix")
+  | StanE.Bfunction tl ret =>
+    do tl <- transf_typelist tl;
+    do oret <- option_mmap transf_type ret;
+    let ret :=
+        match oret with
+        | None => Ctypes.Tvoid
+        | Some ret => ret
+        end
+    in OK (Ctypes.Tfunction tl ret AST.cc_default)
   end
-with transf_typelist (tl: Stypes.typelist) : res Ctypes.typelist :=
+with transf_typelist (tl: StanE.basiclist) : res Ctypes.typelist :=
   match tl with
-  | Stypes.Tnil =>  OK Ctypes.Tnil
-  | Stypes.Tcons t tl =>
+  | StanE.Bnil =>  OK Ctypes.Tnil
+  | StanE.Bcons t tl =>
     do t <- transf_type t;
     do tl <- transf_typelist tl;
     OK (Ctypes.Tcons t tl)
@@ -130,7 +128,13 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   match e with
   | Econst_int i ty => do ty <- transf_type ty; OK (CStan.Econst_int i ty)
   | Econst_float f ty => do ty <- transf_type ty; OK (CStan.Econst_float f ty)
-  | Evar i ty => do ty <- transf_type ty; OK (CStan.Evar i ty)
+  | Evar i ty =>
+    do ty <- transf_type ty;
+    match ty with
+    | Tfunction _ _ _ => OK (CStan.Evar i ty)
+    (* | _ =>  OK (CStan.Etempvar i ty) (* consistently use tempvars for non-function calls *) *)
+    | _ =>  OK (CStan.Evar i ty)
+    end
   | Eunop o e =>
     do o <- transf_unary_operator o;
     do e <- transf_expression e;
@@ -150,11 +154,13 @@ Fixpoint transf_expression (e: StanE.expr) {struct e}: res CStan.expr :=
   | Eindexed e (cons i nil) =>
     do e <- transf_expression e;
     do i <- transf_index i;
-    (*FIXME how do i get the expression's address and turn it into a pointer*)
-    (*FIXME *)
-    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+    let ty := CStan.typeof e in
+    match ty with
+    | Tarray ty sz _ => OK (CStan.Ederef (CStan.Ebinop Oadd e i (tptr ty)) ty)
+    | _              => Error (msg "can only index an array")
+    end
   | Eindexed e (cons i l) =>
-    Error (msg "Denumpyification.transf_expression (NYI): Eindexed")
+    Error (msg "Denumpyification.transf_expression (NYI): Eindexed [i, ...]")
   | Edist i el => Error (msg "Denumpyification.transf_expression (NYI): Edist")
   | Etarget => OK (CStan.Etarget Tvoid)
   end
@@ -216,16 +222,17 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     do e2 <- transf_expression e2;
     do body <- transf_statement s;
 
-    (* set i to first pointer in array *)
-    let init := CStan.Sset i e1 in
+    let one := Integers.Int.repr 1 in
+    let eone := CStan.Econst_int one tint in
+    (* set i to first pointer in array: convert 1-idx to 0-idx *)
+    let init := CStan.Sassign (CStan.Evar i tint) (CStan.Ebinop Osub e1 eone tint) in
 
     (* break condition of e1 == e2 *)
-    let cond := CStan.Ebinop Oeq (CStan.Evar i (CStan.typeof e1)) e2 type_bool in
+    let cond := CStan.Ebinop Olt (CStan.Evar i (CStan.typeof e1)) e2 tint in
 
-    (* FIXME: "increment pointer i" but this pointer arithmetic is probably wrong *)
-    let Eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) (CStan.Esizeof type_int32s type_int32s) type_int32s in
+    let eincr := CStan.Ebinop Oadd (CStan.Evar i (CStan.typeof e1)) eone tint in
 
-    let incr := CStan.Sset i Eincr in
+    let incr := CStan.Sassign (CStan.Evar i tint) eincr in
     OK (CStan.Sfor init cond body incr)
   | Sbreak => OK CStan.Sbreak
   | Scontinue => OK CStan.Scontinue
@@ -242,7 +249,26 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     Error (msg "Denumpyification.transf_statement (NYI): Scall")
   | Sruntime _ _ => Error (msg "Denumpyification.transf_statement (NYI): Sruntime")
   | Sforeach i e s =>
-    Error (msg "Denumpyification.transf_statement (NYI): Sforeach")
+    do arr <- transf_expression e;
+    do body <- transf_statement s;
+
+    match CStan.typeof arr with
+    | Tarray ty sz _ =>
+      let zero := Integers.Int.repr 0 in
+      let init := CStan.Sassign (CStan.Evar i tint) (CStan.Econst_int zero tint) in
+
+      (* break condition of e1 == e2 *)
+      let size := Integers.Int.repr sz in
+      let cond := CStan.Ebinop Olt (CStan.Evar i tint) (CStan.Econst_int size tint) tint in
+
+      let one := Integers.Int.repr 1 in
+      let eincr := CStan.Ebinop Oadd (CStan.Evar i tint) (CStan.Econst_int one tint) tint in
+      let incr := CStan.Sassign (CStan.Evar i tint) eincr in
+
+      OK (CStan.Sfor init cond body incr)
+    | _ => Error (msg "Denumpyification.transf_statement: foreach applied to non-array type")
+    end
+
   | Starget e =>
     do e <- transf_expression e;
     OK (CStan.Starget e)
@@ -256,56 +282,39 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     OK (CStan.Stilde e d el (oe1, oe2))
 end.
 
+Definition transf_constraint (c : StanE.constraint) : res CStan.constraint :=
+  match c with
+  | StanE.Cidentity => OK CStan.Cidentity
+  | StanE.Cordered => OK CStan.Cordered
+  | StanE.Cpositive_ordered => OK CStan.Cpositive_ordered
+  | StanE.Csimplex => OK CStan.Csimplex
+  | StanE.Cunit_vector => OK CStan.Cunit_vector
+  | StanE.Ccholesky_corr => OK CStan.Ccholesky_corr
+  | StanE.Ccholesky_cov => OK CStan.Ccholesky_cov
+  | StanE.Ccorrelation => OK CStan.Ccorrelation
+  | StanE.Ccovariance => OK CStan.Ccovariance
 
-(** The syntax of type expressions.  Some points to note:
-- Array types [Tarray n] carry the size [n] of the array.
-  Arrays with unknown sizes are represented by pointer types.
-- Function types [Tfunction targs tres] specify the number and types
-  of the function arguments (list [targs]), and the type of the
-  function result ([tres]).  Variadic functions and old-style unprototyped
-  functions are not supported.
-
-Inductive type : Type :=
-  | Tvoid: type                                    (**r the [void] type *)
-  | Tint: intsize -> signedness -> attr -> type    (**r integer types *)
-  | Tlong: signedness -> attr -> type              (**r 64-bit integer types *)
-  | Tfloat: floatsize -> attr -> type              (**r floating-point types *)
-  | Tpointer: type -> attr -> type                 (**r pointer types ([*ty]) *)
-  | Tarray: type -> Z -> attr -> type              (**r array types ([ty[len]]) *)
-  | Tfunction: typelist -> type -> calling_convention -> type    (**r function types *)
-  | Tstruct: ident -> attr -> type                 (**r struct types *)
-  | Tunion: ident -> attr -> type                  (**r union types *)
-with typelist : Type :=
-  | Tnil: typelist
-  | Tcons: type -> typelist -> typelist.
-*)
-
-Definition transf_basic (b: StanE.basic): res Ctypes.type :=
-  match b with
-  | Bint => OK tint
-  | Breal => OK tdouble
-  | Bstruct i => OK (Ctypes.Tstruct i Ctypes.noattr)
-  | Bvector e =>
-    Error (msg "Denumpyification.transf_basic (NYI): Bvector")
-    (* do e <- transf_expression e; *)
-    (* (let Econst_int i := e in *)
-    (* OK (Tarray tdouble i noattr)) *)
-  | Brow e =>
-    Error (msg "Denumpyification.transf_basic (NYI): Brow")
-    (* do e <- transf_expression e; *)
-    (* match e with *)
-    (* | Econst_int i => OK (Tarray tdouble i noattr) *)
-    (* | _ => Error (msg "Denumpyification.transf_basic: expected an int") *)
-    (* end *)
-  | Bmatrix _ _ => Error (msg "Denumpyification.transf_basic (NYI): Bmatrix")
+  | StanE.Clower e => do e <- transf_expression e; OK (CStan.Clower e)
+  | StanE.Cupper e => do e <- transf_expression e; OK (CStan.Cupper e)
+  | StanE.Coffset e => do e <- transf_expression e; OK (CStan.Coffset e)
+  | StanE.Cmultiplier e => do e <- transf_expression e; OK (CStan.Cmultiplier e)
+  | StanE.Clower_upper e0 e1 =>
+    do e0 <- transf_expression e0;
+    do e1 <- transf_expression e1;
+    OK (CStan.Clower_upper e0 e1)
+  | StanE.Coffset_multiplier e0 e1 =>
+    do e0 <- transf_expression e0;
+    do e1 <- transf_expression e1;
+    OK (CStan.Coffset_multiplier e0 e1)
   end.
-
+ 
 Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
-  do ty <- transf_basic (StanE.vd_type v);
+  do ty <- transf_type (StanE.vd_type v);
   do oe <- option_mmap transf_expression (StanE.vd_init v);
+  do c <- transf_constraint (StanE.vd_constraint v);
   OK {|
     CStan.vd_type := ty;
-    CStan.vd_constraint := StanE.vd_constraint v;
+    CStan.vd_constraint := c;
     CStan.vd_init := oe;
     CStan.vd_global := StanE.vd_global v;
   |}.
@@ -318,23 +327,22 @@ Fixpoint mapM {X Y:Type} (f: X -> res Y) (xs: list X) : res (list Y) :=
     do l <- mapM f l;
     OK (cons y l)
   end.
-
-Definition transf_var (v: AST.ident * Stypes.type) : res (AST.ident * type) :=
+(**********************************************************************************************************)
+Definition transf_var (v: AST.ident * StanE.basic) : res (AST.ident * type) :=
   match v with
     | (i, t) => do t <- transf_type t; OK (i, t)
   end.
 
-Fixpoint transf_vars (vs: list (AST.ident * Stypes.type)) : res (list (AST.ident * type)) :=
+Fixpoint transf_vars (vs: list (AST.ident * StanE.basic)) : res (list (AST.ident * type)) :=
   mapM transf_var vs.
 
 (* FIXME: lambdas are too general? typechecker seems to want something more concrete... *)
-Definition transf_param (p: Stypes.autodifftype * Stypes.type * AST.ident) : res (AST.ident * type) :=
+Definition transf_param (p: Stypes.autodifftype * StanE.basic * AST.ident) : res (AST.ident * type) :=
   match p with
     | (ad, t, i) => do t <- transf_type t; OK (i, t)
   end.
 
-(* FIXME: don't discard AD information! *)
-Definition transf_params (ps: list (Stypes.autodifftype * Stypes.type * AST.ident)) : res (list (AST.ident * type)) :=
+Definition transf_params (ps: list (Stypes.autodifftype * StanE.basic * AST.ident)) : res (list (AST.ident * type)) :=
   mapM transf_param ps.
 
 Definition transf_function (f: StanE.function): res CStan.function :=
@@ -368,7 +376,7 @@ Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :
 Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
   {|
   CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
-  CStan.vd_constraint:= Stan.Cidentity;
+  CStan.vd_constraint:= CStan.Cidentity;
   CStan.vd_init:= None;
   CStan.vd_global:= true;
 |}.
@@ -384,14 +392,21 @@ Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
   | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
   end.
 
+Definition filter_stan_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*CStan.type) :=
+  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
+  let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
+  stan_members.
+
+Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*Ctypes.type) :=
+  let stan_members := filter_stan_globvars all_defs vars in
+  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
+  ctype_members.
+
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
   let all_defs := AST.prog_defs p1 in
-  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
-  let pset  := p.(StanE.pr_parameters_vars) in
-  let stan_members := List.filter (fun tpl => ident_list_member pset (fst tpl)) all_members in
-  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
+  let ctype_members := filter_globvars all_defs p.(StanE.pr_parameters_vars) in
   let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
 
   do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
@@ -405,8 +420,11 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_transformed_data:=p.(StanE.pr_parameters);
       CStan.prog_parameters:= p.(StanE.pr_parameters);
       CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars);
+      CStan.prog_parameters_struct:= p.(StanE.pr_parameters_struct);
       CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
       CStan.prog_comp_env:=comp_env;
+      CStan.prog_math_functions:= p.(StanE.pr_math_functions);
+      CStan.prog_dist_functions:= p.(StanE.pr_dist_functions);
     |}.
 

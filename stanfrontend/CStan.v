@@ -30,9 +30,9 @@ Require Import Cop.
 Require Import Stan.
 
 Inductive expr : Type :=
-  | Econst_int: int -> type -> expr       (**r integer literal *)
+  | Econst_int: int -> type -> expr       (**r integer literal *)       (*FIXME: I think we can remove this *)
   | Econst_float: float -> type -> expr   (**r double float literal *)
-  | Econst_single: float32 -> type -> expr (**r single float literal *)
+  | Econst_single: float32 -> type -> expr (**r single float literal *) (*FIXME: I think we can remove this *)
   | Econst_long: int64 -> type -> expr    (**r long integer literal *)
   | Evar: ident -> type -> expr           (**r variable *)
   | Etempvar: ident -> type -> expr       (**r temporary variable *)
@@ -94,6 +94,23 @@ Definition Sfor
   (s4: statement) (* postprocessing statement *)
   := Ssequence s1 (Sloop (Ssequence (Sifthenelse e2 Sskip Sbreak) s3) s4).
 
+Inductive constraint :=
+  | Cidentity
+  | Clower: expr -> constraint
+  | Cupper: expr -> constraint
+  | Clower_upper: expr -> expr -> constraint
+  | Coffset: expr -> constraint
+  | Cmultiplier: expr -> constraint
+  | Coffset_multiplier: expr -> expr -> constraint
+  | Cordered
+  | Cpositive_ordered
+  | Csimplex
+  | Cunit_vector
+  | Ccholesky_corr
+  | Ccholesky_cov
+  | Ccorrelation
+  | Ccovariance.
+
 Record type := mkvariable {
   vd_type: Ctypes.type;
   vd_constraint: constraint;
@@ -127,18 +144,36 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
   | External id args res cc => Tfunction args res cc
   end.
 
+Inductive math_func := MFLog | MFExp | MFLogit | MFExpit.
+Definition math_func_eq_dec : forall (x y : math_func), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+
+Inductive dist_func := DBern | DUnif.
+Definition dist_func_eq_dec : forall (x y : dist_func), { x = y } + { x <> y }.
+Proof.
+decide equality.
+Defined.
+
+
+
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
   prog_model: ident;
   prog_parameters: ident;
   prog_parameters_vars: list ident;
+  prog_parameters_struct: ident * ident;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_comp_env: composite_env;
+  prog_math_functions: list (math_func * ident * Ctypes.type);
+  prog_dist_functions: list (dist_func * ident);
 }.
 
 Definition program_of_program (p: program) : AST.program fundef type :=
