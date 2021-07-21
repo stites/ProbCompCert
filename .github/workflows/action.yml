@@ -49,9 +49,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
-
+      - name: Checkout get coq-proba submodule as well
+        run: git submodule update --init --recursive
         #- name: Use Node.js 12.x
         #  uses: actions/setup-node@v2
         #  with:
