@@ -1,0 +1,97 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the pcp branch
+  push:
+    branches: [ actions ]
+  pull_request:
+    branches: [ actions ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          #- macos-latest
+          - ubuntu-latest # starting small
+            #- windows-latest
+        ocaml-compiler:
+          - 4.10.x
+        dune-cache:
+          - false
+        include:
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-32bit
+            dune-cache: true
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.10.0+options,ocaml-option-flambda,ocaml-option-musl,ocaml-option-static
+            dune-cache: true
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.10.0+domains
+            dune-cache: true
+            opam-repositories: |
+              multicore: https://github.com/ocaml-multicore/multicore-opam.git
+              coq-released: https://coq.inria.fr/opam/released
+              default: https://github.com/ocaml/opam-repository.git
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.10.0+domains+effects
+            dune-cache: true
+            opam-repositories: |
+              coq-released: https://coq.inria.fr/opam/released
+              multicore: https://github.com/ocaml-multicore/multicore-opam.git
+              default: https://github.com/ocaml/opam-repository.git
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use Node.js 12.x
+        uses: actions/setup-node@v2
+        with:
+          node-version: 12.x
+
+      - name: Install npm packages
+        if: runner.os == 'Linux'
+        run: yarn --frozen-lockfile
+
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: yarn fmt:check
+
+      - name: Check lint
+        if: runner.os == 'Linux'
+        run: yarn lint
+
+      - name: Check type
+        if: runner.os == 'Linux'
+        run: yarn typecheck
+
+      - name: Ensure dist directory is up-to-date
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          yarn build
+          if [ "$(git status dist --porcelain | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build. See status below:"
+            git diff
+            exit 1
+          fi
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ./
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: ${{ matrix.dune-cache }}
+          opam-repositories: ${{ matrix.opam-repositories }}
+
+      - run: |
+          opam pin coq 8.12.0
+          opam pin num 1.3
+          opam pin menhir 20210419
+          opam install coq coq-coq2html num menhir
