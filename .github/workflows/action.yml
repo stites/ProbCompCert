@@ -49,11 +49,19 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          name: id_rsa # optional
+          #known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          #config: ${{ secrets.CONFIG }} # ssh_config; optional
+          if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
       - name: Checkout repository and submodules
         uses: actions/checkout@v2
         with:
           ref: develop
-          ssh-key: ${{ secrets.SSH_KEY }}
+          #ssh-key: ${{ secrets.SSH_KEY }}
           submodules: recursive
         #- name: Use Node.js 12.x
         #  uses: actions/setup-node@v2
