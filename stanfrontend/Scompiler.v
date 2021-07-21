@@ -11,6 +11,7 @@ Require Import Compiler.
 Require Import Denumpyification.
 Require Import Sampling.
 Require Import Constraints.
+Require Import VariableAllocation.
 Require Import Target.
 Require Import Sbackend.
 
@@ -21,7 +22,8 @@ Definition transf_stan_program(p: StanE.program): res Clight.program :=
   @@@ time "Denumpyification" Denumpyification.transf_program
   @@@ time "Sampling" Sampling.transf_program
   @@@ time "Constraints" Constraints.transf_program
-  (* @@@ time "Target" Target.transf_program *)
+  @@@ time "VariableAllocation" VariableAllocation.transf_program
+  @@@ time "Target" Target.transf_program
   @@@ time "Backend" backend.
   
 Theorem transf_stan_program_correct:

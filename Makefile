@@ -135,6 +135,7 @@ STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v CStan.v Scomp
   Denumpyification.v  \
   Sampling.v \
   Constraints.v \
+  VariableAllocation.v \
   Target.v \
 	Sbackend.v
 

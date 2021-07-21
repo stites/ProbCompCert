@@ -539,11 +539,7 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params :=
-        match f.(fn_blocktype) with
-        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
-        | _ => f.(fn_params)
-        end;
+      fn_params := f.(fn_params);
       fn_body := tbody;
 
       fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
@@ -571,12 +567,8 @@ Definition transf_external (ef: AST.external_function) : res AST.external_functi
 
 Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
   match fd with
-  | Internal f =>
-      do tf <- transf_function p f;
-      OK (Internal tf)
-  | External ef targs tres cc =>
-      do ef <- transf_external ef;
-      OK (External ef targs tres cc)
+  | Internal f => do tf <- transf_function p f; OK (Internal tf)
+  | External ef targs tres cc => do ef <- transf_external ef; OK (External ef targs tres cc)
   end.
 
 Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=

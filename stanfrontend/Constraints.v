@@ -523,11 +523,7 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params :=
-        match f.(fn_blocktype) with
-        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
-        | _ => f.(fn_params)
-        end;
+      fn_params := f.(fn_params);
       fn_body := tbody;
 
       fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
