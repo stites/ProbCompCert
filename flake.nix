@@ -113,17 +113,16 @@
             }
             {
               category = "build";
-              name = "pccomp";
+              name = "ccompstan";
               command = ''
                 ${cd-root}
                 cd stanfrontend
-                rm *.o *.so *.s
-                ../out/bin/ccomp -c $current_dir/$1
-                ../out/bin/ccomp -c ''${name}.s
-                ../out/bin/ccomp -c Runtime.c
-                ../out/bin/ccomp -c stanlib.c
+                ccomp -c $current_dir/$1
+                ccomp -c ''${name}.s
+                ccomp -c Runtime.c
+                ccomp -c stanlib.c
                 ld -shared stanlib.o -o libstan.so
-                ../out/bin/ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit
+                ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit
                 echo "compiled! ./stanfrontend/runit [int]"
               '';
             }
