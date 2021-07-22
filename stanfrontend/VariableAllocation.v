@@ -119,7 +119,7 @@ end.
 
 (* NOTE: currently the only thing happening in this file *)
 Definition transf_function (p:CStan.program) (f: function): res function :=
-  match transf_statement f.(fn_body) (SimplExpr.initial_generator tt) with
+  match transf_statement f.(fn_body) f.(fn_generator) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
@@ -130,8 +130,10 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
         end;
       fn_body := tbody;
 
-      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
+      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
+      fn_temps := f.(fn_temps); (* NOTE only extract in the last stage *)
       fn_vars := f.(fn_vars);
+      fn_generator := g;
 
       (*should not change*)
       fn_return := f.(fn_return);

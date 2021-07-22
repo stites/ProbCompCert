@@ -122,16 +122,18 @@ match s with
           (Starget etmp))
 end.
 
-Definition transf_function (p:CStan.program) (f: function): res function :=
-  match transf_statement f.(fn_body) (SimplExpr.initial_generator tt) with
+Definition transf_function (p:CStan.program) (f: function): res (function) :=
+  match transf_statement f.(fn_body) f.(fn_generator) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
       fn_params := f.(fn_params);
       fn_body := tbody;
 
-      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
+      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
+      fn_temps := f.(fn_temps); (* NOTE only extract in the last stage *)
       fn_vars := f.(fn_vars);
+      fn_generator := g;
 
       (*should not change*)
       fn_return := f.(fn_return);
@@ -151,7 +153,7 @@ Definition transf_external (ef: AST.external_function) : res AST.external_functi
   | _ => OK ef
   end.
 
-Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res CStan.fundef :=
+Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : res (CStan.fundef) :=
   match fd with
   | Internal f =>
       do tf <- transf_function p f;
@@ -166,6 +168,7 @@ Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
 
 Definition transf_program(p: CStan.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 (transf_fundef p) transf_variable p;
+
   OK {|
       prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;
