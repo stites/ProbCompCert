@@ -102,7 +102,8 @@ int main(int argc, char* argv[]) {
     double lp_candidate = proposal_model(candidate);
 
     double u = ((double) rand() / RAND_MAX);
-    
+    /* printf("%f %f\n", lp_parameters, mu); */
+
     if (u <= lp_candidate - lp_parameters) {
       // printf("\b... setting state!! curr: %d, candidate: %d\n", lp_parameters, lp_candidate);
       mu = candidate_mu;

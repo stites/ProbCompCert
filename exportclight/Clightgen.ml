@@ -133,7 +133,7 @@ let compile_file (compile_ast, parse_file, source_ext) sourcename ifile ofile =
   set_dest PrintClight.destination option_dclight (".light" ^ source_ext);
   compile_ast sourcename (parse_file sourcename ifile) ofile
 
-let compile_stan_file = compile_file (compile_stan_ast, parse_stan_file, ".stan")
+let compile_stan_file = compile_file (compile_stan_ast_2, parse_stan_file, ".stan")
 
 let output_filename sourcename suff =
   let prefixname = Filename.chop_suffix sourcename suff in
