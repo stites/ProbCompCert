@@ -600,42 +600,4 @@ Definition semantics (p: program) :=
 
 
 
-(*
-Inductive initial_state_gen (p: program) (m: mem) (i: ident): state -> Prop :=
-  | initial_state_data_intro: forall b f,
-      let ge := Genv.globalenv p in
-      Genv.find_symbol ge i = Some b ->
-      Genv.find_funct_ptr ge b = Some f ->
-      type_of_fundef f = Tfunction Tnil Tvoid cc_default ->
-      initial_state_gen p m i (Callstate f nil Kstop m zero).						      
 
-Inductive final_state: state -> int -> Prop :=
-  | final_state_data_intro: forall r m ta,
-      final_state (Returnstate (Vint r) Kstop m ta) r.
-
-Definition semantics_gen (p: program) (m: mem) (i: ident) :=
-  let ge := globalenv p in
-  Semantics_gen stepf (initial_state_gen p m i) final_state ge ge.
-
-Definition semantics_data (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_data).
-
-Definition semantics_transformed_data (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_transformed_data).
-
-Definition semantics_parameters (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_parameters).
-			
-Definition semantics_transformed_parameters (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_transformed_parameters).
-						      
-Definition semantics_generated_quantities (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_generated_quantities).
-
-Definition initial_state (p: program) (m: mem) :=
-  initial_state_gen p m p.(prog_model).
-
-Definition semantics (p: program) (m: mem) :=
-  semantics_gen p m p.(prog_model).
-
-*)

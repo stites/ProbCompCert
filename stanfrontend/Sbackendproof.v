@@ -101,7 +101,7 @@ Admitted.
 
 
 Theorem transf_program_correct:
-  forward_simulation (CStan.semantics prog m0) (Clight.semantics1 tprog).
+  forward_simulation (CStan.semantics prog) (Clight.semantics1 tprog).
 Proof.
   eapply forward_simulation_plus.
   apply senv_preserved.
