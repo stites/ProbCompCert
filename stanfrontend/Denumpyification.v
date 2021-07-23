@@ -363,6 +363,7 @@ Definition transf_function (f: StanE.function): res CStan.function :=
       CStan.fn_callconv := f.(StanE.fn_callconv);
       CStan.fn_temps := temps;
       CStan.fn_vars := vars;
+      CStan.fn_generator := SimplExpr.initial_generator tt;
      |}.
 
 Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :=
@@ -427,4 +428,3 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_math_functions:= p.(StanE.pr_math_functions);
       CStan.prog_dist_functions:= p.(StanE.pr_dist_functions);
     |}.
-

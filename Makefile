@@ -132,7 +132,12 @@ PARSER=Cabs.v Parser.v
 # Stan front-end
 
 STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v CStan.v Scompiler.v Runtime.v System.v Stemplate.v \
-  Denumpyification.v FirstTransform.v Sbackend.v
+  Denumpyification.v  \
+  Sampling.v \
+  Constraints.v \
+  VariableAllocation.v \
+  Target.v \
+	Sbackend.v
 
 # MenhirLib
 

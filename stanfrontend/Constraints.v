@@ -34,21 +34,6 @@ Notation ret := SimplExpr.ret.
 Notation error := SimplExpr.error.
 Notation gensym := SimplExpr.gensym.
 
-Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
-  match e with
-  | CStan.Econst_int i t => ret (CStan.Econst_int i t)
-  | CStan.Econst_float f t => ret (CStan.Econst_float f t)
-  | CStan.Econst_single f t => ret (CStan.Econst_single f t)
-  | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
-  | CStan.Etempvar i t => ret (CStan.Etempvar i t)
-  | CStan.Ederef e t => ret (CStan.Ederef e t)
-  | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
-  | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
-  | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
-  | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-  | CStan.Etarget t => ret (CStan.Etarget t)
-end.
 Notation error_mmap := Errors.mmap.
 
 Definition mon_fmap {A B : Type} (f: A -> B) (m: mon A)  : mon B := do a <~ m; ret (f a).
@@ -79,77 +64,6 @@ match e with
   | CStan.Evar i t => Some i
   | CStan.Etempvar i t => Some i
   | _ => None
-end.
-
-Fixpoint transf_statement (s: CStan.statement) {struct s}: mon CStan.statement :=
-match s with
-  | Sskip => ret Sskip
-  | Sassign e0 e1 =>
-    do e0 <~ transf_expr e0;
-    do e1 <~ transf_expr e1;
-    ret (Sassign e0 e1)
-    (* match maybe_ident e0 with *)
-    (*   | Some i => ret (Sset i e1) *)
-    (*   | None => ret (Sassign e0 e1) *)
-    (* end *)
-  | Sset i e =>
-    do e <~ transf_expr e;
-    ret (Sset i e)
-
-  | Scall oi e le =>
-    do e <~ transf_expr e;
-    do le <~ mon_mmap transf_expr le;
-    ret (Scall oi e le)
-
-  | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
-
-  | Ssequence s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
-    ret (Ssequence s0 s1)
-
-  | Sifthenelse e s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
-    ret (Sifthenelse e s0 s1)
-
-  | Sloop s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
-    ret (Sloop s0 s1)
-
-  | Sbreak => ret Sbreak
-
-  | Scontinue => ret Scontinue
-
-  | Sreturn oe =>
-    do oe <~ option_mon_mmap (transf_expr) oe;
-    ret (Sreturn oe)
-
-  | Starget e =>
-    do e <~ transf_expr e;
-    ret (Sassign (Etarget tdouble)
-              (Ebinop Cop.Oadd
-                      (Etarget tdouble) e tdouble))
-
-  (* | Stilde e f (*function var*)  le (oe0, oe1) => *)
-  (*   do tmp <~ gensym tdouble; *)
-
-  (*   (* simulate function call: *) *)
-  (*   let etmp := (Etempvar tmp tdouble) in *)
-  (*   ret (Ssequence *)
-  (*         (Scall (Some tmp) f (e::le)) *)
-  (*         (Starget etmp)) *)
-
-  | Stilde e d le (oe0, oe1) =>
-    do tmp <~ gensym tdouble;
-
-    (* simulate function call: *)
-    let etmp := (Etempvar tmp tdouble) in
-    let params := e::le in
-    ret (Ssequence
-          (Scall (Some tmp) d params)
-          (Starget etmp))
 end.
 
 Fixpoint getmathfunc (t:math_func) (fs: list (math_func * AST.ident * Ctypes.type)) : mon (AST.ident * Ctypes.type) :=
@@ -444,110 +358,23 @@ Definition transf_constraints (p:program) (f: function) (body : statement): mon 
   | _ => ret body
   end.
 
-Notation localvar := (prod AST.ident Ctypes.type).
-
-(* assuming that target is always symbol 0 to a model lets us remove this hack *)
-Definition get_target_ident (vars: list localvar) : mon AST.ident :=
-  match vars with
-  | nil => error (msg "impossible: 0")
-  | (t, ty)::_ => ret t
-  (* | _ => error (msg "impossible: >1") *)
-  end.
-
-Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CStan.expr :=
-  match e with
-  | CStan.Econst_int i t => ret (CStan.Econst_int i t)
-  | CStan.Econst_float f t => ret (CStan.Econst_float f t)
-  | CStan.Econst_single f t => ret (CStan.Econst_single f t)
-  | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
-  | CStan.Etempvar i t => ret (CStan.Etempvar i t)
-  | CStan.Ederef e t =>
-    do e <~ transf_target_expr tgt e;
-    ret (CStan.Ederef e t)
-  | CStan.Eunop uop e t =>
-    do e <~ transf_target_expr tgt e;
-    ret (CStan.Eunop uop e t)
-  | CStan.Ebinop bop e0 e1 t =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
-    ret (CStan.Ebinop bop e0 e1 t)
-  | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
-  | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
-  | CStan.Etarget ty => ret (CStan.Evar tgt ty)
-end.
-
-Fixpoint transf_target_statement (tgt: AST.ident) (s: CStan.statement) {struct s}: mon CStan.statement :=
-match s with
-  | Sassign e0 e1 =>
-    do e0 <~ transf_target_expr tgt e0;
-    do e1 <~ transf_target_expr tgt e1;
-    ret (Sassign e0 e1)
-  | Sset i e => do e <~ transf_target_expr tgt e; ret (Sset i e)
-  | Scall oi e le =>
-    do e <~ transf_target_expr tgt e;
-    do le <~ mon_mmap (transf_target_expr tgt) le;
-    ret (Scall oi e le)
-  | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
-  | Ssequence s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Ssequence s0 s1)
-  | Sifthenelse e s0 s1 =>
-    do e <~ transf_target_expr tgt e;
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Sifthenelse e s0 s1)
-  | Sloop s0 s1 =>
-    do s0 <~ transf_target_statement tgt s0;
-    do s1 <~ transf_target_statement tgt s1;
-    ret (Sloop s0 s1)
-  | Sreturn oe =>
-    do oe <~ option_mon_mmap (transf_target_expr tgt) oe;
-    ret (Sreturn oe)
-  | Starget e =>
-    error (msg "Starget DNE in this stage of pipeline")
-  | Stilde e i le (oe0, oe1) =>
-    error (msg "Stilde DNE in this stage of pipeline")
-
-  | Sbreak => ret Sbreak
-  | Sskip => ret Sskip
-  | Scontinue => ret Scontinue
-end.
-
-Definition transf_model (p:program) (f: function) (body : statement): mon statement :=
-  match f.(fn_blocktype) with
-  | BTModel =>
-    do tgt <~ get_target_ident f.(fn_vars);
-    let body :=
-      (Ssequence (Sassign (CStan.Etarget tdouble) (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
-        (Ssequence body
-          (Sreturn (Some (CStan.Etarget tdouble))))) in
-    transf_target_statement tgt body
-  | _ => ret body
-  end.
-
 Definition transf_statement_pipeline (p:program) (f: function) : mon CStan.statement :=
-  do body <~ transf_statement f.(fn_body);          (* Stilde -> Starget; Error "Backend: tilde" *)
+  let body := f.(fn_body) in
   do body <~ transf_constraints p f body;           (* apply constraint transformations *)
-  do body <~ transf_statement body;                 (* apply Starget transform *)
-  do body <~ transf_model p f body;                 (* add target preamble and replace Etarget with Evar target_ident *)
   ret body.
 
 Definition transf_function (p:CStan.program) (f: function): res function :=
-  match transf_statement_pipeline p f (SimplExpr.initial_generator tt) with
+  match transf_statement_pipeline p f f.(fn_generator) with
   | SimplExpr.Err msg => Error msg
   | SimplExpr.Res tbody g i =>
     OK {|
-      fn_params :=
-        match f.(fn_blocktype) with
-        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
-        | _ => f.(fn_params)
-        end;
+      fn_params := f.(fn_params);
       fn_body := tbody;
 
-      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
+      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
+      fn_temps := f.(fn_temps); (* NOTE only extract in the last stage *)
       fn_vars := f.(fn_vars);
+      fn_generator := g;
 
       (*should not change*)
       fn_return := f.(fn_return);
@@ -555,8 +382,6 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
       fn_blocktype := f.(fn_blocktype);
      |}
   end.
-
-
 
 (* ================================================================== *)
 (*                    Switch to Error Monad                           *)

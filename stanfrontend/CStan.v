@@ -28,6 +28,7 @@ Require Import Smallstep.
 Require Import Ctypes.
 Require Import Cop.
 Require Import Stan.
+Require Import SimplExpr.
 
 Inductive expr : Type :=
   | Econst_int: int -> type -> expr       (**r integer literal *)       (*FIXME: I think we can remove this *)
@@ -125,6 +126,7 @@ Record function := mkfunction {
   fn_params: list (ident * Ctypes.type);
   fn_body: statement;
   fn_blocktype: blocktype;
+  fn_generator: SimplExpr.generator;
   fn_callconv: calling_convention;
   fn_temps: list (ident * Ctypes.type);
   fn_vars: list (ident * Ctypes.type);
