@@ -142,10 +142,10 @@
             }
             {
               category = "build";
-              name = "make-all";
+              name = "build";
               command = ''
                 ${cd-root}
-                make -j && make install
+                make -j && make install && rm ccomp clightgen
               '';
             }
             {

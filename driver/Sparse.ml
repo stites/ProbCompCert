@@ -441,7 +441,7 @@ let elaborate (p: Stan.program) =
     let functions = (id_set,f_set) :: functions in
 
     IdxHashtbl.clear index_set;
-    let (id_main,f_main) = declareFundef "main" [Stan.Sskip] None [] in
+    let (id_main,f_main) = declareFundef "model_pdf" [Stan.Sskip] None [] in
     let functions = (id_main,f_main) :: functions in
 
     let functions =
