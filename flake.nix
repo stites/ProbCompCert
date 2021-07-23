@@ -73,20 +73,20 @@
           in [
             (mk-watcher "watch-stan" {
               command = watch {
-                build = "make -j && make install";
+                build = "make -j && make install && rm ccomp clightgen";
                 cmd = "./out/bin/ccomp -c $current_dir/$1";
               };
             })
             (mk-watcher "watch-stan-debug" {
               command = watch {
-                build = "make -j && make install";
+                build = "make -j && make install && rm ccomp clightgen";
                 cmd = "./out/bin/ccomp -c $current_dir/$1";
                 finally = "./out/bin/clightgen $current_dir/$1";
               };
             })
             (mk-watcher "watch-clightgen" {
               command = watch {
-                build = "make -j && make install";
+                build = "make -j && make install && rm ccomp clightgen";
                 cmd = "./clightgen $current_dir/$1";
               };
             })
