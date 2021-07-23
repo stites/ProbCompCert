@@ -13,9 +13,7 @@ Section PRESERVATION.
 
 Variable prog: CStan.program.
 Variable tprog: Clight.program.
-Variable m0: mem.
 Hypothesis TRANSF: Sbackend.backend prog = OK tprog.
-Hypothesis INITMEM: Genv.init_mem prog = Some m0.
 Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
 
@@ -90,7 +88,7 @@ Proof.
 Admitted.
 
 Lemma initial_states_simulation:
-  forall S, CStan.initial_state prog m0 S ->
+  forall S, CStan.initial_state prog S ->
   exists R, Clight.initial_state tprog R /\ match_states S R.
 Proof.
 Admitted.

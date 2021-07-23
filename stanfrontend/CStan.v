@@ -162,6 +162,7 @@ Defined.
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
   prog_public: list ident;
+  prog_main: ident;
   prog_model: ident;
   prog_parameters: ident;
   prog_parameters_vars: list ident;
@@ -576,7 +577,28 @@ Inductive function_entry (ge: genv) (f: function) (vargs: list val) (m: mem) (e:
 Definition stepf (ge: genv) := step ge (function_entry ge).
 
 Parameter zero: float.
-														       
+
+Inductive initial_state (p: program): state -> Prop :=
+  | initial_state_data_intro: forall b f m0,
+      let ge := Genv.globalenv p in
+      Genv.init_mem p = Some m0 ->
+      Genv.find_symbol ge p.(prog_main) = Some b ->
+      Genv.find_funct_ptr ge b = Some f ->
+      type_of_fundef f = Tfunction Tnil Tvoid cc_default ->
+      initial_state p (Callstate f nil Kstop m0 zero).
+
+Inductive final_state: state -> int -> Prop :=
+  | final_state_data_intro: forall r m ta,
+      final_state (Returnstate (Vint r) Kstop m ta) r.
+
+Definition semantics (p: program) :=
+  let ge := globalenv p in
+  Semantics_gen stepf (initial_state p) final_state ge ge.
+
+
+
+
+(*
 Inductive initial_state_gen (p: program) (m: mem) (i: ident): state -> Prop :=
   | initial_state_data_intro: forall b f,
       let ge := Genv.globalenv p in
@@ -613,3 +635,5 @@ Definition initial_state (p: program) (m: mem) :=
 
 Definition semantics (p: program) (m: mem) :=
   semantics_gen p m p.(prog_model).
+
+*)
