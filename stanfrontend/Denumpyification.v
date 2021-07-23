@@ -425,6 +425,7 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
       CStan.prog_comp_env:=comp_env;
+      CStan.prog_main:=p.(StanE.pr_main);
       CStan.prog_math_functions:= p.(StanE.pr_math_functions);
       CStan.prog_dist_functions:= p.(StanE.pr_dist_functions);
     |}.

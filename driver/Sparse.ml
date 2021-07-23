@@ -440,6 +440,9 @@ let elaborate (p: Stan.program) =
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
+    IdxHashtbl.clear index_set;
+    let (id_main,f_main) = declareFundef "main" [Stan.Sskip] None [] in
+    let functions = (id_main,f_main) :: functions in
 
     let functions =
       List.fold_left
@@ -467,6 +470,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
+      StanE.pr_main=id_main;
       StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
       StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
     }

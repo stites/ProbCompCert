@@ -457,7 +457,7 @@ Definition backend (p: CStan.program): res Clight.program :=
   OK {| 
       Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
       Ctypes.prog_public:=List.app public_idents p.(CStan.prog_public);
-      Ctypes.prog_main:= xH;
+      Ctypes.prog_main:= p.(CStan.prog_main);
       Ctypes.prog_types:=nil;
       Ctypes.prog_comp_env:=p.(CStan.prog_comp_env);
       Ctypes.prog_comp_env_eq:= comp_env_eq p.(CStan.prog_comp_env);
