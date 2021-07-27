@@ -451,7 +451,7 @@ Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef 
   | External ef targs tres cc =>
       OK (External ef targs tres cc)
   end.
-							       
+
 Definition backend (p: CStan.program): res Clight.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
   OK {| 
@@ -461,5 +461,4 @@ Definition backend (p: CStan.program): res Clight.program :=
       Ctypes.prog_types:=nil;
       Ctypes.prog_comp_env:=p.(CStan.prog_comp_env);
       Ctypes.prog_comp_env_eq:= comp_env_eq p.(CStan.prog_comp_env);
-    |}.							    
-
+    |}.
