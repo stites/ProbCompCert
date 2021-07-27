@@ -461,10 +461,9 @@ Admitted.
 Lemma types_correct:
   forall e x, transf_expression e = OK x -> CStan.typeof e = Clight.typeof x.
 Proof.
-  intros.
-  induction e.
-  - simpl.
-Admitted.
+  intro e.
+  induction e; intros; simpl in *; monadInv H; simpl; trivial.
+Qed.
 
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
