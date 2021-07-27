@@ -446,25 +446,31 @@ Lemma eval_expr_correct:
   (TRE: transf_expression a = OK ta),
   CStan.eval_expr ge e le m target a v -> Clight.eval_expr tge e le m ta v.
 Proof.
-Admitted.
+  intros e le m a v target ta.
+  intros.
+  Admitted.
 
 Lemma eval_lvalue_correct:
   forall e le m a b ofs target ta
   (TRE: transf_expression a = OK ta),
   CStan.eval_lvalue ge e le m target a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
 Proof.
+  intros.
 Admitted.
 
 Lemma types_correct:
   forall e x, transf_expression e = OK x -> CStan.typeof e = Clight.typeof x.
 Proof.
+  intros.
+  induction e.
+  - simpl.
 Admitted.
 
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
   forall S1' (MS: match_states S1 S1'), exists S2', plus Clight.step1 tge S1' t S2' /\ match_states S2 S2'.
 Proof.
-  induction 1; simpl; intros; inv MS; simpl in *; try (monadInv TRS).
+  induction 1. simpl; intros; inv MS; simpl in *; try (monadInv TRS).
 
   (* assign *)
   exists (Clight.State tf Clight.Sskip tk e le m').
@@ -480,8 +486,9 @@ Proof.
   eapply eval_expr_correct; eauto.
   eapply H1.
   admit.
-  econstructor; eauto. 
-
+  econstructor; eauto.
+  Focus 1.
+  intros.
 
 Admitted.
 
