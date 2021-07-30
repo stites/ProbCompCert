@@ -429,7 +429,7 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   | Stilde o e le tr => Error (msg "Backend: tilde")
   end.
 					 
-Definition transf_variable (id: AST.ident) (v: CStan.type): res Ctypes.type :=
+Definition transf_variable (v: CStan.type): res Ctypes.type :=
   OK (CStan.vd_type v).
   (* FIXME: is this right? Error (msg "Backend.transf_variable: NIY"). *)
 
@@ -444,7 +444,7 @@ Definition transf_function (f: CStan.function): res Clight.function :=
       Clight.fn_vars := f.(CStan.fn_vars);
      |}.
 
-Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef :=
+Definition transf_fundef (fd: CStan.fundef) : res Clight.fundef :=
   match fd with
   | Internal f =>
       do tf <- transf_function f; OK (Internal tf)
@@ -453,7 +453,7 @@ Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef 
   end.
 
 Definition backend (p: CStan.program): res Clight.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+  do p1 <- AST.transform_partial_program2 (fun i => transf_fundef) (fun i => transf_variable) p;
   OK {| 
       Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
       Ctypes.prog_public:=List.app public_idents p.(CStan.prog_public);
