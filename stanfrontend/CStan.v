@@ -74,8 +74,9 @@ Inductive statement : Type :=
   | Sbreak : statement                      (**r [break] statement *)
   | Scontinue : statement                   (**r [continue] statement *)
   | Sreturn : option expr -> statement      (**r [return] statement *)
-  | Starget: expr -> statement
+  | Starget: expr -> statement              (**r target += expr *)
   | Stilde: expr -> expr -> list expr -> (option expr * option expr) -> statement
+                      (**r expr ~ expr(list expr) T[option exr, option expr] *)
 
 with labeled_statements : Type :=            (**r cases of a [switch] *)
   | LSnil: labeled_statements
@@ -122,7 +123,7 @@ Record type := mkvariable {
 Inductive blocktype := BTModel | BTOther.
 
 Record function := mkfunction {
-  fn_return: Ctypes.type; 
+  fn_return: Ctypes.type;
   fn_params: list (ident * Ctypes.type);
   fn_body: statement;
   fn_blocktype: blocktype;
@@ -418,18 +419,18 @@ Inductive state: Type :=
       (k: cont)
       (e: env)
       (le: temp_env)
-      (m: mem) 
-      (ta: float) : state
+      (m: mem)
+      (ta: float) : state (* ta is the running target *)
   | Callstate
       (fd: fundef)
       (args: list val)
       (k: cont)
-      (m: mem) 
+      (m: mem)
       (ta: float): state
   | Returnstate
       (res: val)
       (k: cont)
-      (m: mem) 
+      (m: mem)
       (ta: float): state.
 
 (** Find the statement and manufacture the continuation
@@ -563,11 +564,10 @@ Inductive step: state -> trace -> state -> Prop :=
   | step_target: forall f a k e le m ta v ta',
       eval_expr e le m ta a v ->
       v = Vfloat ta' ->
-      step (State f (Starget a) k e le m ta) 
-        E0 (State f Sskip k e le m ta').
-
+      step (State f (Starget a) k e le m ta)
+        E0 (State f Sskip k e le m (Float.add ta ta')).
 End SEMANTICS.
-  
+
 Inductive function_entry (ge: genv) (f: function) (vargs: list val) (m: mem) (e: env) (le: temp_env) (m': mem) : Prop :=
   | function_entry_intro: forall m1,
       list_norepet (var_names f.(fn_params) ++ var_names f.(fn_vars)) ->
@@ -578,7 +578,7 @@ Inductive function_entry (ge: genv) (f: function) (vargs: list val) (m: mem) (e:
 
 Definition stepf (ge: genv) := step ge (function_entry ge).
 
-Parameter zero: float.
+Definition zero: float := Float.zero.
 
 Inductive initial_state (p: program): state -> Prop :=
   | initial_state_data_intro: forall b f m0,
@@ -596,8 +596,3 @@ Inductive final_state: state -> int -> Prop :=
 Definition semantics (p: program) :=
   let ge := globalenv p in
   Semantics_gen stepf (initial_state p) final_state ge ge.
-
-
-
-
-
