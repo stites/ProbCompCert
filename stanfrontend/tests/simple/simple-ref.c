@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+/* Example output of what the compiler ought to be filling in to link with runtime */
 
 double randn (double mu, double sigma)
 {

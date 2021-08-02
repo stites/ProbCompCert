@@ -17,15 +17,16 @@ From Coquelicot Require Import Rbar.
 Require Import borel.
 
 
-Parameter from_trace: Events.traceinf -> (nat -> R). 
+Parameter from_trace: Events.traceinf -> (nat -> R).
 
-Parameter distribution: Type. 
+Parameter distribution: Type.
 
+(* Change to CStan.program -> distribution *)
 Parameter denotational_semantics: StanE.program -> distribution.
 
 Parameter is_distributed_as: R -> distribution -> Prop.
 
-Theorem convergence: 
+Theorem convergence:
   forall p: StanE.program,
   forall tp: Clight.program,
   Scompiler.transf_stan_program p = OK tp ->
@@ -37,7 +38,7 @@ Theorem convergence:
   forall path, path = from_trace t ->
   forall r, is_lim_seq path (Finite r) ->
   is_distributed_as r (denotational_semantics p).
-Proof. 
+Proof.
 Admitted.
 
 
