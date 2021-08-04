@@ -116,6 +116,30 @@
             }
             {
               category = "build";
+              name = "ccompstan-exe";
+              command = pkgs.lib.strings.concatStringsSep "\n" [
+                # boilerplate for some env variables used below
+                cd-root-with-prog
+
+                # working directory is stan dir
+                "cd stanfrontend"
+
+                # ccomp doesn't compile down to object files, just asm
+                ''ccomp -c $current_dir/$1 && ccomp -c ''${name}.s''
+
+                # build libstan.so
+                ''ccomp -c stanlib.c && ld -shared stanlib.o -o libstan.so''
+
+                # compile the final binary
+                ''ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o -o runit''
+
+                # tell the user what to do next
+                ''echo "compiled! ./stanfrontend/runit [int]"''
+              ];
+            }
+
+            {
+              category = "build";
               name = "ccompstan";
               command = pkgs.lib.strings.concatStringsSep "\n" [
                 # boilerplate for some env variables used below
