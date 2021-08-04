@@ -136,7 +136,6 @@ Lemma sizeof_equiv :
   forall t,
   sizeof ge t = sizeof tge t.
 Proof.
-  intros.
   rewrite comp_env_preserved.
   auto.
 Qed.
@@ -198,7 +197,7 @@ Proof.
 
   - (* Etempvar expressions *)
     inv H.
-    constructor. exact H3. inv H0.
+    constructor. eauto. inv H0.
 
   (* Inductive-hypotheses *)
 
@@ -210,9 +209,8 @@ Proof.
     inv H.                               (* invert with CStan.eval_Eunop -- we must additionally show CStan.eval_lvalue is invalid. *)
     econstructor.                        (* apply Clight.eval_Eunop -- we must additionally show Cop.sem_unary_operation *)
     apply (IHa v1 target x EQ H4).       (* Eunop is then shown to be valid by inductive case of it's argument *)
-    rewrite (transf_types_eq a x) in H5.
-    exact H5. exact EQ.                  (* Cop.sem_unary_operation is true by transf_types_eq, so long as EQ *)
-    inv H0.                              (* CStan.eval_lvalue is invalid. *)
+    rewrite (transf_types_eq a x) in H5; eauto. (* Cop.sem_unary_operation is true by transf_types_eq, so long as EQ *)
+    inv H0.                                     (* CStan.eval_lvalue is invalid. *)
 
   - (* Ebinop expressions *)
     inv H.                                 (* invert with CStan.eval_Ebinop *)
