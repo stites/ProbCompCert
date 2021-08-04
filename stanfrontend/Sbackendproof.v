@@ -266,23 +266,166 @@ Lemma step_simulation:
 Proof.
   induction 1. simpl; intros; inv MS; simpl in *; try (monadInv TRS).
 
-  (* assign *)
-  exists (Clight.State tf Clight.Sskip tk e le m').
-  split.
-  eapply plus_one.
-  generalize (types_correct _ _ EQ); intro.
-  generalize (types_correct _ _ EQ1); intro.  
-  rewrite H3 in *.
-  rewrite H4 in *.
-  unfold step1. 
-  eapply step_assign.
-  eapply eval_lvalue_correct; eauto.
-  eapply eval_expr_correct; eauto.
-  eapply H1.
-  admit.
-  econstructor; eauto.
-  Focus 1.
-  intros.
+  - (* assign *)
+    exists (Clight.State tf Clight.Sskip tk e le m').
+    split.
+    eapply plus_one.
+    generalize (types_correct _ _ EQ); intro.
+    generalize (types_correct _ _ EQ1); intro.
+    rewrite H3 in *.
+    rewrite H4 in *.
+    unfold step1.
+    eapply step_assign; eauto.
+    eapply eval_lvalue_correct; eauto.
+    eapply eval_expr_correct; eauto.
+    inv H2.
+    eapply assign_loc_value; eauto.
+    eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto.
+    eapply match_regular_states; eauto.
+
+  - (* set *)
+    intros.
+    inv MS.
+    econstructor.
+    (* exists (Clight.State tf Clight.Sskip tk e le m). *)
+    monadInv TRS.
+    split.
+    eapply plus_one.
+    unfold step1.
+    econstructor.
+    eapply eval_expr_correct; eauto.
+    eapply match_regular_states; eauto.
+
+  - (* call *)
+    intros.
+    inv MS.
+
+
+    (* exists (Callstate vf vargs (Kcall optid f e le k) m). *)
+    (* split. *)
+    (* eapply plus_one. unfold step1. *)
+    (* eapply step_call.  *)
+    (* admit. *)
+    (* eapply match_call_state. *)
+    (* simpl in *. *)
+    admit.
+    (* admit. *)
+
+  - (* builtin *)
+    intros.
+    admit.
+
+  - (* sequence seq *)
+    intros.
+    inv MS; monadInv TRS.
+    exists (State tf x (Kseq x0 tk) e le m).
+    split.
+    eapply plus_one.
+    unfold step1.
+    eapply step_seq.
+    eapply match_regular_states; eauto.
+    econstructor; eauto.
+  - (* skip sequence *)
+    intros.
+    inv MS; monadInv TRS.
+    inv MCONT.
+    (* econstructor. *)
+    exists (State tf ts tk0 e le m).
+    admit.
+    (* | step_skip_seq: forall f s k e le m, *)
+  - (* continue sequence *)
+    intros; inv MS; monadInv TRS.
+    exists (State tf Scontinue tk e le m).
+    split.
+    eapply plus_one.
+    unfold step1.
+    (*need tk = Kseq ts k from MCONT *)
+    (* eapply step_continue_seq. *)
+    (* eapply match_regular_states; eauto. *)
+    admit. admit.
+  - (* break sequence *)
+    intros; inv MS; monadInv TRS.
+    exists (State tf Sbreak tk e le m).
+    split.
+    eapply plus_one; unfold step1.
+    (*need tk = Kseq ts k from MCONT *)
+    (* eapply step_break_seq. *)
+    admit. admit.
+    (* (* break sequence *) *)
+    (*   inv MCONT. econstructor; split. apply plus_one. econstructor. econstructor; eauto. *)
+  - (* if then else *)
+    intros; inv MS; monadInv TRS.
+    exists (State tf (if b then x0 else x1) tk e le m).
+    split.
+    eapply plus_one; unfold step1.
+    eapply step_ifthenelse.
+    eapply eval_expr_correct; eauto.
+    generalize (types_correct _ _ EQ); intro.
+    rewrite <- H1; eauto.
+    eapply match_regular_states; eauto.
+    induction b; eauto.
+  - (* step_loop *)
+    intros; inv MS; monadInv TRS.
+    exists (State tf x (Kloop1 x x0 tk) e le m).
+    split.
+    eapply plus_one; unfold step1.
+    eapply step_loop.
+    eapply match_regular_states; eauto.
+    (* match_cont *)
+    admit.
+  - (* step_skip_or_continue_loop1 *)
+    intros. inv MS; destruct H.
+    econstructor.
+    admit. admit.
+    (* exists (State tf ts (Kloop2 ts _ tk) e le m). *)
+    (* eapply step_skip_or_continue_loop1. *)
+  - (* step_break_loop1 *)
+    intros; inv MS; monadInv TRS.
+    exists (State tf Sskip tk e le m).
+    split.
+    eapply plus_one; unfold step1.
+    (* match_cont ? *)
+    (* eapply step_break_loop1. *)
+    admit. admit.
+
+  - (* step_skip_loop2 *)
+    intros; inv MS; monadInv TRS.
+    admit.
+  - (* step_break_loop2 *)
+    intros; inv MS; monadInv TRS.
+    admit.
+  - (* step_return_0 *)
+    intros; inv MS; monadInv TRS.
+    econstructor.
+    split.
+    admit.
+  - (* step_return_1 *)
+    intros; inv MS; monadInv TRS.
+    admit.
+  - (* step_skip_call *)
+    intros; inv MS; monadInv TRS.
+    admit.
+  - (* step_switch *)
+    intros; inv MS.
+    admit.
+  - (* step_continue_switch *)
+    intros; inv MS; monadInv TRS.
+    admit.
+  - (* step_internal_function *)
+    intros; inv MS.
+    admit.
+  - (* step_external_function *)
+    intros; inv MS.
+    admit.
+  - (* step_returnstate *)
+    intros; inv MS.
+    admit.
+  - (* step_target *)
+    intros; inv MS.
+    econstructor.
+    split.
+    eapply plus_one; unfold step1.
+    admit.
 
 Admitted.
 
