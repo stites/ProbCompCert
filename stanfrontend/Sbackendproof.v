@@ -96,24 +96,21 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
 (* ;__________;________________________________________ *)
 (* //////////////////////////////////////////////////// *)
 
-Program Instance Linker_types : Linker CStan.type := {
-  link := fun (t1 t2: CStan.type) => None; (* FIXME *)
-  linkorder := fun t1 t2 => t1 = t2; (* FIXME: not a valid preorder *)
-}.
-
-Definition match_prog (p: CStan.program) (tp: Clight.program) :=
-  match_program (fun ctx f tf => Sbackend.transf_fundef f = OK tf) (fun cs cl => eq cl (CStan.vd_type cs)) p tp
-  (* /\ prog_types tp = prog_types p. *) (* FIXME: I don't think this is necessary until we get structs. *)
-  .
+Context {C: Type} {LC: Linker C} {LF: Linker CStan.fundef} {LV: Linker CStan.type}.
+Variable ctx: C.
+Hypothesis TRANSL:
+  match_program_gen
+    (fun ctx f tf => Sbackend.transf_fundef f = OK tf)
+    (fun cs cl => eq cl (CStan.vd_type cs))
+    ctx
+    prog
+    tprog.
 
 Lemma comp_env_preserved:
   genv_cenv tge = CStan.genv_cenv ge.
 Proof.
-  unfold tge, ge.
   Admitted.
-(*   destruct tprog. *)
-(*   destruct prog. tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ. congruence. *)
-
+(*   unfold tge, ge. destruct prog, tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ. congruence. *)
 (* Qed. *)
 
 (*      .                       *)
@@ -121,8 +118,6 @@ Proof.
 (*  '-.;;;.-'                   *)
 (* -==;;;;;==-                  *)
 (* ---------------------------- *)
-
-Hypothesis TRANSL: match_prog prog tprog.
 
 Lemma senv_preserved:
   Senv.equiv ge tge.
@@ -299,21 +294,35 @@ Proof.
   - (* call *)
     intros.
     inv MS.
-
-
-    (* exists (Callstate vf vargs (Kcall optid f e le k) m). *)
-    (* split. *)
-    (* eapply plus_one. unfold step1. *)
-    (* eapply step_call.  *)
-    (* admit. *)
-    (* eapply match_call_state. *)
-    (* simpl in *. *)
     admit.
-    (* admit. *)
+    (* monadInv TRF. *)
+    (* inv MCONT. *)
+    (* eapply match_cont. *)
+    (* exists (Callstate x vargs (Kcall optid f e le k) m). *)
+    (* split. *)
+    (* eapply plus_one. *)
+    (* unfold step1. *)
+    (* econstructor. *)
+    (* apply match_Kcall. *)
+    (* Focus 1. *)
+    (* exists (Callstate vf vargs (Kcall optid f e le k) m). *)
 
   - (* builtin *)
     intros.
+
+    inv MS.
+    (* monadInv TRF. *)
+    (* monadInv TRS. *)
+    eapply match_Kcall in MCONT.
+    econstructor.
+    Focus 2. eauto. split.
+    Focus 2. eapply match_regular_states; eauto.
+    Focus 2. inv MCONT. eauto.
     admit.
+    eapply plus_one.
+    unfold step1.
+    admit.
+    (* exists (State tf Sskip k e (set_opttemp optid vres le) m'). *)
 
   - (* sequence seq *)
     intros.
@@ -331,39 +340,39 @@ Proof.
     inv MCONT.
     (* econstructor. *)
     exists (State tf ts tk0 e le m).
-    admit.
-    (* | step_skip_seq: forall f s k e le m, *)
-  - (* continue sequence *)
-    intros; inv MS; monadInv TRS.
-    exists (State tf Scontinue tk e le m).
     split.
     eapply plus_one.
     unfold step1.
-    (*need tk = Kseq ts k from MCONT *)
-    (* eapply step_continue_seq. *)
-    (* eapply match_regular_states; eauto. *)
-    admit. admit.
+    eapply step_skip_seq.
+    eapply match_regular_states; eauto.
+  - (* continue sequence *)
+    intros; inv MS; monadInv TRS.
+    inv MCONT.
+    exists (State tf Scontinue tk0 e le m).
+    split.
+    eapply plus_one.
+    unfold step1.
+    eapply step_continue_seq.
+    eapply match_regular_states; eauto.
   - (* break sequence *)
     intros; inv MS; monadInv TRS.
-    exists (State tf Sbreak tk e le m).
+    inv MCONT.
+    exists (State tf Sbreak tk0 e le m).
     split.
     eapply plus_one; unfold step1.
-    (*need tk = Kseq ts k from MCONT *)
-    (* eapply step_break_seq. *)
-    admit. admit.
-    (* (* break sequence *) *)
-    (*   inv MCONT. econstructor; split. apply plus_one. econstructor. econstructor; eauto. *)
+    eapply step_break_seq.
+    eapply match_regular_states; eauto.
   - (* if then else *)
     intros; inv MS; monadInv TRS.
-    exists (State tf (if b then x0 else x1) tk e le m).
+    econstructor.
     split.
     eapply plus_one; unfold step1.
-    eapply step_ifthenelse.
+    econstructor.
     eapply eval_expr_correct; eauto.
     generalize (types_correct _ _ EQ); intro.
     rewrite <- H1; eauto.
     eapply match_regular_states; eauto.
-    induction b; eauto.
+    destruct b; eauto.
   - (* step_loop *)
     intros; inv MS; monadInv TRS.
     exists (State tf x (Kloop1 x x0 tk) e le m).
@@ -371,55 +380,111 @@ Proof.
     eapply plus_one; unfold step1.
     eapply step_loop.
     eapply match_regular_states; eauto.
-    (* match_cont *)
-    admit.
+    eapply match_Kloop1; eauto.
   - (* step_skip_or_continue_loop1 *)
-    intros. inv MS; destruct H.
-    econstructor.
-    admit. admit.
-    (* exists (State tf ts (Kloop2 ts _ tk) e le m). *)
-    (* eapply step_skip_or_continue_loop1. *)
+    intros. inv MS; inv MCONT; destruct H;
+
+    repeat (
+      econstructor; split;
+      try (eapply plus_one; unfold step1;
+        eapply step_skip_or_continue_loop1;
+        monadInv TRF; monadInv TRS; eauto);
+      eapply match_regular_states; eauto; eapply match_Kloop2; eauto
+    ).
+
   - (* step_break_loop1 *)
-    intros; inv MS; monadInv TRS.
-    exists (State tf Sskip tk e le m).
+    intros; inv MS; monadInv TRS; inv MCONT.
+    econstructor. split.
+    eapply plus_one; unfold step1.
+    eapply step_break_loop1; eauto.
+    eapply match_regular_states; eauto.
+  - (* step_skip_loop2 *)
+    intros; inv MS; monadInv TRS; inv MCONT.
+    exists (State tf (Sloop ts1 ts2) tk0 e le m).
     split.
     eapply plus_one; unfold step1.
-    (* match_cont ? *)
-    (* eapply step_break_loop1. *)
-    admit. admit.
-
-  - (* step_skip_loop2 *)
-    intros; inv MS; monadInv TRS.
+    eapply step_skip_loop2.
+    eapply match_regular_states; eauto.
     admit.
   - (* step_break_loop2 *)
-    intros; inv MS; monadInv TRS.
-    admit.
+    intros; inv MS; monadInv TRS; inv MCONT.
+    exists (State tf Sskip tk0 e le m).
+    split. eapply plus_one; unfold step1.
+    eapply  step_break_loop2.
+    eapply match_regular_states; eauto.
+
   - (* step_return_0 *)
     intros; inv MS; monadInv TRS.
     econstructor.
-    split.
-    admit.
+    split. eapply plus_one; unfold step1.
+    econstructor; eauto. admit.
+    eapply match_return_state; eauto.
     admit.
   - (* step_return_1 *)
     intros; inv MS; monadInv TRS.
+    econstructor.
+    split. eapply plus_one; unfold step1.
+    generalize (types_correct _ _ EQ); intro.
+    rewrite H2 in H0.
+    econstructor; eauto.
+    eapply eval_expr_correct; eauto.
     admit.
+    admit.
+    eapply match_return_state; eauto.
+    admit.
+
   - (* step_skip_call *)
     intros; inv MS; monadInv TRS.
+    econstructor.
+    split. eapply plus_one; unfold step1.
+    econstructor.
     admit.
-  - (* step_switch *)
-    intros; inv MS.
+    admit. (* (Mem.free_list m (blocks_of_env ---tge/ge--- e) = Some goal?). *)
+    eapply match_return_state; eauto.
+
+  - (* step_skip_break_switch *)
+    intros; inv MS. inv MCONT.
+    econstructor.
+    split. eapply plus_one; unfold step1.
+    econstructor.
+    destruct H; simpl in *.
     admit.
+    admit.
+    eapply match_regular_states; eauto.
+
   - (* step_continue_switch *)
-    intros; inv MS; monadInv TRS.
-    admit.
+    intros; inv MS; monadInv TRS; inv MCONT.
+    exists (State tf Scontinue tk0 e le m).
+    split. eapply plus_one; unfold step1.
+    econstructor.
+    eapply match_regular_states; eauto.
+
   - (* step_internal_function *)
     intros; inv MS.
+    monadInv TRFD.
+    exists (State x x.(fn_body) tk e le m1).
+    split. eapply plus_one; unfold step1.
+    eapply step_internal_function.
+    admit.
+    eapply match_regular_states; eauto.
     admit.
   - (* step_external_function *)
+
     intros; inv MS.
+    monadInv TRFD.
+    exists (Returnstate vres tk m').
+    split. eapply plus_one; unfold step1.
+    eapply step_external_function.
     admit.
+    eapply match_return_state; eauto.
   - (* step_returnstate *)
-    intros; inv MS; admit.
+    intros; inv MS.
+    inv MCONT.
+    exists (State tfn Sskip tk0 te (set_opttemp optid v tle) m).
+    split. eapply plus_one; unfold step1.
+    eapply step_returnstate.
+    admit.
+
 Admitted.
 
 Lemma initial_states_simulation:
