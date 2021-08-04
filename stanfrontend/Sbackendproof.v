@@ -18,7 +18,45 @@ Hypothesis TRANSF: Sbackend.backend prog = OK tprog.
 Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
 
-Variable match_cont: CStan.cont -> Clight.cont -> Prop.
+Inductive match_globalenvs (f: Values.meminj) (bound: Values.block): Prop :=
+  | mk_match_globalenvs
+      (DOMAIN: forall b, Plt b bound -> f b = Some(b, 0))
+      (IMAGE: forall b1 b2 delta, f b1 = Some(b2, delta) -> Plt b2 bound -> b1 = b2)
+      (SYMBOLS: forall id b, Genv.find_symbol ge id = Some b -> Plt b bound)
+      (FUNCTIONS: forall b fd, Genv.find_funct_ptr ge b = Some fd -> Plt b bound)
+      (VARINFOS: forall b gv, Genv.find_var_info ge b = Some gv -> Plt b bound).
+
+
+(** Matching continuations *)
+Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
+  | match_Kstop:
+      (* match_globalenvs f hi -> Ple hi bound -> Ple hi tbound -> *)
+      match_cont CStan.Kstop Kstop
+  | match_Kseq: forall s k ts tk ,
+      transf_statement s = OK ts ->
+      match_cont k tk ->
+      match_cont (CStan.Kseq s k) (Kseq ts tk)
+  | match_Kloop1: forall s1 s2 k ts1 ts2 tk ,
+      transf_statement s1 = OK ts1 ->
+      transf_statement s2 = OK ts2 ->
+      match_cont k tk ->
+      match_cont (CStan.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
+  | match_Kloop2: forall s1 s2 k ts1 ts2 tk ,
+      transf_statement s1 = OK ts1 ->
+      transf_statement s2 = OK ts2 ->
+      match_cont k tk ->
+      match_cont (CStan.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
+  | match_Kswitch: forall k tk ,
+      match_cont k tk ->
+      match_cont (CStan.Kswitch k) (Kswitch tk)
+  | match_Kcall: forall optid fn e le k tfn te tle tk ,
+      transf_function fn = OK tfn ->
+      (* match_envs f e le m lo hi te tle tlo thi -> *)
+      match_cont k tk ->
+      (* Ple hi bound -> Ple thi tbound -> *)
+      match_cont (CStan.Kcall optid fn e le k)
+                        (Kcall optid tfn te tle tk).
+
 
 Inductive match_states: CStan.state -> Clight.state -> Prop :=
   | match_regular_states:
@@ -68,14 +106,6 @@ Definition match_prog (p: CStan.program) (tp: Clight.program) :=
   (* /\ prog_types tp = prog_types p. *) (* FIXME: I don't think this is necessary until we get structs. *)
   .
 
-Lemma match_transf_program:
-  forall p tp, Sbackend.backend p = OK tp -> match_prog p tp.
-Proof.
-  unfold Sbackend.backend. intros. monadInv H.
-  eapply match_transform_partial_program2.
-  rewrite EQ. destruct x.
-  Admitted.
-
 Lemma comp_env_preserved:
   genv_cenv tge = CStan.genv_cenv ge.
 Proof.
@@ -85,20 +115,6 @@ Proof.
 (*   destruct prog. tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ. congruence. *)
 
 (* Qed. *)
-Lemma find_symbol_eq:
-  (* Senv.find_symbol ge = Senv.find_symbol tge -> *)
-  forall i,
-  Genv.find_symbol ge i = Genv.find_symbol tge i.
-Proof.
-  intro.
-  unfold Genv.find_symbol in *.
-  unfold Genv.genv_symb in *.
-  unfold CStan.genv_genv in *.
-  unfold genv_genv in *.
-  simpl in *.
-  Admitted.
-
-
 
 (*      .                       *)
 (*    \ | /      All clear!     *)
