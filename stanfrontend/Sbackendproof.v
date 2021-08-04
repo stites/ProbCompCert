@@ -60,22 +60,22 @@ Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
 
 Inductive match_states: CStan.state -> Clight.state -> Prop :=
   | match_regular_states:
-      forall f s k e le m t tf ts tk
+      forall f s k e le m tf ts tk
       (TRF: transf_function f = OK tf)
       (TRS: transf_statement s = OK ts)
       (MCONT: match_cont k tk),
-      match_states (CStan.State f s k e le m t)
+      match_states (CStan.State f s k e le m)
                    (Clight.State tf ts tk e le m)
   | match_call_state:
-      forall fd vargs k m t tfd tk
+      forall fd vargs k m tfd tk
       (TRFD: transf_fundef fd = OK tfd)
       (MCONT: match_cont k tk),
-      match_states (CStan.Callstate fd vargs k m t)
+      match_states (CStan.Callstate fd vargs k m)
                    (Clight.Callstate tfd vargs tk m)
   | match_return_state:
-      forall v k m t tk
+      forall v k m tk
       (MCONT: match_cont k tk),
-      match_states (CStan.Returnstate v k m t)
+      match_states (CStan.Returnstate v k m)
                    (Clight.Returnstate v tk m).
 
 
@@ -399,6 +399,7 @@ Proof.
     econstructor.
     split.
     admit.
+    admit.
   - (* step_return_1 *)
     intros; inv MS; monadInv TRS.
     admit.
@@ -418,15 +419,7 @@ Proof.
     intros; inv MS.
     admit.
   - (* step_returnstate *)
-    intros; inv MS.
-    admit.
-  - (* step_target *)
-    intros; inv MS.
-    econstructor.
-    split.
-    eapply plus_one; unfold step1.
-    admit.
-
+    intros; inv MS; admit.
 Admitted.
 
 Lemma initial_states_simulation:
