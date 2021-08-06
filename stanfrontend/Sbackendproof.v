@@ -58,38 +58,7 @@ Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
       (* match_cont_exp a k tk -> *)
       (* Ple hi bound -> Ple thi tbound -> *)
       match_cont (CStan.Kcall optid fn e le k)
-                        (Kcall optid tfn e le tk) (* FIXME: also asserting that te = e since this is an identity tranformation *)
-
-(* with match_cont_exp : expr -> CStan.cont -> cont -> Prop := *)
-(*   | match_Kseq: forall s ts k tk, *)
-(*       transf_statement s ts -> *)
-(*       match_cont k tk -> *)
-(*       match_cont_exp a (CStan.Kseq s k) (Kseq ts tk) *)
-(*   (* | match_Kfor2: forall r s3 s k s' a ts3 ts tk, *) *)
-(*   (*     transf_statement s1 ts1 -> *) *)
-(*   (*     transf_statement s2 ts2 -> *) *)
-(*   (*     match_cont k tk -> *) *)
-(*   (*     match_cont_exp a *) *)
-(*   (*       (CStan.Kloop2 s1 s2 k) *) *)
-(*   (*       (Kseq ts1 *) *)
-(*   (*         (Kseq ts (Kloop1 (Ssequence s' ts) ts3 tk))) *) *)
-(*   | match_Kswitch1: forall ls k a tls tk, *)
-(*       tr_lblstmts ls tls -> *)
-(*       match_cont k tk -> *)
-(*       match_cont_exp a (CStan.Kswitch ls k) (Kseq (Sswitch a tls) tk) *)
-(*   (* | Kstop: cont *) *)
-(*   (* | Kseq: statement -> cont -> cont       (**r [Kseq s2 k] = after [s1] in [s1;s2] *) *) *)
-(*   (* | Kloop1: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s1] in [Sloop s1 s2] *) *) *)
-(*   (* | Kloop2: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s2] in [Sloop s1 s2] *) *) *)
-(*   (* | Kswitch: cont -> cont       (**r catches [break] statements arising out of [switch] *) *) *)
-
-.
-
-Fixpoint Kseqlist (sl: list statement) (k: cont) :=
-  match sl with
-  | nil => k
-  | s :: l => Kseq s (Kseqlist l k)
-  end.
+                        (Kcall optid tfn e le tk). (* FIXME: also asserting that te = e since this is an identity tranformation *)
 
 Inductive match_states: CStan.state -> Clight.state -> Prop :=
   | match_regular_states:
@@ -409,10 +378,21 @@ Proof.
   monadInv TREL.
   inv EVEL; eauto.
   econstructor.
-  eapply eval_expr_correct; eauto.
+  econstructor.
+
+  eapply eval_lvalue_correct; eauto.
+  Focus 3.
+  eapply IHes; eauto. eapply eval_expr_correct; eauto.
+
+  eapply IHes.
+  econstructor; eauto.
   admit.
+  (* Cop.sem_cast *)
   generalize (types_correct _ _ EQ); intro.
   rewrite <- H; eauto.
+  eapply eval_expr_correct; eauto.
+
+  admit.
   eapply IHes; eauto.
 Admitted.
 
@@ -454,88 +434,6 @@ Proof.
 (*   rewrite H1 in H2; inv H2. *)
 (*   rewrite Ptrofs.add_zero. simpl. rewrite dec_eq_true. apply function_ptr_translated; auto. *)
 (* Qed. *)
-Inductive match_var (e: env) (m: mem) (te: env) (tle: temp_env) (id: AST.ident) : Prop :=
-  | match_var_lifted: forall b ty chunk v tv
-      (ENV: e!id = Some(b, ty))
-      (TENV: te!id = None)
-      (MODE: access_mode ty = By_value chunk)
-      (LOAD: Mem.load chunk m b 0 = Some v)
-      (TLENV: tle!(id) = Some tv),
-      match_var e m te tle id
-  | match_var_not_lifted: forall b ty b'
-      (ENV: e!id = Some(b, ty))
-      (TENV: te!id = Some(b', ty)),
-      match_var e m te tle id
-  | match_var_not_local: forall
-      (ENV: e!id = None)
-      (TENV: te!id = None),
-      match_var e m te tle id.
-
-Record match_envs (e: env) (le: temp_env) (m: mem)
-                  (te: env) (tle: temp_env) : Prop :=
-  mk_match_envs {
-    me_vars:
-      forall id, match_var e m te tle id;
-    me_temps:
-      forall id v,
-      le!id = Some v ->
-      (exists tv, tle!id = Some tv);
-    me_inj:
-      forall id1 b1 ty1 id2 b2 ty2, e!id1 = Some(b1, ty1) -> e!id2 = Some(b2, ty2) -> id1 <> id2 -> b1 <> b2;
-    me_flat:
-      forall id b' ty b,
-      te!id = Some(b', ty) -> e!id = Some(b, ty) ;
-  }.
-
-Lemma match_envs_set_temp:
-  forall e le m te tle id v,
-  match_envs e le m te tle ->
-  (* Val.inject f v tv -> *)
-  (* check_temp cenv id = OK x -> *)
-  match_envs e (PTree.set id v le) m te (PTree.set id v tle) .
-Proof.
-  intros.
-  inv H.
-  constructor;
-  intro.
-  generalize (me_vars0 id); intros MV; inv MV.
-  generalize (me_vars0 id0); intros MV; inv MV.
-  eapply match_var_lifted; eauto. rewrite PTree.gso; eauto.
-  generalize (me_inj0 id b ty id0 b0 ty0). intro.
-Admitted.
-(*   generalize (H ENV ENV0 _). *)
-
-(*   (H ENV ENV0). *)
-(*   eapply match_var_not_lifted; eauto. *)
-(*   eapply match_var_not_local; eauto. *)
-(*   intros. *)
-(*   eauto. *)
-(*   unfold le. *)
-(*   intros. unfold check_temp in H1. *)
-(*   destruct (VSet.mem id cenv) eqn:?; monadInv H1. *)
-(*   destruct H. constructor; eauto; intros. *)
-(* (* vars *) *)
-(*   generalize (me_vars0 id0); intros MV; inv MV. *)
-(*   eapply match_var_lifted; eauto. rewrite PTree.gso. eauto. congruence. *)
-(*   eapply match_var_not_lifted; eauto. *)
-(*   eapply match_var_not_local; eauto. *)
-(* (* temps *) *)
-(*   rewrite PTree.gsspec in *. destruct (peq id0 id). *)
-(*   inv H. split. exists tv; auto. intros; congruence. *)
-(*   eapply me_temps0; eauto. *)
-(* Qed. *)
-
-
-Lemma match_envs_set_opttemp:
-  forall e le m te tle optid v,
-  match_envs e le m te tle ->
-  (* check_opttemp cenv optid = OK x -> *)
-  match_envs e (CStan.set_opttemp optid v le) m te (set_opttemp optid v tle).
-Proof.
-  intros. unfold set_opttemp. unfold CStan.set_opttemp. destruct optid; eauto.
-  eapply match_envs_set_temp; eauto.
-Qed.
-
 
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
