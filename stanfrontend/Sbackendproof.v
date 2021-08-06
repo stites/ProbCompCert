@@ -7,6 +7,8 @@ Require Import Ssemantics.
 Require Import Errors.
 Require Import Globalenvs.
 Require Import Memory.
+Require Import Maps.
+Require Import Values.
 Require Import Linking Ctypes Stypes.
 Import Integers.
 
@@ -49,14 +51,45 @@ Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
   | match_Kswitch: forall k tk ,
       match_cont k tk ->
       match_cont (CStan.Kswitch k) (Kswitch tk)
-  | match_Kcall: forall optid fn e le k tfn te tle tk ,
+  | match_Kcall: forall optid fn e le k tfn tk ,
       transf_function fn = OK tfn ->
       (* match_envs f e le m lo hi te tle tlo thi -> *)
       match_cont k tk ->
+      (* match_cont_exp a k tk -> *)
       (* Ple hi bound -> Ple thi tbound -> *)
       match_cont (CStan.Kcall optid fn e le k)
-                        (Kcall optid tfn te tle tk).
+                        (Kcall optid tfn e le tk) (* FIXME: also asserting that te = e since this is an identity tranformation *)
 
+(* with match_cont_exp : expr -> CStan.cont -> cont -> Prop := *)
+(*   | match_Kseq: forall s ts k tk, *)
+(*       transf_statement s ts -> *)
+(*       match_cont k tk -> *)
+(*       match_cont_exp a (CStan.Kseq s k) (Kseq ts tk) *)
+(*   (* | match_Kfor2: forall r s3 s k s' a ts3 ts tk, *) *)
+(*   (*     transf_statement s1 ts1 -> *) *)
+(*   (*     transf_statement s2 ts2 -> *) *)
+(*   (*     match_cont k tk -> *) *)
+(*   (*     match_cont_exp a *) *)
+(*   (*       (CStan.Kloop2 s1 s2 k) *) *)
+(*   (*       (Kseq ts1 *) *)
+(*   (*         (Kseq ts (Kloop1 (Ssequence s' ts) ts3 tk))) *) *)
+(*   | match_Kswitch1: forall ls k a tls tk, *)
+(*       tr_lblstmts ls tls -> *)
+(*       match_cont k tk -> *)
+(*       match_cont_exp a (CStan.Kswitch ls k) (Kseq (Sswitch a tls) tk) *)
+(*   (* | Kstop: cont *) *)
+(*   (* | Kseq: statement -> cont -> cont       (**r [Kseq s2 k] = after [s1] in [s1;s2] *) *) *)
+(*   (* | Kloop1: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s1] in [Sloop s1 s2] *) *) *)
+(*   (* | Kloop2: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s2] in [Sloop s1 s2] *) *) *)
+(*   (* | Kswitch: cont -> cont       (**r catches [break] statements arising out of [switch] *) *) *)
+
+.
+
+Fixpoint Kseqlist (sl: list statement) (k: cont) :=
+  match sl with
+  | nil => k
+  | s :: l => Kseq s (Kseqlist l k)
+  end.
 
 Inductive match_states: CStan.state -> Clight.state -> Prop :=
   | match_regular_states:
@@ -109,9 +142,29 @@ Hypothesis TRANSL:
 Lemma comp_env_preserved:
   genv_cenv tge = CStan.genv_cenv ge.
 Proof.
+  unfold tge, ge. destruct prog, tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ.
   Admitted.
-(*   unfold tge, ge. destruct prog, tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ. congruence. *)
+  (* congruence. *) (* I think congruence requires an instantiation of match_prog *)
 (* Qed. *)
+
+
+(** Relational presentation for the transformation of functions, fundefs, and variables. *)
+
+Inductive tr_function: CStan.function -> Clight.function -> Prop :=
+  | tr_function_intro: forall f tf,
+      (* tr_stmt f.(CStan.fn_body) tf.(fn_body) -> *)
+      fn_return tf = CStan.fn_return f ->
+      fn_callconv tf = CStan.fn_callconv f ->
+      fn_params tf = CStan.fn_params f ->
+      fn_vars tf = CStan.fn_vars f ->
+      tr_function f tf.
+
+Inductive tr_fundef: CStan.fundef -> Clight.fundef -> Prop :=
+  | tr_internal: forall f tf,
+      tr_function f tf ->
+      tr_fundef (Internal f) (Internal tf)
+  | tr_external: forall ef targs tres cconv,
+      tr_fundef (External ef targs tres cconv) (External ef targs tres cconv).
 
 (*      .                       *)
 (*    \ | /      All clear!     *)
@@ -126,6 +179,25 @@ Proof (Genv.senv_match TRANSL).
 Lemma symbols_preserved:
   forall (s: AST.ident), Genv.find_symbol tge s = Genv.find_symbol ge s.
 Proof (Genv.find_symbol_match TRANSL).
+
+Lemma functions_translated:
+  forall v f,
+  Genv.find_funct ge v = Some f ->
+  exists tf,
+  Genv.find_funct tge v = Some tf (* /\ tr_fundef f tf *)
+  .
+Proof.
+  intros.
+  edestruct (Genv.find_funct_match TRANSL) as (ctx' & tf & A & B & C'); eauto.
+Qed.
+
+Lemma type_of_fundef_preserved:
+  forall fd tfd,
+  transf_fundef fd = OK tfd -> type_of_fundef tfd = CStan.type_of_fundef fd.
+Proof.
+  intros. destruct fd; monadInv H; auto.
+  monadInv EQ. simpl; unfold type_of_function; simpl. auto.
+Qed.
 
 Lemma sizeof_equiv :
   forall t,
@@ -255,6 +327,216 @@ Proof.
   induction e; intros; simpl in *; monadInv H; simpl; trivial.
 Qed.
 
+Lemma match_cont_call_cont:
+  forall k tk ,
+  match_cont k tk  ->
+  match_cont (CStan.call_cont k) (call_cont tk) .
+Proof.
+  induction 1; simpl; auto; intros; econstructor; eauto.
+Qed.
+
+Lemma blocks_of_env_preserved:
+  forall e, blocks_of_env tge e = CStan.blocks_of_env ge e.
+Proof.
+  intros; unfold blocks_of_env, CStan.blocks_of_env.
+  unfold block_of_binding, CStan.block_of_binding.
+  rewrite comp_env_preserved. auto.
+Qed.
+
+Lemma transf_sem_cast_inject:
+  forall f tf x tx v v' m,
+  transf_expression x = OK tx ->
+  Sbackend.transf_function f = OK tf ->
+  Cop.sem_cast v (CStan.typeof x) (CStan.fn_return f) m = Some v' ->
+  (* exists tv, Cop.sem_cast v (typeof tx) (fn_return tf) m = Some tv. *)
+  Cop.sem_cast v (typeof tx) (fn_return tf) m = Some v'.
+Proof.
+  intros.
+  generalize (types_correct _ _ H); intro.
+  monadInv H0. simpl in *.
+  rewrite <- H2.
+  auto.
+  (* econstructor; eauto. *)
+Qed.
+
+Lemma alloc_variables_preserved:
+  forall e m params e' m',
+  CStan.alloc_variables ge e m params e' m' ->
+  alloc_variables tge e m params e' m'.
+Proof.
+  induction 1; econstructor; eauto. rewrite comp_env_preserved; auto.
+Qed.
+
+Lemma bind_parameters_preserved:
+  forall e m params args m',
+  CStan.bind_parameters ge e m params args m' ->
+  bind_parameters tge e m params args m'.
+Proof.
+  induction 1; econstructor; eauto. inv H0.
+- eapply assign_loc_value; eauto.
+- eapply assign_loc_copy; eauto; rewrite <- comp_env_preserved in *; auto.
+Qed.
+
+Lemma create_undef_temps_preserved :
+  forall f tf,
+  transf_function f = OK tf ->
+  CStan.create_undef_temps (CStan.fn_temps f) = create_undef_temps (fn_temps tf).
+Proof.
+  intros. monadInv H; auto.
+Qed.
+
+Lemma transf_implies_spec_no_statements :
+  forall f tf,
+  transf_function f = OK tf ->
+  tr_function f tf.
+Proof.
+  intros.
+  monadInv H.
+  econstructor; eauto.
+Qed.
+
+Lemma eval_exprlist_correct:
+  forall env tenv le tle es tes tys m vs ta
+  (TREL: transf_expression_list es = OK tes)
+  (EVEL: CStan.eval_exprlist ge env le m ta es tys vs),
+  eval_exprlist tge tenv tle m tes tys vs.
+Proof.
+  intros env tenv le tle es.
+  induction es; intros.
+  monadInv TREL.
+  inv EVEL; eauto.
+  econstructor.
+  monadInv TREL.
+  inv EVEL; eauto.
+  econstructor.
+  eapply eval_expr_correct; eauto.
+  admit.
+  generalize (types_correct _ _ EQ); intro.
+  rewrite <- H; eauto.
+  eapply IHes; eauto.
+Admitted.
+
+  (* intros le es tes. *)
+  (* induction tes; intros. *)
+  (* (* unfold transf_expression_list in TREL. *) *)
+  (* (* simpl in TREL. *) *)
+  (* econstructor.  *)
+  (* eapply eval_Enil. *)
+  (* unfold  *)
+  (*  TREL. *)
+  (* intros  *)
+  (* unfold transf_expression_list in TREL. *)
+  (* Admitted. *)
+(*  Lemma eval_simpl_exprlist: *)
+(*   forall al tyl vl, *)
+(*   eval_exprlist ge e le m al tyl vl -> *)
+(*   compat_cenv (addr_taken_exprlist al) cenv -> *)
+(*   val_casted_list vl tyl /\ *)
+(*   exists tvl, *)
+(*      eval_exprlist tge te tle tm (simpl_exprlist cenv al) tyl tvl *)
+(*   /\ Val.inject_list f vl tvl. *)
+(* Proof. *)
+
+ Lemma match_cont_find_funct:
+  forall k tk vf fd tvf
+  (* forall f k tk vf fd tvf *)
+  (MCONT: match_cont k tk),
+  Genv.find_funct ge vf = Some fd ->
+  (* Val.inject f vf tvf -> *)
+  exists tfd, Genv.find_funct tge tvf = Some tfd /\ transf_fundef fd = OK tfd.
+Proof.
+  Admitted.
+(*   intros. exploit match_cont_globalenv; eauto. intros [bound1 MG]. destruct MG. *)
+(*   inv H1; simpl in H0; try discriminate. destruct (Ptrofs.eq_dec ofs1 Ptrofs.zero); try discriminate. *)
+(*   subst ofs1. *)
+(*   assert (f b1 = Some(b1, 0)). *)
+(*     apply DOMAIN. eapply FUNCTIONS; eauto. *)
+(*   rewrite H1 in H2; inv H2. *)
+(*   rewrite Ptrofs.add_zero. simpl. rewrite dec_eq_true. apply function_ptr_translated; auto. *)
+(* Qed. *)
+Inductive match_var (e: env) (m: mem) (te: env) (tle: temp_env) (id: AST.ident) : Prop :=
+  | match_var_lifted: forall b ty chunk v tv
+      (ENV: e!id = Some(b, ty))
+      (TENV: te!id = None)
+      (MODE: access_mode ty = By_value chunk)
+      (LOAD: Mem.load chunk m b 0 = Some v)
+      (TLENV: tle!(id) = Some tv),
+      match_var e m te tle id
+  | match_var_not_lifted: forall b ty b'
+      (ENV: e!id = Some(b, ty))
+      (TENV: te!id = Some(b', ty)),
+      match_var e m te tle id
+  | match_var_not_local: forall
+      (ENV: e!id = None)
+      (TENV: te!id = None),
+      match_var e m te tle id.
+
+Record match_envs (e: env) (le: temp_env) (m: mem)
+                  (te: env) (tle: temp_env) : Prop :=
+  mk_match_envs {
+    me_vars:
+      forall id, match_var e m te tle id;
+    me_temps:
+      forall id v,
+      le!id = Some v ->
+      (exists tv, tle!id = Some tv);
+    me_inj:
+      forall id1 b1 ty1 id2 b2 ty2, e!id1 = Some(b1, ty1) -> e!id2 = Some(b2, ty2) -> id1 <> id2 -> b1 <> b2;
+    me_flat:
+      forall id b' ty b,
+      te!id = Some(b', ty) -> e!id = Some(b, ty) ;
+  }.
+
+Lemma match_envs_set_temp:
+  forall e le m te tle id v,
+  match_envs e le m te tle ->
+  (* Val.inject f v tv -> *)
+  (* check_temp cenv id = OK x -> *)
+  match_envs e (PTree.set id v le) m te (PTree.set id v tle) .
+Proof.
+  intros.
+  inv H.
+  constructor;
+  intro.
+  generalize (me_vars0 id); intros MV; inv MV.
+  generalize (me_vars0 id0); intros MV; inv MV.
+  eapply match_var_lifted; eauto. rewrite PTree.gso; eauto.
+  generalize (me_inj0 id b ty id0 b0 ty0). intro.
+Admitted.
+(*   generalize (H ENV ENV0 _). *)
+
+(*   (H ENV ENV0). *)
+(*   eapply match_var_not_lifted; eauto. *)
+(*   eapply match_var_not_local; eauto. *)
+(*   intros. *)
+(*   eauto. *)
+(*   unfold le. *)
+(*   intros. unfold check_temp in H1. *)
+(*   destruct (VSet.mem id cenv) eqn:?; monadInv H1. *)
+(*   destruct H. constructor; eauto; intros. *)
+(* (* vars *) *)
+(*   generalize (me_vars0 id0); intros MV; inv MV. *)
+(*   eapply match_var_lifted; eauto. rewrite PTree.gso. eauto. congruence. *)
+(*   eapply match_var_not_lifted; eauto. *)
+(*   eapply match_var_not_local; eauto. *)
+(* (* temps *) *)
+(*   rewrite PTree.gsspec in *. destruct (peq id0 id). *)
+(*   inv H. split. exists tv; auto. intros; congruence. *)
+(*   eapply me_temps0; eauto. *)
+(* Qed. *)
+
+
+Lemma match_envs_set_opttemp:
+  forall e le m te tle optid v,
+  match_envs e le m te tle ->
+  (* check_opttemp cenv optid = OK x -> *)
+  match_envs e (CStan.set_opttemp optid v le) m te (set_opttemp optid v tle).
+Proof.
+  intros. unfold set_opttemp. unfold CStan.set_opttemp. destruct optid; eauto.
+  eapply match_envs_set_temp; eauto.
+Qed.
+
+
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
   forall S1' (MS: match_states S1 S1'), exists S2', plus Clight.step1 tge S1' t S2' /\ match_states S2 S2'.
@@ -284,46 +566,33 @@ Proof.
     econstructor.
     (* exists (Clight.State tf Clight.Sskip tk e le m). *)
     monadInv TRS.
-    split.
-    eapply plus_one.
-    unfold step1.
+    split. eapply plus_one. unfold step1.
     econstructor.
     eapply eval_expr_correct; eauto.
     eapply match_regular_states; eauto.
 
   - (* call *)
-    intros.
-    inv MS.
-    admit.
-    (* monadInv TRF. *)
-    (* inv MCONT. *)
-    (* eapply match_cont. *)
-    (* exists (Callstate x vargs (Kcall optid f e le k) m). *)
-    (* split. *)
-    (* eapply plus_one. *)
-    (* unfold step1. *)
-    (* econstructor. *)
-    (* apply match_Kcall. *)
-    (* Focus 1. *)
-    (* exists (Callstate vf vargs (Kcall optid f e le k) m). *)
+    intros; inv MS.
+    monadInv TRS.
+    exploit eval_expr_correct; eauto; intro.
+    exploit eval_exprlist_correct; eauto. intro tvargs.
+    exploit match_cont_find_funct; eauto. intros [tfd [P Q]].
+    econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
+    generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+    eauto. eauto. eauto.
+    rewrite (type_of_fundef_preserved fd); eauto.
+    eapply match_call_state; eauto.
+    econstructor; eauto.
 
   - (* builtin *)
-    intros.
-
-    inv MS.
-    (* monadInv TRF. *)
-    (* monadInv TRS. *)
-    eapply match_Kcall in MCONT.
-    econstructor.
-    Focus 2. eauto. split.
-    Focus 2. eapply match_regular_states; eauto.
-    Focus 2. inv MCONT. eauto.
-    admit.
-    eapply plus_one.
-    unfold step1.
-    admit.
-    (* exists (State tf Sskip k e (set_opttemp optid vres le) m'). *)
-
+    intros; inv MS.
+    monadInv TRS.
+    exists (State tf Sskip tk e (set_opttemp optid vres le) m').
+    split. eapply plus_one. unfold step1.
+    eapply step_builtin.
+    eapply eval_exprlist_correct; eauto.
+    eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+    eapply match_regular_states; eauto.
   - (* sequence seq *)
     intros.
     inv MS; monadInv TRS.
@@ -405,7 +674,8 @@ Proof.
     eapply plus_one; unfold step1.
     eapply step_skip_loop2.
     eapply match_regular_states; eauto.
-    admit.
+    simpl. rewrite H2. rewrite H4. auto.
+
   - (* step_break_loop2 *)
     intros; inv MS; monadInv TRS; inv MCONT.
     exists (State tf Sskip tk0 e le m).
@@ -415,31 +685,31 @@ Proof.
 
   - (* step_return_0 *)
     intros; inv MS; monadInv TRS.
-    econstructor.
+    exists (Returnstate Values.Vundef (call_cont tk) m').
     split. eapply plus_one; unfold step1.
-    econstructor; eauto. admit.
+    eapply step_return_0; eauto. rewrite blocks_of_env_preserved. eauto.
     eapply match_return_state; eauto.
-    admit.
+    eapply match_cont_call_cont; eauto.
   - (* step_return_1 *)
-    intros; inv MS; monadInv TRS.
-    econstructor.
+    intros; inv MS.
+    exists (Returnstate v' (call_cont tk) m').
+    monadInv TRS.
     split. eapply plus_one; unfold step1.
-    generalize (types_correct _ _ EQ); intro.
-    rewrite H2 in H0.
     econstructor; eauto.
     eapply eval_expr_correct; eauto.
-    admit.
-    admit.
+    eapply transf_sem_cast_inject; eauto.
+    rewrite blocks_of_env_preserved. eauto.
     eapply match_return_state; eauto.
-    admit.
+    eapply match_cont_call_cont; eauto.
 
   - (* step_skip_call *)
     intros; inv MS; monadInv TRS.
     econstructor.
     split. eapply plus_one; unfold step1.
     econstructor.
-    admit.
-    admit. (* (Mem.free_list m (blocks_of_env ---tge/ge--- e) = Some goal?). *)
+    unfold CStan.is_call_cont in H.
+    assert (is_call_cont tk). inv MCONT; simpl in *; auto. auto.
+    rewrite blocks_of_env_preserved. eauto.
     eapply match_return_state; eauto.
 
   - (* step_skip_break_switch *)
@@ -448,8 +718,12 @@ Proof.
     split. eapply plus_one; unfold step1.
     econstructor.
     destruct H; simpl in *.
-    admit.
-    admit.
+    monadInv TRF.
+    monadInv TRS.
+    eauto.
+    monadInv TRF.
+    monadInv TRS.
+    eauto.
     eapply match_regular_states; eauto.
 
   - (* step_continue_switch *)
@@ -465,32 +739,37 @@ Proof.
     exists (State x x.(fn_body) tk e le m1).
     split. eapply plus_one; unfold step1.
     eapply step_internal_function.
-    admit.
+    inversion H.
+    assert (tr_function f x). {
+      eapply transf_implies_spec_no_statements; eauto.
+    }.
+    inv H4.
+    econstructor; try (rewrite H7); try (rewrite H8); eauto.
+    eapply alloc_variables_preserved; eauto.
+    eapply bind_parameters_preserved; eauto.
+    eapply create_undef_temps_preserved; eauto.
     eapply match_regular_states; eauto.
-    admit.
-  - (* step_external_function *)
+    monadInv EQ. eauto.
 
-    intros; inv MS.
+  - (* step_external_function *)
+    intros. inv MS.
     monadInv TRFD.
     exists (Returnstate vres tk m').
-    split. eapply plus_one; unfold step1.
-    eapply step_external_function.
-    admit.
+    split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
     eapply match_return_state; eauto.
   - (* step_returnstate *)
-    intros; inv MS.
+    intros. inv MS.
     inv MCONT.
-    exists (State tfn Sskip tk0 te (set_opttemp optid v tle) m).
-    split. eapply plus_one; unfold step1.
-    eapply step_returnstate.
-    admit.
-
-Admitted.
+    exists (State tfn Sskip tk0 e (set_opttemp optid v le) m).
+    split. apply plus_one. eapply step_returnstate.
+    eapply match_regular_states; eauto.
+Qed.
 
 Lemma initial_states_simulation:
   forall S, CStan.initial_state prog S ->
   exists R, Clight.initial_state tprog R /\ match_states S R.
 Proof.
+  intros.
 Admitted.
 
 Lemma final_states_simulation:
@@ -508,7 +787,7 @@ Proof.
   eexact initial_states_simulation.
   eexact final_states_simulation.
   eexact step_simulation.
-Admitted.
+Qed.
 
 End PRESERVATION.
 

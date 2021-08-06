@@ -413,13 +413,14 @@ Definition is_call_cont (k: cont) : Prop :=
   end.
 
 Inductive state: Type :=
-  | State
+  | State                               (**r execution of a statement *)
       (f: function)
       (s: statement)
       (k: cont)
       (e: env)
       (le: temp_env)
       (m: mem) : state
+
   (* | StanState *)
   (*     (f: function) *)
   (*     (s: statement) *)
@@ -428,15 +429,17 @@ Inductive state: Type :=
   (*     (le: temp_env) *)
   (*     (m: mem)  *)
   (*     (ta: float) : state (* ta is the running target *) *)
-  | Callstate
+
+  | Callstate                           (**r calling a function *)
       (fd: fundef)
       (args: list val)
       (k: cont)
       (m: mem) : state
-  | Returnstate
+  | Returnstate                         (**r returning from a function *)
       (res: val)
       (k: cont)
-      (m: mem) : state.
+      (m: mem) : state
+.
 
 (** Find the statement and manufacture the continuation
   corresponding to a label *)
