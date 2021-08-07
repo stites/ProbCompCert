@@ -300,9 +300,8 @@ Qed.
 Lemma transf_sem_cast_inject:
   forall f tf x tx v v' m,
   transf_expression x = OK tx ->
-  Sbackend.transf_function f = OK tf ->
+  transf_function f = OK tf ->
   Cop.sem_cast v (CStan.typeof x) (CStan.fn_return f) m = Some v' ->
-  (* exists tv, Cop.sem_cast v (typeof tx) (fn_return tf) m = Some tv. *)
   Cop.sem_cast v (typeof tx) (fn_return tf) m = Some v'.
 Proof.
   intros.
@@ -310,7 +309,6 @@ Proof.
   monadInv H0. simpl in *.
   rewrite <- H2.
   auto.
-  (* econstructor; eauto. *)
 Qed.
 
 Lemma alloc_variables_preserved:
@@ -331,25 +329,6 @@ Proof.
 - eapply assign_loc_copy; eauto; rewrite <- comp_env_preserved in *; auto.
 Qed.
 
-Lemma create_undef_temps_preserved :
-  forall f tf,
-  transf_function f = OK tf ->
-  CStan.create_undef_temps (CStan.fn_temps f) = create_undef_temps (fn_temps tf).
-Proof.
-  intros. monadInv H; auto.
-Qed.
-
-Lemma transf_implies_spec_no_statements :
-  forall f tf,
-  transf_function f = OK tf ->
-  tr_function f tf.
-Proof.
-  intros.
-  monadInv H.
-  econstructor; eauto.
-Qed.
-
-(* TODO: can I just remove tenv, tle? *)
 Lemma eval_exprlist_correct_simple:
   forall env le es tes tys m vs ta
   (TREL: transf_expression_list es = OK tes)
@@ -368,19 +347,6 @@ Proof.
   generalize (types_correct _ _ EQ); intro.
   rewrite <- H; eauto.
 Qed.
-
-Lemma match_cont_find_funct:
-  forall k tk vf fd f tf
-  (TRF: transf_function f = OK tf)
-  (* (STAN_TF: CStan.type_of_fundef fd = Tfunction tyargs tyres cconv) *)
-  (* (H0 : CStan.eval_expr ge e le m ta a vf ) *)
-  (* (H1 : CStan.eval_exprlist ge e le m ta al tyargs vargs ) *)
-  (MCONT: match_cont k tk)
-  (FUNCT: Genv.find_funct ge vf = Some fd),
-  exists tfd, Genv.find_funct tge vf = Some tfd /\ transf_fundef fd = OK tfd.
-Proof.
-  intros.
-  exploit functions_translated; eauto. Qed.
 
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
@@ -421,8 +387,7 @@ Proof.
     monadInv TRS.
     exploit eval_expr_correct; eauto; intro.
     exploit eval_exprlist_correct_simple; eauto. intro tvargs.
-    (* exploit functions_translated; eauto. intros [tfd P]. *)
-    exploit match_cont_find_funct; eauto. intros [tfd [P Q]].
+    exploit functions_translated; eauto. intros [tfd [P Q]].
     econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
     generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
     eauto. eauto. eauto.
@@ -587,13 +552,15 @@ Proof.
     eapply step_internal_function.
     inversion H.
     assert (tr_function f x). {
-      eapply transf_implies_spec_no_statements; eauto.
+      intros.
+      monadInv EQ.
+      econstructor; eauto.
     }.
     inv H4.
     econstructor; try (rewrite H7); try (rewrite H8); eauto.
     eapply alloc_variables_preserved; eauto.
     eapply bind_parameters_preserved; eauto.
-    eapply create_undef_temps_preserved; eauto.
+    monadInv EQ; eauto.
     eapply match_regular_states; eauto.
     monadInv EQ. eauto.
 
@@ -615,7 +582,9 @@ Lemma initial_states_simulation:
   forall S, CStan.initial_state prog S ->
   exists R, Clight.initial_state tprog R /\ match_states S R.
 Proof.
-  intros.
+  intros. inv H.
+  econstructor.
+  split. admit.
 Admitted.
 
 Lemma final_states_simulation:
