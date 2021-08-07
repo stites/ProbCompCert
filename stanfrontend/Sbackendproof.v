@@ -20,19 +20,9 @@ Hypothesis TRANSF: Sbackend.backend prog = OK tprog.
 Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
 
-Inductive match_globalenvs (f: Values.meminj) (bound: Values.block): Prop :=
-  | mk_match_globalenvs
-      (DOMAIN: forall b, Plt b bound -> f b = Some(b, 0))
-      (IMAGE: forall b1 b2 delta, f b1 = Some(b2, delta) -> Plt b2 bound -> b1 = b2)
-      (SYMBOLS: forall id b, Genv.find_symbol ge id = Some b -> Plt b bound)
-      (FUNCTIONS: forall b fd, Genv.find_funct_ptr ge b = Some fd -> Plt b bound)
-      (VARINFOS: forall b gv, Genv.find_var_info ge b = Some gv -> Plt b bound).
-
-
 (** Matching continuations *)
 Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
   | match_Kstop:
-      (* match_globalenvs f hi -> Ple hi bound -> Ple hi tbound -> *)
       match_cont CStan.Kstop Kstop
   | match_Kseq: forall s k ts tk ,
       transf_statement s = OK ts ->
@@ -53,10 +43,7 @@ Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
       match_cont (CStan.Kswitch k) (Kswitch tk)
   | match_Kcall: forall optid fn e le k tfn tk ,
       transf_function fn = OK tfn ->
-      (* match_envs f e le m lo hi te tle tlo thi -> *)
       match_cont k tk ->
-      (* match_cont_exp a k tk -> *)
-      (* Ple hi bound -> Ple thi tbound -> *)
       match_cont (CStan.Kcall optid fn e le k)
                         (Kcall optid tfn e le tk). (* FIXME: also asserting that te = e since this is an identity tranformation *)
 
@@ -150,11 +137,9 @@ Lemma symbols_preserved:
 Proof (Genv.find_symbol_match TRANSL).
 
 Lemma functions_translated:
-  forall v f,
+  forall (v: val) (f: CStan.fundef),
   Genv.find_funct ge v = Some f ->
-  exists tf,
-  Genv.find_funct tge v = Some tf (* /\ tr_fundef f tf *)
-  .
+  exists tf, Genv.find_funct tge v = Some tf /\ transf_fundef f = OK tf.
 Proof.
   intros.
   edestruct (Genv.find_funct_match TRANSL) as (ctx' & tf & A & B & C'); eauto.
@@ -364,76 +349,38 @@ Proof.
   econstructor; eauto.
 Qed.
 
-Lemma eval_exprlist_correct:
-  forall env tenv le tle es tes tys m vs ta
+(* TODO: can I just remove tenv, tle? *)
+Lemma eval_exprlist_correct_simple:
+  forall env le es tes tys m vs ta
   (TREL: transf_expression_list es = OK tes)
   (EVEL: CStan.eval_exprlist ge env le m ta es tys vs),
-  eval_exprlist tge tenv tle m tes tys vs.
+  eval_exprlist tge env le m tes tys vs.
 Proof.
-  intros env tenv le tle es.
+  intros env le es.
   induction es; intros.
   monadInv TREL.
   inv EVEL; eauto.
   econstructor.
   monadInv TREL.
   inv EVEL; eauto.
-  econstructor.
-  econstructor.
-
-  eapply eval_lvalue_correct; eauto.
-  Focus 3.
-  eapply IHes; eauto. eapply eval_expr_correct; eauto.
-
-  eapply IHes.
   econstructor; eauto.
-  admit.
-  (* Cop.sem_cast *)
+  eapply eval_expr_correct; eauto.
   generalize (types_correct _ _ EQ); intro.
   rewrite <- H; eauto.
-  eapply eval_expr_correct; eauto.
+Qed.
 
-  admit.
-  eapply IHes; eauto.
-Admitted.
-
-  (* intros le es tes. *)
-  (* induction tes; intros. *)
-  (* (* unfold transf_expression_list in TREL. *) *)
-  (* (* simpl in TREL. *) *)
-  (* econstructor.  *)
-  (* eapply eval_Enil. *)
-  (* unfold  *)
-  (*  TREL. *)
-  (* intros  *)
-  (* unfold transf_expression_list in TREL. *)
-  (* Admitted. *)
-(*  Lemma eval_simpl_exprlist: *)
-(*   forall al tyl vl, *)
-(*   eval_exprlist ge e le m al tyl vl -> *)
-(*   compat_cenv (addr_taken_exprlist al) cenv -> *)
-(*   val_casted_list vl tyl /\ *)
-(*   exists tvl, *)
-(*      eval_exprlist tge te tle tm (simpl_exprlist cenv al) tyl tvl *)
-(*   /\ Val.inject_list f vl tvl. *)
-(* Proof. *)
-
- Lemma match_cont_find_funct:
-  forall k tk vf fd tvf
-  (* forall f k tk vf fd tvf *)
-  (MCONT: match_cont k tk),
-  Genv.find_funct ge vf = Some fd ->
-  (* Val.inject f vf tvf -> *)
-  exists tfd, Genv.find_funct tge tvf = Some tfd /\ transf_fundef fd = OK tfd.
+Lemma match_cont_find_funct:
+  forall k tk vf fd f tf
+  (TRF: transf_function f = OK tf)
+  (* (STAN_TF: CStan.type_of_fundef fd = Tfunction tyargs tyres cconv) *)
+  (* (H0 : CStan.eval_expr ge e le m ta a vf ) *)
+  (* (H1 : CStan.eval_exprlist ge e le m ta al tyargs vargs ) *)
+  (MCONT: match_cont k tk)
+  (FUNCT: Genv.find_funct ge vf = Some fd),
+  exists tfd, Genv.find_funct tge vf = Some tfd /\ transf_fundef fd = OK tfd.
 Proof.
-  Admitted.
-(*   intros. exploit match_cont_globalenv; eauto. intros [bound1 MG]. destruct MG. *)
-(*   inv H1; simpl in H0; try discriminate. destruct (Ptrofs.eq_dec ofs1 Ptrofs.zero); try discriminate. *)
-(*   subst ofs1. *)
-(*   assert (f b1 = Some(b1, 0)). *)
-(*     apply DOMAIN. eapply FUNCTIONS; eauto. *)
-(*   rewrite H1 in H2; inv H2. *)
-(*   rewrite Ptrofs.add_zero. simpl. rewrite dec_eq_true. apply function_ptr_translated; auto. *)
-(* Qed. *)
+  intros.
+  exploit functions_translated; eauto. Qed.
 
 Lemma step_simulation:
   forall S1 t S2, CStan.stepf ge S1 t S2 ->
@@ -473,7 +420,8 @@ Proof.
     intros; inv MS.
     monadInv TRS.
     exploit eval_expr_correct; eauto; intro.
-    exploit eval_exprlist_correct; eauto. intro tvargs.
+    exploit eval_exprlist_correct_simple; eauto. intro tvargs.
+    (* exploit functions_translated; eauto. intros [tfd P]. *)
     exploit match_cont_find_funct; eauto. intros [tfd [P Q]].
     econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
     generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
@@ -488,7 +436,7 @@ Proof.
     exists (State tf Sskip tk e (set_opttemp optid vres le) m').
     split. eapply plus_one. unfold step1.
     eapply step_builtin.
-    eapply eval_exprlist_correct; eauto.
+    eapply eval_exprlist_correct_simple; eauto.
     eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
     eapply match_regular_states; eauto.
   - (* sequence seq *)
