@@ -85,7 +85,7 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
 (* ;__________;________________________________________ *)
 (* //////////////////////////////////////////////////// *)
 
-Context {C: Type} {LC: Linker C} {LF: Linker CStan.fundef} {LV: Linker CStan.type}.
+Context {CTX: Type} {LC: Linker CTX} {LF: Linker CStan.fundef} {LV: Linker CStan.type}.
 (* Variable ctx: C. *)
 (* Hypothesis TRANSL: *)
 (*   match_program_gen *)
@@ -600,8 +600,8 @@ Lemma final_states_simulation:
   forall S R r,
   match_states S R -> CStan.final_state S r -> Clight.final_state R r.
 Proof.
-Admitted.
-
+  intros. inv H0. inv H. inv MCONT. constructor.
+Qed.
 
 Theorem transf_program_correct:
   forward_simulation (CStan.semantics prog) (Clight.semantics1 tprog).
