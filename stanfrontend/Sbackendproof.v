@@ -586,9 +586,22 @@ Lemma initial_states_simulation:
   exists R, Clight.initial_state tprog R /\ match_states S R.
 Proof.
   intros. inv H.
-  econstructor.
-  split. admit.
-Admitted.
+  exploit function_ptr_translated; eauto. intros (tf & A & B).
+  exists (Callstate tf nil Kstop m0).
+  split.
+  eapply Clight.initial_state_intro; eauto.
+  erewrite <- (Genv.init_mem_match TRANSL); eauto.
+  replace (prog_main tprog) with (CStan.prog_model prog).
+  rewrite <- H1. apply symbols_preserved.
+  generalize (match_program_main TRANSL).
+  unfold AST.prog_main.
+  unfold CStan.program_of_program.
+  simpl; eauto.
+  exploit type_of_fundef_preserved; eauto.
+  intro FDTY. rewrite FDTY; eauto.
+  econstructor; eauto.
+  eapply match_Kstop.
+Qed.
 
 Lemma final_states_simulation:
   forall S R r,
