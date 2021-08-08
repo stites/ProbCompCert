@@ -567,6 +567,20 @@ Proof.
     eapply match_regular_states; eauto.
 Qed.
 
+Lemma function_ptr_translated:
+  forall m0
+    (b: block) (f: CStan.fundef)
+  (H0 : Genv.init_mem prog = Some m0)
+  (H1 : Genv.find_symbol ge (prog_model prog) = Some b)
+  (H2 : Genv.find_funct_ptr ge b = Some f)
+  (H3 : CStan.type_of_fundef f = Tfunction Tnil type_int32s AST.cc_default)
+  , Genv.find_funct_ptr ge b = Some f ->
+  exists tf, Genv.find_funct_ptr tge b = Some tf /\ transf_fundef f = OK tf.
+Proof.
+  intros.
+  edestruct (Genv.find_funct_ptr_match TRANSL) as (ctx' & tf & A & B & C'); eauto.
+Qed.
+
 Lemma initial_states_simulation:
   forall S, CStan.initial_state prog S ->
   exists R, Clight.initial_state tprog R /\ match_states S R.
