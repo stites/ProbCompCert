@@ -86,14 +86,6 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
 (* //////////////////////////////////////////////////// *)
 
 Context {CTX: Type} {LC: Linker CTX} {LF: Linker CStan.fundef} {LV: Linker CStan.type}.
-(* Variable ctx: C. *)
-(* Hypothesis TRANSL: *)
-(*   match_program_gen *)
-(*     (fun ctx f tf => Sbackend.transf_fundef f = OK tf) *)
-(*     (fun cs cl => eq cl (CStan.vd_type cs)) *)
-(*     ctx *)
-(*     prog *)
-(*     tprog. *)
 
 Hypothesis TRANSL:
   match_program
@@ -112,8 +104,11 @@ Proof.
   (* congruence. *) (* I think congruence requires an instantiation of match_prog *)
 (* Qed. *)
 
-
-(** Relational presentation for the transformation of functions, fundefs, and variables. *)
+(*      .                       *)
+(*    \ | /      All clear!     *)
+(*  '-.;;;.-'                   *)
+(* -==;;;;;==-                  *)
+(* ---------------------------- *)
 
 Inductive tr_function: CStan.function -> Clight.function -> Prop :=
   | tr_function_intro: forall f tf,
@@ -130,12 +125,6 @@ Inductive tr_fundef: CStan.fundef -> Clight.fundef -> Prop :=
       tr_fundef (Internal f) (Internal tf)
   | tr_external: forall ef targs tres cconv,
       tr_fundef (External ef targs tres cconv) (External ef targs tres cconv).
-
-(*      .                       *)
-(*    \ | /      All clear!     *)
-(*  '-.;;;.-'                   *)
-(* -==;;;;;==-                  *)
-(* ---------------------------- *)
 
 Lemma senv_preserved:
   Senv.equiv ge tge.
@@ -381,10 +370,8 @@ Proof.
     eapply match_regular_states; eauto.
 
   - (* set *)
-    intros.
-    inv MS.
+    intros; inv MS.
     econstructor.
-    (* exists (Clight.State tf Clight.Sskip tk e le m). *)
     monadInv TRS.
     split. eapply plus_one. unfold step1.
     econstructor.
@@ -427,7 +414,6 @@ Proof.
     intros.
     inv MS; monadInv TRS.
     inv MCONT.
-    (* econstructor. *)
     exists (State tf ts tk0 e le m).
     split.
     eapply plus_one.
@@ -472,7 +458,6 @@ Proof.
     eapply match_Kloop1; eauto.
   - (* step_skip_or_continue_loop1 *)
     intros. inv MS; inv MCONT; destruct H;
-
     repeat (
       econstructor; split;
       try (eapply plus_one; unfold step1;
@@ -538,12 +523,8 @@ Proof.
     split. eapply plus_one; unfold step1.
     econstructor.
     destruct H; simpl in *.
-    monadInv TRF.
-    monadInv TRS.
-    eauto.
-    monadInv TRF.
-    monadInv TRS.
-    eauto.
+    monadInv TRF; monadInv TRS; eauto.
+    monadInv TRF; monadInv TRS; eauto.
     eapply match_regular_states; eauto.
 
   - (* step_continue_switch *)
@@ -561,8 +542,7 @@ Proof.
     eapply step_internal_function.
     inversion H.
     assert (tr_function f x). {
-      intros.
-      monadInv EQ.
+      intros; monadInv EQ.
       econstructor; eauto.
     }.
     inv H4.
