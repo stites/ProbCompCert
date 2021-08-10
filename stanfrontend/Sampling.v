@@ -163,7 +163,7 @@ Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : 
       OK (External ef targs tres cc)
   end.
 
-Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
+Definition transf_variable (id: AST.ident) (v: type): res type :=
   OK v.
 
 Definition transf_program(p: CStan.program): res CStan.program :=

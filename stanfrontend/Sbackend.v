@@ -429,8 +429,8 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   | Stilde o e le tr => Error (msg "Backend: tilde")
   end.
 					 
-Definition transf_variable (v: CStan.type): res Ctypes.type :=
-  OK (CStan.vd_type v).
+Definition transf_variable (v: type): res Ctypes.type :=
+  OK v.
   (* FIXME: is this right? Error (msg "Backend.transf_variable: NIY"). *)
 
 Definition transf_function (f: CStan.function): res Clight.function :=

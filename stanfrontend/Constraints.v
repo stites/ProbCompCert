@@ -13,6 +13,7 @@ Require Import Globalenvs.
 Require Import Integers.
 Require AST.
 Require SimplExpr.
+Require Denumpyification.
 
 (* FIXME how do I share this notation? *)
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
@@ -265,59 +266,6 @@ match s with
   | Scontinue => ret Scontinue
 end.
 
-(************************************************************************************************************************************************************)
-(* copied from denumpification because I can't figure out imports correctly : /                                                                             *)
-(************************************************************************************************************************************************************)
-Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
-  match gty with
-  | AST.Gfun f => {|  (* FIXME this is wrong and should be filtered*)
-    CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
-    CStan.vd_constraint:= CStan.Cidentity;
-    CStan.vd_init:= None;
-    CStan.vd_global:= true;
-  |}
-  | AST.Gvar gv => {|
-    CStan.vd_type := gv.(AST.gvar_info).(vd_type);
-    CStan.vd_constraint:= gv.(AST.gvar_info).(vd_constraint);
-    CStan.vd_init:= gv.(AST.gvar_info).(vd_init);
-    CStan.vd_global:= gv.(AST.gvar_info).(vd_global);
-  |}
-  end.
-
-Definition ident_eq_dec : forall (x y : AST.ident), { x = y } + { x <> y }.
-Proof.
-decide equality.
-Defined.
-
-Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
-  match xs with
-  | nil => false
-  | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
-  end.
-
-Fixpoint only_globvars (gs: list (AST.ident * AST.globdef CStan.fundef CStan.type)) : list (AST.ident * CStan.type) :=
-  match gs with
-  | nil => nil
-  | (i, g)::gs =>
-    match g with
-    | AST.Gfun f => only_globvars gs
-    | AST.Gvar gv => (i, gv.(AST.gvar_info))::(only_globvars gs)
-    end
-  end.
-
-Definition filter_stan_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*CStan.type) :=
-  let all_members := only_globvars all_defs in
-  let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
-  stan_members.
-(************************************************************************************************************************************************************)
-
-Fixpoint catMaybes {X : Type} (xs : list (option X)) : list X :=
-  match xs with
-  | nil => nil
-  | (Some x)::xs => x::(catMaybes xs)
-  | None::xs => catMaybes xs
-  end.
-
 Fixpoint sequence (xs : list statement) : option statement :=
   match xs with
   | nil => None
@@ -329,7 +277,7 @@ Fixpoint sequence (xs : list statement) : option statement :=
     end
   end.
 
-Definition transform_with_original_ident (transform : program -> AST.ident -> constraint -> mon (option (AST.ident * statement))) (p:program) (i_ty : AST.ident * CStan.type) : mon (option (AST.ident * (AST.ident * statement))) :=
+Definition transform_with_original_ident (transform : program -> AST.ident -> constraint -> mon (option (AST.ident * statement))) (p:program) (i_ty : AST.ident * type) : mon (option (AST.ident * (AST.ident * statement))) :=
   do mtpl <~ transform p (fst i_ty) (snd i_ty).(vd_constraint);
   ret (option_fmap (fun tpl => (fst i_ty, tpl)) mtpl).
 
@@ -340,11 +288,11 @@ Definition parameter_transformed_map (ts : list (AST.ident * AST.ident)) (i : AS
 Definition transf_constraints (p:program) (f: function) (body : statement): mon statement :=
   match f.(fn_blocktype) with
   | BTModel =>
-    let params_typed := filter_stan_globvars (p.(prog_defs)) (p.(prog_parameters_vars)) in (*: list (AST.ident*CStan.type)*)
-    do params_transformed <~ mon_fmap catMaybes (mon_mmap (transform_with_original_ident inv_constraint_transform p) params_typed);
+    let params_typed := Denumpyification.filter_globvars (p.(prog_defs)) (p.(prog_parameters_vars)) in (*: list (AST.ident*CStan.type)*)
+    do params_transformed <~ mon_fmap Denumpyfication.catMaybes (mon_mmap (transform_with_original_ident inv_constraint_transform p) params_typed);
     let params_map  := List.map (fun fr_to => (fst fr_to, fst (snd fr_to))) params_transformed in
     let params_stmts := List.map (fun fr_to => snd (snd fr_to)) params_transformed in
-    do target_additions <~ mon_fmap catMaybes ((mon_mmap (fun i_ty => density_of_transformed_var p (fst i_ty) (snd i_ty).(vd_constraint)) params_typed));
+    do target_additions <~ mon_fmap Denumpyfication.catMaybes ((mon_mmap (fun i_ty => density_of_transformed_var p (fst i_ty) (snd i_ty).(vd_constraint)) params_typed));
     match sequence params_stmts with
     | None => ret body
     | Some params =>

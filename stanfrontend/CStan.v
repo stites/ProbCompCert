@@ -113,12 +113,12 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-Record type := mkvariable {
-  vd_type: Ctypes.type;
-  vd_constraint: constraint;
-  vd_init: option expr;
-  vd_global: bool
-}.
+(* Record type := mkvariable { *)
+(*   vd_type: Ctypes.type; *)
+(*   vd_constraint: constraint; *)
+(*   vd_init: option expr; *)
+(*   vd_global: bool *)
+(* }. *)
 
 Inductive blocktype := BTModel | BTOther.
 

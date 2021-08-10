@@ -308,16 +308,11 @@ Definition transf_constraint (c : StanE.constraint) : res CStan.constraint :=
     OK (CStan.Coffset_multiplier e0 e1)
   end.
  
-Definition transf_variable (_: AST.ident) (v: StanE.variable): res CStan.type :=
+Definition transf_variable (_: AST.ident) (v: StanE.variable): res (type * CStan.constraint * option CStan.expr * bool) :=
   do ty <- transf_type (StanE.vd_type v);
   do oe <- option_mmap transf_expression (StanE.vd_init v);
   do c <- transf_constraint (StanE.vd_constraint v);
-  OK {|
-    CStan.vd_type := ty;
-    CStan.vd_constraint := c;
-    CStan.vd_init := oe;
-    CStan.vd_global := StanE.vd_global v;
-  |}.
+  OK (ty, c, oe, StanE.vd_global v).
 
 Fixpoint mapM {X Y:Type} (f: X -> res Y) (xs: list X) : res (list Y) :=
   match xs with
@@ -374,13 +369,14 @@ Definition transf_fundef (id: AST.ident) (fd: StanE.fundef) : res CStan.fundef :
       OK (External ef targs tres cc)
   end.
 
-Definition globdef_to_type (gty: AST.globdef CStan.fundef CStan.type) : CStan.type :=
-  {|
-  CStan.vd_type := Ctypes.Tfloat Ctypes.F64 Ctypes.noattr;
-  CStan.vd_constraint:= CStan.Cidentity;
-  CStan.vd_init:= None;
-  CStan.vd_global:= true;
-|}.
+Definition map_globdef {X} {Y} (f : X -> Y) (gty: AST.globdef CStan.fundef X) : option Y :=
+  match gty with
+  | AST.Gfun _ => None
+  | AST.Gvar t => Some (f t.(AST.gvar_info))
+  end.
+
+Definition globdef_to_type : AST.globdef CStan.fundef type -> option type :=
+  map_globdef id.
 
 Definition ident_eq_dec : forall (x y : AST.ident), { x = y } + { x <> y }.
 Proof.
@@ -393,27 +389,47 @@ Fixpoint ident_list_member (xs:list AST.ident) (x:AST.ident) : bool :=
   | x'::xs => if ident_eq_dec x x' then true else ident_list_member xs x
   end.
 
-Definition filter_stan_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*CStan.type) :=
-  let all_members := List.map (fun tpl =>  (fst tpl, globdef_to_type (snd tpl))) all_defs in
+Fixpoint catMaybes {X : Type} (xs : list (option X)) : list X :=
+  match xs with
+  | nil => nil
+  | (Some x)::xs => x::(catMaybes xs)
+  | None::xs => catMaybes xs
+  end.
+
+Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef type)) (vars : list AST.ident) : list (AST.ident*type) :=
+  let maybe_member := fun tpl => option_map (fun ty => (fst tpl, ty)) (globdef_to_type (snd tpl)) in
+  let all_members := catMaybes (List.map maybe_member all_defs) in
   let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
   stan_members.
 
-Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef CStan.type)) (vars : list AST.ident) : list (AST.ident*Ctypes.type) :=
-  let stan_members := filter_stan_globvars all_defs vars in
-  let ctype_members := List.map (fun tpl =>  (fst tpl, (snd tpl).(CStan.vd_type))) stan_members in
-  ctype_members.
+Definition eglobdef_to_constr : AST.globdef CStan.fundef (type * CStan.constraint * option CStan.expr * bool) -> option CStan.constraint :=
+  map_globdef (fun x => match x with | (_, c, _, _) => c end).
+
+Definition tranf_elaborated_globdef (gd : AST.globdef CStan.fundef (type * CStan.constraint * option CStan.expr * bool)) : AST.globdef CStan.fundef type :=
+  match gd with
+  | AST.Gfun f => AST.Gfun f
+  | AST.Gvar t =>
+    AST.Gvar {|
+      AST.gvar_info := fst (fst (fst t.(AST.gvar_info)));
+      AST.gvar_init := t.(AST.gvar_init);
+      AST.gvar_readonly := t.(AST.gvar_readonly);
+      AST.gvar_volatile := t.(AST.gvar_volatile);
+    |}
+  end.
 
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
-  let all_defs := AST.prog_defs p1 in
+  let all_elaborated_defs := AST.prog_defs p1 in
+  let all_defs := List.map (fun ig => (fst ig, tranf_elaborated_globdef (snd ig))) all_elaborated_defs in
+
   let ctype_members := filter_globvars all_defs p.(StanE.pr_parameters_vars) in
   let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
 
   do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
 
   OK {| 
-      CStan.prog_defs := AST.prog_defs p1;
+      CStan.prog_defs := all_defs;
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
       CStan.prog_data:=p.(StanE.pr_data);

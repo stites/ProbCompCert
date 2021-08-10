@@ -85,15 +85,12 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
 (* ;__________;________________________________________ *)
 (* //////////////////////////////////////////////////// *)
 
-Context {CTX: Type} {LC: Linker CTX} {LF: Linker CStan.fundef} {LV: Linker CStan.type}.
-
 Hypothesis TRANSL:
   match_program
     (fun ctx f tf => Sbackend.transf_fundef f = OK tf)
-    (fun cs cl => eq cl (CStan.vd_type cs))
+    eq
     prog
     tprog.
-
 
 (* Hypothesis comp_env_preserved: genv_cenv tge = CStan.genv_cenv ge. *)
 Lemma comp_env_preserved:
