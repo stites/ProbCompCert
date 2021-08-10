@@ -85,12 +85,12 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
 (* ;__________;________________________________________ *)
 (* //////////////////////////////////////////////////// *)
 
-Hypothesis TRANSL:
-  match_program
-    (fun ctx f tf => Sbackend.transf_fundef f = OK tf)
-    eq
-    prog
-    tprog.
+(** * Relational specification of the transformation *)
+
+Definition match_prog (p: CStan.program) (tp: Clight.program) :=
+    match_program (fun ctx f tf => Sbackend.transf_fundef f = OK tf) eq p tp.
+
+Variable TRANSL: match_prog prog tprog.
 
 (* Hypothesis comp_env_preserved: genv_cenv tge = CStan.genv_cenv ge. *)
 Lemma comp_env_preserved:
