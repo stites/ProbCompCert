@@ -417,11 +417,19 @@ Definition tranf_elaborated_globdef (gd : AST.globdef CStan.fundef (type * CStan
     |}
   end.
 
+Definition map_values {K V X:Type} (f : V -> X) : list (K * V) -> list (K * X) :=
+  List.map (fun tpl => (fst tpl, f (snd tpl))).
+
+Definition cat_values {K V :Type} (kvs : list (K * option V)) : list (K * V) :=
+  catMaybes (List.map (fun tpl => option_map (fun x => (fst tpl, x)) (snd tpl)) kvs).
+
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
   let all_elaborated_defs := AST.prog_defs p1 in
-  let all_defs := List.map (fun ig => (fst ig, tranf_elaborated_globdef (snd ig))) all_elaborated_defs in
+  let all_defs := map_values tranf_elaborated_globdef all_elaborated_defs in
+  let all_contraints := (map_values eglobdef_to_constr all_elaborated_defs) in
+  let all_contraints := cat_values all_contraints in
 
   let ctype_members := filter_globvars all_defs p.(StanE.pr_parameters_vars) in
   let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
@@ -435,6 +443,7 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_data:=p.(StanE.pr_data);
       CStan.prog_data_vars:=p.(StanE.pr_data_vars);
       CStan.prog_transformed_data:=p.(StanE.pr_parameters);
+      CStan.prog_constraints := all_contraints;
       CStan.prog_parameters:= p.(StanE.pr_parameters);
       CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars);
       CStan.prog_parameters_struct:= p.(StanE.pr_parameters_struct);

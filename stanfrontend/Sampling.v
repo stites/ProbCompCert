@@ -177,6 +177,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_data_vars:=p.(prog_data_vars);
       prog_transformed_data:=p.(prog_transformed_data);
 
+      prog_constraints := p.(prog_constraints);
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
       prog_parameters_struct:= p.(prog_parameters_struct);

@@ -277,22 +277,23 @@ Fixpoint sequence (xs : list statement) : option statement :=
     end
   end.
 
-Definition transform_with_original_ident (transform : program -> AST.ident -> constraint -> mon (option (AST.ident * statement))) (p:program) (i_ty : AST.ident * type) : mon (option (AST.ident * (AST.ident * statement))) :=
-  do mtpl <~ transform p (fst i_ty) (snd i_ty).(vd_constraint);
+Definition transform_with_original_ident (transform : program -> AST.ident -> constraint -> mon (option (AST.ident * statement))) (p:program) (i_ty : AST.ident * constraint) : mon (option (AST.ident * (AST.ident * statement))) :=
+  do mtpl <~ transform p (fst i_ty) (snd i_ty);
   ret (option_fmap (fun tpl => (fst i_ty, tpl)) mtpl).
 
 Definition parameter_transformed_map (ts : list (AST.ident * AST.ident)) (i : AST.ident) : option AST.ident :=
-  option_fmap snd (List.find (fun lr => ident_eq_dec i (fst lr)) ts).
+  option_fmap snd (List.find (fun lr => Denumpyification.ident_eq_dec i (fst lr)) ts).
 
 
 Definition transf_constraints (p:program) (f: function) (body : statement): mon statement :=
   match f.(fn_blocktype) with
   | BTModel =>
     let params_typed := Denumpyification.filter_globvars (p.(prog_defs)) (p.(prog_parameters_vars)) in (*: list (AST.ident*CStan.type)*)
-    do params_transformed <~ mon_fmap Denumpyfication.catMaybes (mon_mmap (transform_with_original_ident inv_constraint_transform p) params_typed);
+    do params_transformed <~ mon_fmap Denumpyification.catMaybes (mon_mmap (transform_with_original_ident inv_constraint_transform p) p.(prog_constraints));
     let params_map  := List.map (fun fr_to => (fst fr_to, fst (snd fr_to))) params_transformed in
     let params_stmts := List.map (fun fr_to => snd (snd fr_to)) params_transformed in
-    do target_additions <~ mon_fmap Denumpyfication.catMaybes ((mon_mmap (fun i_ty => density_of_transformed_var p (fst i_ty) (snd i_ty).(vd_constraint)) params_typed));
+
+    do target_additions <~ mon_fmap Denumpyification.catMaybes ((mon_mmap (fun i_ty => density_of_transformed_var p (fst i_ty) (snd i_ty)) p.(prog_constraints)));
     match sequence params_stmts with
     | None => ret body
     | Some params =>
@@ -352,7 +353,7 @@ Definition transf_fundef (p:CStan.program) (id: AST.ident) (fd: CStan.fundef) : 
       OK (External ef targs tres cc)
   end.
 
-Definition transf_variable (id: AST.ident) (v: CStan.type): res CStan.type :=
+Definition transf_variable (id: AST.ident) (v: type): res type :=
   OK v.
 
 Definition transf_program(p: CStan.program): res CStan.program :=
@@ -365,6 +366,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_data_vars:=p.(prog_data_vars);
       prog_transformed_data:=p.(prog_transformed_data);
 
+      prog_constraints := p.(prog_constraints);
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
       prog_parameters_struct:= p.(prog_parameters_struct);
