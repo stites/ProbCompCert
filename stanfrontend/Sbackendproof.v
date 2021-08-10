@@ -568,7 +568,7 @@ Lemma function_ptr_translated:
   forall m0
     (b: block) (f: CStan.fundef)
   (H0 : Genv.init_mem prog = Some m0)
-  (H1 : Genv.find_symbol ge (prog_model prog) = Some b)
+  (H1 : Genv.find_symbol ge (CStan.prog_main prog) = Some b)
   (H2 : Genv.find_funct_ptr ge b = Some f)
   (H3 : CStan.type_of_fundef f = Tfunction Tnil type_int32s AST.cc_default)
   , Genv.find_funct_ptr ge b = Some f ->
@@ -588,7 +588,7 @@ Proof.
   split.
   eapply Clight.initial_state_intro; eauto.
   erewrite <- (Genv.init_mem_match TRANSL); eauto.
-  replace (prog_main tprog) with (CStan.prog_model prog).
+  replace (prog_main tprog) with (CStan.prog_main prog).
   rewrite <- H1. apply symbols_preserved.
   generalize (match_program_main TRANSL).
   unfold AST.prog_main.
