@@ -25,8 +25,6 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
   
-Parameter comp_env_eq: forall prog_comp_env, build_composite_env nil = OK prog_comp_env.
-
 Definition ___builtin_annot : ident := $"__builtin_annot".
 Definition ___builtin_annot_intval : ident := $"__builtin_annot_intval".
 Definition ___builtin_bswap : ident := $"__builtin_bswap".
@@ -457,8 +455,8 @@ Definition backend (p: CStan.program): res Clight.program :=
   OK {| 
       Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
       Ctypes.prog_public:=List.app public_idents p.(CStan.prog_public);
-      Ctypes.prog_main:= p.(CStan.prog_main);
-      Ctypes.prog_types:=nil;
+      Ctypes.prog_main:=p.(CStan.prog_main);
+      Ctypes.prog_types:=p.(CStan.prog_types);
       Ctypes.prog_comp_env:=p.(CStan.prog_comp_env);
-      Ctypes.prog_comp_env_eq:= comp_env_eq p.(CStan.prog_comp_env);
+      Ctypes.prog_comp_env_eq:= p.(CStan.prog_comp_env_eq);
     |}.

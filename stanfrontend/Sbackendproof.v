@@ -67,45 +67,23 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
       match_states (CStan.Returnstate v k m)
                    (Clight.Returnstate v tk m).
 
-
-(* --_-_-_-_---                            --_-_-_-_--- *)
-(*     -_-_-     d$$$$"   d$$$$"  d$$$$"       -_-_-    *)
-(*      -__-    **$$$"   **$$$"  **$$$"         -__-    *)
-(*     _-_      .$$$$$"  .$$$$$" .$$$$$"       _-_      *)
-(*    _-           z$"      z$"     z$"       _-        *)
-(*    -_          zP       zP      zP         -_        *)
-(*     _-        ,"       ,"      ,"           _-       *)
-(*                                                      *)
-(*      ░█▀▄░█▀█░█▀█░█▀▀░█▀▀░█▀▄░░░▀▀█░█▀█░█▀█░█▀▀      *)
-(*      ░█░█░█▀█░█░█░█░█░█▀▀░█▀▄░░░▄▀░░█░█░█░█░█▀▀      *)
-(*      ░▀▀░░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀      *)
-(*                      ,---------,         ,---------, *)
-(*              ,______;       ,____________;           *)
-(*  ,__-----__,-    __'      _;         ,_______,       *)
-(* ;__________;________________________________________ *)
-(* //////////////////////////////////////////////////// *)
-
 (** * Relational specification of the transformation *)
 
 Definition match_prog (p: CStan.program) (tp: Clight.program) :=
-    match_program (fun ctx f tf => Sbackend.transf_fundef f = OK tf) eq p tp.
+    match_program (fun ctx f tf => Sbackend.transf_fundef f = OK tf) eq p tp
+ /\ prog_types tp = CStan.prog_types p.
 
 Variable TRANSL: match_prog prog tprog.
 
-(* Hypothesis comp_env_preserved: genv_cenv tge = CStan.genv_cenv ge. *)
 Lemma comp_env_preserved:
   genv_cenv tge = CStan.genv_cenv ge.
 Proof.
-  unfold tge, ge. destruct prog, tprog; simpl. destruct TRANSL as [_ EQ]. simpl in EQ.
-  Admitted.
-  (* congruence. *) (* I think congruence requires an instantiation of match_prog *)
-(* Qed. *)
-
-(*      .                       *)
-(*    \ | /      All clear!     *)
-(*  '-.;;;.-'                   *)
-(* -==;;;;;==-                  *)
-(* ---------------------------- *)
+  unfold tge, ge. destruct TRANSL as [_ EQ].
+  generalize (prog_comp_env_eq tprog).
+  generalize (CStan.prog_comp_env_eq prog).
+  destruct tprog, prog; simpl in *.
+  congruence.
+Qed.
 
 Inductive tr_function: CStan.function -> Clight.function -> Prop :=
   | tr_function_intro: forall f tf,
@@ -125,11 +103,15 @@ Inductive tr_fundef: CStan.fundef -> Clight.fundef -> Prop :=
 
 Lemma senv_preserved:
   Senv.equiv ge tge.
-Proof (Genv.senv_match TRANSL).
+Proof.
+  apply (Genv.senv_match (proj1 TRANSL)).
+Qed.
 
 Lemma symbols_preserved:
   forall (s: AST.ident), Genv.find_symbol tge s = Genv.find_symbol ge s.
-Proof (Genv.find_symbol_match TRANSL).
+Proof.
+  apply (Genv.find_symbol_match (proj1 TRANSL)).
+Qed.
 
 Lemma functions_translated:
   forall (v: val) (f: CStan.fundef),
@@ -137,7 +119,7 @@ Lemma functions_translated:
   exists tf, Genv.find_funct tge v = Some tf /\ transf_fundef f = OK tf.
 Proof.
   intros.
-  edestruct (Genv.find_funct_match TRANSL) as (ctx' & tf & A & B & C'); eauto.
+  edestruct (Genv.find_funct_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto.
 Qed.
 
 Lemma type_of_fundef_preserved:
@@ -575,7 +557,7 @@ Lemma function_ptr_translated:
   exists tf, Genv.find_funct_ptr tge b = Some tf /\ transf_fundef f = OK tf.
 Proof.
   intros.
-  edestruct (Genv.find_funct_ptr_match TRANSL) as (ctx' & tf & A & B & C'); eauto.
+  edestruct (Genv.find_funct_ptr_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto.
 Qed.
 
 Lemma initial_states_simulation:
@@ -587,10 +569,10 @@ Proof.
   exists (Callstate tf nil Kstop m0).
   split.
   eapply Clight.initial_state_intro; eauto.
-  erewrite <- (Genv.init_mem_match TRANSL); eauto.
+  erewrite <- (Genv.init_mem_match (proj1 TRANSL)); eauto.
   replace (prog_main tprog) with (CStan.prog_main prog).
   rewrite <- H1. apply symbols_preserved.
-  generalize (match_program_main TRANSL).
+  generalize (match_program_main (proj1 TRANSL)).
   unfold AST.prog_main.
   unfold CStan.program_of_program.
   simpl; eauto.

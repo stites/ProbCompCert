@@ -176,7 +176,9 @@ Record program : Type := {
   prog_data_vars: list ident;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
+  prog_types: list composite_definition;
   prog_comp_env: composite_env;
+  prog_comp_env_eq: build_composite_env prog_types = OK prog_comp_env;
   prog_math_functions: list (math_func * ident * Ctypes.type);
   prog_dist_functions: list (dist_func * ident);
 }.

@@ -423,6 +423,9 @@ Definition map_values {K V X:Type} (f : V -> X) : list (K * V) -> list (K * X) :
 Definition cat_values {K V :Type} (kvs : list (K * option V)) : list (K * V) :=
   catMaybes (List.map (fun tpl => option_map (fun x => (fst tpl, x)) (snd tpl)) kvs).
 
+Parameter comp_env_eq : forall pty prog_comp_env,
+   build_composite_env pty = OK prog_comp_env.
+
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
@@ -435,6 +438,8 @@ Definition transf_program(p: StanE.program): res CStan.program :=
   let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
 
   do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
+
+  let types := nil in (*FIXME*)
 
   OK {| 
       CStan.prog_defs := all_defs;
@@ -449,7 +454,9 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_parameters_struct:= p.(StanE.pr_parameters_struct);
       CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
+      CStan.prog_types:=types;
       CStan.prog_comp_env:=comp_env;
+      CStan.prog_comp_env_eq:= comp_env_eq types comp_env;
       CStan.prog_main:=p.(StanE.pr_main);
       CStan.prog_math_functions:= p.(StanE.pr_math_functions);
       CStan.prog_dist_functions:= p.(StanE.pr_dist_functions);
