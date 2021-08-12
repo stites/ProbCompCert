@@ -25,8 +25,6 @@ Notation "'do' X <- A ; B" := (bind A (fun X => B))
 
 Local Open Scope gensym_monad_scope.
   
-Parameter comp_env_eq: forall prog_comp_env, build_composite_env nil = OK prog_comp_env.
-
 Definition ___builtin_annot : ident := $"__builtin_annot".
 Definition ___builtin_annot_intval : ident := $"__builtin_annot_intval".
 Definition ___builtin_bswap : ident := $"__builtin_bswap".
@@ -429,8 +427,8 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   | Stilde o e le tr => Error (msg "Backend: tilde")
   end.
 					 
-Definition transf_variable (id: AST.ident) (v: CStan.type): res Ctypes.type :=
-  OK (CStan.vd_type v).
+Definition transf_variable (v: type): res Ctypes.type :=
+  OK v.
   (* FIXME: is this right? Error (msg "Backend.transf_variable: NIY"). *)
 
 Definition transf_function (f: CStan.function): res Clight.function :=
@@ -444,22 +442,21 @@ Definition transf_function (f: CStan.function): res Clight.function :=
       Clight.fn_vars := f.(CStan.fn_vars);
      |}.
 
-Definition transf_fundef (id: AST.ident) (fd: CStan.fundef) : res Clight.fundef :=
+Definition transf_fundef (fd: CStan.fundef) : res Clight.fundef :=
   match fd with
   | Internal f =>
       do tf <- transf_function f; OK (Internal tf)
   | External ef targs tres cc =>
       OK (External ef targs tres cc)
   end.
-							       
+
 Definition backend (p: CStan.program): res Clight.program :=
-  do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
+  do p1 <- AST.transform_partial_program2 (fun i => transf_fundef) (fun i => transf_variable) p;
   OK {| 
       Ctypes.prog_defs :=List.app (AST.prog_defs p1) global_definitions;
       Ctypes.prog_public:=List.app public_idents p.(CStan.prog_public);
-      Ctypes.prog_main:= p.(CStan.prog_main);
-      Ctypes.prog_types:=nil;
+      Ctypes.prog_main:=p.(CStan.prog_main);
+      Ctypes.prog_types:=p.(CStan.prog_types);
       Ctypes.prog_comp_env:=p.(CStan.prog_comp_env);
-      Ctypes.prog_comp_env_eq:= comp_env_eq p.(CStan.prog_comp_env);
-    |}.							    
-
+      Ctypes.prog_comp_env_eq:= p.(CStan.prog_comp_env_eq);
+    |}.
