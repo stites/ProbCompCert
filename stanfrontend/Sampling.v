@@ -34,7 +34,7 @@ Notation ret := SimplExpr.ret.
 Notation error := SimplExpr.error.
 Notation gensym := SimplExpr.gensym.
 
-Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
+Definition transf_expr (e: CStan.expr) : mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
@@ -43,6 +43,8 @@ Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   | CStan.Evar i t => ret (CStan.Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t => ret (CStan.Ederef e t)
+  | CStan.Ecast e t => ret (CStan.Ecast e t)
+  | CStan.Efield e i t => ret (CStan.Efield e i t)
   | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
@@ -175,6 +177,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_data:=p.(prog_data);
       prog_data_vars:=p.(prog_data_vars);
+      prog_data_struct:= p.(prog_data_struct);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_constraints := p.(prog_constraints);
@@ -185,9 +188,11 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_generated_quantities:=p.(prog_generated_quantities);
       prog_model:=p.(prog_model);
-
-      prog_comp_env:=p.(prog_comp_env);
       prog_main:=p.(prog_main);
+
+      prog_types:=p.(prog_types);
+      prog_comp_env:=p.(prog_comp_env);
+      prog_comp_env_eq:=p.(prog_comp_env_eq);
 
       prog_math_functions:= p.(prog_math_functions);
       prog_dist_functions:= p.(prog_dist_functions);

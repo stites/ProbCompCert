@@ -11,6 +11,7 @@ Require Import Sops.
 Require Import Cop.
 Require Import Globalenvs.
 Require Import Integers.
+Require Import Clightdefs.
 Require AST.
 Require SimplExpr.
 
@@ -49,17 +50,43 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
   | Some x => do x <~ f x; ret (Some x)
   end.
 
+Definition as_fieldp (_Struct:AST.ident) (ref:AST.ident) (var:AST.ident) (fieldTy:Ctypes.type) : CStan.expr :=
+  (Efield
+    (Ederef
+      (Evar ref (tptr (Tstruct _Struct noattr)))
+      (Tstruct _Struct noattr))
+    var fieldTy).
 
-(* NOTE: just an identity function *)
-Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
+Definition as_field (_Struct:AST.ident) (_ref:AST.ident) (_var:AST.ident) (_fieldTy:Ctypes.type) : CStan.expr :=
+  (Efield (Evar _ref (Tstruct _Struct noattr)) _var _fieldTy).
+
+Fixpoint in_list (ps:list AST.ident) (i:AST.ident) : bool :=
+  match ps with
+  | nil => false
+  | pi::ps => if Pos.eqb i pi then true else in_list ps i
+  end.
+
+Record struct_fns : Type := {
+  is_member : AST.ident->bool;
+  transl : AST.ident->type->expr;
+}.
+
+Definition transf_expr (data_fn:struct_fns) (param_fn:struct_fns) (e: CStan.expr) : mon CStan.expr :=
   match e with
   | CStan.Econst_int i t => ret (CStan.Econst_int i t)
   | CStan.Econst_float f t => ret (CStan.Econst_float f t)
   | CStan.Econst_single f t => ret (CStan.Econst_single f t)
   | CStan.Econst_long i t => ret (CStan.Econst_long i t)
-  | CStan.Evar i t => ret (CStan.Evar i t)
+  | CStan.Evar i t => ret (
+    if param_fn.(is_member) i
+    then param_fn.(transl) i t
+    else if data_fn.(is_member) i
+      then data_fn.(transl) i t
+      else Evar i t)
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t => ret (CStan.Ederef e t)
+  | CStan.Ecast e t => ret (CStan.Ecast e t)
+  | CStan.Efield e i t => ret (CStan.Efield e i t)
   | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
@@ -67,38 +94,37 @@ Fixpoint transf_expr (e: CStan.expr) {struct e}: mon CStan.expr :=
   | CStan.Etarget t => ret (CStan.Etarget t)
 end.
 
-(* NOTE: just an identity function *)
-Fixpoint transf_statement (s: CStan.statement) {struct s}: mon CStan.statement :=
+Fixpoint transf_statement (data:struct_fns) (params:struct_fns) (s: CStan.statement) {struct s}: mon CStan.statement :=
 match s with
   | Sskip => ret Sskip
   | Sassign e0 e1 =>
-    do e0 <~ transf_expr e0;
-    do e1 <~ transf_expr e1;
+    do e0 <~ transf_expr data params e0;
+    do e1 <~ transf_expr data params e1;
     ret (Sassign e0 e1)
   | Sset i e =>
-    do e <~ transf_expr e;
+    do e <~ transf_expr data params e;
     ret (Sset i e)
 
   | Scall oi e le =>
-    do e <~ transf_expr e;
-    do le <~ mon_mmap transf_expr le;
+    do e <~ transf_expr data params e;
+    do le <~ mon_mmap (transf_expr data params) le;
     ret (Scall oi e le)
 
   | Sbuiltin oi ef lt le => error (msg "ret (Sbuiltin oi ef lt le)")
 
   | Ssequence s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement data params s0;
+    do s1 <~ transf_statement data params s1;
     ret (Ssequence s0 s1)
 
   | Sifthenelse e s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement data params s0;
+    do s1 <~ transf_statement data params s1;
     ret (Sifthenelse e s0 s1)
 
   | Sloop s0 s1 =>
-    do s0 <~ transf_statement s0;
-    do s1 <~ transf_statement s1;
+    do s0 <~ transf_statement data params s0;
+    do s1 <~ transf_statement data params s1;
     ret (Sloop s0 s1)
 
   | Sbreak => ret Sbreak
@@ -106,40 +132,74 @@ match s with
   | Scontinue => ret Scontinue
 
   | Sreturn oe =>
-    do oe <~ option_mon_mmap (transf_expr) oe;
+    do oe <~ option_mon_mmap (transf_expr data params) oe;
     ret (Sreturn oe)
 
   | Starget e =>
-    do e <~ transf_expr e;
+    do e <~ transf_expr data params e;
     ret (Starget e)
 
   | Stilde e d le (oe0, oe1) =>
     error (msg "DNE at this stage of pipeline")
 end.
 
-(* NOTE: currently the only thing happening in this file *)
-Definition transf_function (p:CStan.program) (f: function): res function :=
-  match transf_statement f.(fn_body) f.(fn_generator) with
-  | SimplExpr.Err msg => Error msg
-  | SimplExpr.Res tbody g i =>
-    OK {|
-      fn_params :=
-        match f.(fn_blocktype) with
-        | BTModel => List.app ((snd p.(prog_parameters_struct), Tpointer Tvoid noattr)::nil) f.(fn_params)
-        | _ => f.(fn_params)
-        end;
-      fn_body := tbody;
+Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement) :=
+  let data := p.(prog_data_struct) in
+  let params := p.(prog_parameters_struct) in
 
-      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
-      fn_temps := f.(fn_temps); (* NOTE only extract in the last stage *)
-      fn_vars := f.(fn_vars);
+  let TParamStruct := Tstruct params.(res_type) noattr in
+  let TDataStruct := Tstruct data.(res_type) noattr in
+
+  let data_map := {| is_member := in_list p.(prog_data_vars); transl := as_field data.(res_type) data.(res_glbl); |} in
+
+  match f.(fn_blocktype) with
+  | BTModel =>
+    do ptmp <~ gensym (tptr TParamStruct);
+    (* let params := {| res_arg := params.(res_arg); res_temp := ptmp; res_glbl := params.(res_glbl); res_type := params.(res_type); |} in *)
+    let params_map := {|
+      (* is_member := in_list p.(prog_parameters_vars); *)
+      is_member := in_list (List.map fst p.(prog_parameters_vars));
+      transl := as_fieldp params.(res_type) params.(res_arg);
+    |} in
+
+    let parg := CStan.Evar params.(res_arg) (tptr tvoid) in
+    let body := Ssequence (Sset ptmp (CStan.Ecast parg (tptr TParamStruct))) (f.(fn_body)) in
+
+    do body <~ transf_statement data_map params_map body;
+
+    let ps := (params.(res_arg), tptr tvoid)::(f.(fn_params)) in
+    let vs :=(f.(fn_vars)) in
+    ret (ps, vs, body)
+
+  | BTParams =>
+    let params_map := {|
+      is_member := in_list (List.map fst p.(prog_parameters_vars));
+      (* is_member := in_list p.(prog_parameters_vars); *)
+      transl := as_field params.(res_type) params.(res_glbl);
+    |} in
+    do body <~ transf_statement data_map params_map f.(fn_body);
+    ret (f.(fn_params), f.(fn_vars), body)
+
+  (* | BTData => ret (f.(fn_params), f.(fn_vars), f.(fn_body)) *)
+  (* | _ => ret (f.(fn_params), f.(fn_vars), f.(fn_body)) *)
+  end.
+
+Definition transf_function (p:CStan.program) (f: function): res function :=
+  match transf_statement_toplevel p f f.(fn_generator) with
+  | SimplExpr.Err msg => Error msg
+  | SimplExpr.Res (params, vars, tbody) g i =>
+    OK {|
+      fn_body := tbody;
+      fn_params := params;
+      fn_vars := vars;
+
+      fn_temps := f.(fn_temps);
       fn_generator := g;
 
-      (*should not change*)
       fn_return := f.(fn_return);
       fn_callconv := f.(fn_callconv);
       fn_blocktype := f.(fn_blocktype);
-     |}
+    |}
   end.
 
 (* ================================================================== *)
@@ -170,6 +230,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_data:=p.(prog_data);
       prog_data_vars:=p.(prog_data_vars);
+      prog_data_struct:= p.(prog_data_struct);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_constraints :=p.(prog_constraints);
@@ -180,9 +241,11 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_generated_quantities:=p.(prog_generated_quantities);
       prog_model:=p.(prog_model);
-
-      prog_comp_env:=p.(prog_comp_env);
       prog_main:=p.(prog_main);
+
+      prog_types:=p.(prog_types);
+      prog_comp_env:=p.(prog_comp_env);
+      prog_comp_env_eq:=p.(prog_comp_env_eq);
 
       prog_math_functions:= p.(prog_math_functions);
       prog_dist_functions:= p.(prog_dist_functions);

@@ -38,6 +38,8 @@ Inductive expr : Type :=
   | Evar: ident -> type -> expr           (**r variable *)
   | Etempvar: ident -> type -> expr       (**r temporary variable *)
   | Ederef: expr -> type -> expr          (**r pointer dereference (unary [*]) *)
+  | Ecast: expr -> type -> expr           (**r type cast ([(ty) e]) *)
+  | Efield: expr -> ident -> type -> expr (**r access to a member of a struct or union *)
   | Eunop: unary_operation -> expr -> type -> expr  (**r unary operation *)
   | Ebinop: binary_operation -> expr -> expr -> type -> expr (**r binary operation *)
   | Esizeof: type -> type -> expr         (**r size of a type *)
@@ -53,6 +55,8 @@ Definition typeof (e: expr) : type :=
   | Evar _ ty => ty
   | Etempvar _ ty => ty
   | Ederef _ ty => ty
+  | Ecast _ ty => ty
+  | Efield _ _ ty => ty
   | Eunop _ _ ty => ty
   | Ebinop _ _ _ ty => ty
   | Esizeof _ ty => ty
@@ -113,14 +117,7 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-(* Record type := mkvariable { *)
-(*   vd_type: Ctypes.type; *)
-(*   vd_constraint: constraint; *)
-(*   vd_init: option expr; *)
-(*   vd_global: bool *)
-(* }. *)
-
-Inductive blocktype := BTModel | BTOther.
+Inductive blocktype := BTModel | BTParameters | BTData | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type;
@@ -153,14 +150,18 @@ Proof.
 decide equality.
 Defined.
 
-
 Inductive dist_func := DBern | DUnif.
 Definition dist_func_eq_dec : forall (x y : dist_func), { x = y } + { x <> y }.
 Proof.
 decide equality.
 Defined.
 
-
+Record reserved := mkreserved {
+  res_type: AST.ident;
+  res_glbl: AST.ident;
+  (* res_temp: AST.ident; *)
+  res_arg: AST.ident;
+}.
 
 Record program : Type := {
   prog_defs: list (ident * globdef fundef type);
@@ -169,11 +170,12 @@ Record program : Type := {
   prog_model: ident;
   prog_constraints: list (ident * constraint);
   prog_parameters: ident;
-  prog_parameters_vars: list ident;
-  prog_parameters_struct: ident * ident;
+  prog_parameters_vars: list (ident * type);
+  prog_parameters_struct: reserved;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;
+  prog_data_struct: reserved;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_types: list composite_definition;
@@ -349,6 +351,13 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_expr (Esizeof ty1 ty) (Vptrofs (Ptrofs.repr (sizeof ge ty1)))
   | eval_Ealignof: forall ty1 ty,
       eval_expr (Ealignof ty1 ty) (Vptrofs (Ptrofs.repr (alignof ge ty1)))
+  | eval_Ecast: forall a ty v,
+      eval_expr a v ->
+      eval_expr (Ecast a ty) v
+  | eval_Efield: forall a id ty v,
+      eval_expr a v ->
+      le!id = Some v ->
+      eval_expr (Efield a id ty) v
   | eval_Elvalue: forall a loc ofs v,
       eval_lvalue a loc ofs ->
       deref_loc (typeof a) m loc ofs v ->

@@ -356,20 +356,21 @@ Definition public_idents : list ident :=
 
 		
 Fixpoint transf_expression (e: CStan.expr) {struct e}: res Clight.expr :=
-  match e with						       
+  match e with
   | CStan.Econst_int i t => OK (Econst_int i t)
   | CStan.Econst_float f t => OK (Econst_float f t)
   | CStan.Econst_single f t => OK (Econst_single f t)
   | CStan.Econst_long i t => OK (Econst_long i t)
   | CStan.Evar i t => OK (Evar i t)
   | CStan.Etempvar i t => OK (Etempvar i t)
-  | CStan.Ederef e t => 
-    do e <- (transf_expression e); 							 
-    OK (Ederef e t)
+  | CStan.Ederef e t => do e <- (transf_expression e); OK (Ederef e t)
+  | CStan.Ecast e t => do e <- (transf_expression e); OK (Ecast e t)
+  | CStan.Efield e i t => do e <- (transf_expression e); OK (Efield e i t)
   | CStan.Eunop u e t => 
     do e <- (transf_expression e); 
     OK (Eunop u e t)
-  | CStan.Ebinop b e1 e2 t => 
+
+  | CStan.Ebinop b e1 e2 t =>
     do e1 <- (transf_expression e1);
     do e2 <- (transf_expression e2); 
     OK (Ebinop b e1 e2 t)
@@ -384,8 +385,8 @@ Fixpoint transf_expression_list (l: list (CStan.expr)) {struct l}: res (list Cli
   | cons e l =>
     do e <- (transf_expression e);
     do l <- (transf_expression_list l);
-    OK (cons e l)											 
-  end.										      
+    OK (cons e l)
+  end.
 	
 Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement :=
   match s with
@@ -393,10 +394,10 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   | CStan.Sassign e1 e2 =>
     do e1 <- (transf_expression e1);
     do e2 <- (transf_expression e2); 
-    OK (Sassign e1 e2)										  
+    OK (Sassign e1 e2)
   | CStan.Sset i e =>
-    do e <- (transf_expression e); 							 
-    OK (Sset i e)		    
+    do e <- (transf_expression e);
+    OK (Sset i e)
   | CStan.Scall oi e le =>
     do e <- (transf_expression e);
     do le <- (transf_expression_list le);
@@ -416,23 +417,21 @@ Fixpoint transf_statement (s: CStan.statement) {struct s}: res Clight.statement 
   | CStan.Sloop s1 s2 =>
     do s1 <- (transf_statement s1); 
     do s2 <- (transf_statement s2);
-    OK (Sloop s1 s2)		       
+    OK (Sloop s1 s2)
   | CStan.Sbreak => OK Sbreak
   | CStan.Scontinue => OK Scontinue
   | CStan.Sreturn None => OK (Sreturn None)
-  | CStan.Sreturn (Some e) =>
-    do e <- (transf_expression e); 							 
-    OK (Sreturn (Some e))
+  | CStan.Sreturn (Some e) => do e <- (transf_expression e); OK (Sreturn (Some e))
   | Starget e => Error (msg "Backend: target")
   | Stilde o e le tr => Error (msg "Backend: tilde")
   end.
-					 
+
 Definition transf_variable (v: type): res Ctypes.type :=
   OK v.
   (* FIXME: is this right? Error (msg "Backend.transf_variable: NIY"). *)
 
 Definition transf_function (f: CStan.function): res Clight.function :=
-  do body <- transf_statement f.(CStan.fn_body);						      
+  do body <- transf_statement f.(CStan.fn_body);
   OK {|
       Clight.fn_return := f.(CStan.fn_return);
       Clight.fn_params := f.(CStan.fn_params);

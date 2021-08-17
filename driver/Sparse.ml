@@ -84,19 +84,67 @@ let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_e
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Struct work                                    *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let id_params_struct = Camlcoq.intern_string "Params"
-let gl_params_struct = AST.Gvar {
+let mkGlobalStruct i = AST.Gvar {
   AST.gvar_readonly = false;
   AST.gvar_volatile = false;
   AST.gvar_init = [init_ptr];
   AST.gvar_info = {
-    StanE.vd_type = StanE.Bstruct id_params_struct;
+    StanE.vd_type = StanE.Bstruct i;
     StanE.vd_constraint = StanE.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
     StanE.vd_global = true;
   };
 }
+
+let declareStruct s =
+  let id = Camlcoq.intern_string s in
+  Hashtbl.add decl_atom id
+    { a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_data false];
+      a_access = Sections.Access_default;
+      a_inline = No_specifier;
+      a_loc = (s,0) };
+  (* Hashtbl.add type_table v.Stan.vd_id basic; *)
+  (* (id, basic) *)
+  (id, mkGlobalStruct id)
+
+let declareGlobalStruct s struct_decl =
+  let structid = fst struct_decl in
+  let gltype = snd struct_decl in
+  let id = Camlcoq.intern_string s in
+  Hashtbl.add decl_atom id
+    { a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_data false];
+      a_access = Sections.Access_default;
+      a_inline = No_specifier;
+      a_loc = (s,0) };
+  (* Hashtbl.add type_table v.Stan.vd_id basic; *)
+  (id, structid, gltype)
+
+let (id_params_struct_glb, id_params_struct_typ, gl_params_struct) = declareGlobalStruct "state" (declareStruct "Params")
+let id_params_struct_arg = Camlcoq.intern_string "pi"
+let params_reserved = {
+  CStan.res_type = id_params_struct_typ;
+  CStan.res_glbl = id_params_struct_glb;
+  CStan.res_arg  = id_params_struct_arg;
+}
+
+let (id_data_struct_glb, id_data_struct_typ, gl_data_struct) = declareGlobalStruct "observation" (declareStruct "Data")
+let id_data_struct_arg = Camlcoq.intern_string "o"
+let data_reserved = {
+  CStan.res_type = id_data_struct_typ;
+  CStan.res_glbl = id_data_struct_glb;
+  (* CStan.res_temp = id_data_struct_tmp; *)
+  CStan.res_arg  = id_data_struct_arg;
+}
+
+let structs = [(id_params_struct_glb, gl_params_struct); (id_data_struct_glb, gl_data_struct)]
+
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Global Arrays                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
@@ -292,7 +340,7 @@ let el_c c =
   | Stan.Ccorrelation -> StanE.Ccorrelation
   | Stan.Ccovariance -> StanE.Ccovariance
 
-let mkVariable v t =
+let mkLocal v =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -302,10 +350,11 @@ let mkVariable v t =
       a_access = Sections.Access_default;
       a_inline = No_specifier;
       a_loc = (v.Stan.vd_id,0) };
-  let volatile = false in
-  let readonly = false in
   let basic = el_b v.Stan.vd_type v.Stan.vd_dims in
   Hashtbl.add type_table v.Stan.vd_id basic;
+  (v, id, basic)
+
+let mkVariableFromLocal (v, id, basic) =
   let vd = {
     StanE.vd_type = basic;
     StanE.vd_constraint = el_c(v.Stan.vd_constraint);
@@ -314,9 +363,11 @@ let mkVariable v t =
     StanE.vd_global = true;
   } in
   (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type v.Stan.vd_dims;
-                   gvar_readonly = readonly; gvar_volatile = volatile})
+                   gvar_readonly = false; gvar_volatile = false})
 
-let declareVariable v = mkVariable v None
+let mkVariable v = mkVariableFromLocal (mkLocal v)
+let declareVariable = mkVariable
+
 let mkFunction name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
@@ -328,10 +379,12 @@ let mkFunction name body rt params extraVars =
     a_inline = Noinline;
     a_loc = (name,0) };
   let body = List.fold_left (fun s1 s2 -> StanE.Ssequence (s1, (el_s s2))) StanE.Sskip body in
-  let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
+  let params = List.map (fun ((x,y),z) -> ((x,y), Camlcoq.intern_string z)) params in
 
   let blocktypeFundef = function
     | "model" -> CStan.BTModel
+    | "parameters" -> CStan.BTParameters
+    | "data" -> CStan.BTData
     | _ -> CStan.BTOther
   in
 
@@ -397,7 +450,9 @@ let elaborate (p: Stan.program) =
     let unop x = fromMaybe [] x in
 
     let data_variables = List.map declareVariable (unop d) in
-    let param_variables = List.map declareVariable (unop p) in
+    let param_basics = List.map mkLocal (unop p) in
+    let param_variables = List.map mkVariableFromLocal param_basics in
+    let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
     let functions = [] in
 
@@ -418,7 +473,8 @@ let elaborate (p: Stan.program) =
     let functions = (id_tr_params,f_tr_params) :: functions in
 
     IdxHashtbl.clear index_set;
-    (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
+    (* let target_arg = ((Stypes.Aauto_diffable, StanE.Breal), "target") in
+     * let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [target_arg] [] in *)
     let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
     let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
 
@@ -455,19 +511,19 @@ let elaborate (p: Stan.program) =
     let _ = C2C.globals_for_strings gl1 in
 
     {
-      StanE.pr_defs=all_math_fns @ [(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
+      StanE.pr_defs= data_variables @ param_variables @ structs @ stanlib_functions @ functions @ all_math_fns;
       StanE.pr_public=
         List.map fst functions
-        (* TODO remove these when data and params live on structs? *)
-        @ List.map fst data_variables @ List.map fst param_variables
         @ List.map fst stanlib_functions @ List.map fst all_math_fns;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
+      StanE.pr_data_struct=data_reserved;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
-      StanE.pr_parameters_vars=List.map fst param_variables;
+      StanE.pr_parameters_vars=param_fields;
+      (* StanE.pr_parameters_vars=List.map fst param_variables; *)
+      StanE.pr_parameters_struct=params_reserved;
       StanE.pr_transformed_parameters=id_tr_params;
-      StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;

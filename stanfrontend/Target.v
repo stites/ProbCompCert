@@ -58,7 +58,7 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
   | Some x => do x <~ f x; ret (Some x)
   end.
 
-Fixpoint maybe_ident (e: expr): option AST.ident :=
+Definition maybe_ident (e: expr): option AST.ident :=
 match e with
   | CStan.Evar i t => Some i
   | CStan.Etempvar i t => Some i
@@ -105,7 +105,7 @@ Notation localvar := (prod AST.ident Ctypes.type).
 Definition get_target_ident (vars: list localvar) : mon AST.ident :=
   match vars with
   | nil => error (msg "impossible: 0")
-  | (t, ty)::_ => ret t
+  | (t, ty)::_ => ret (fst (List.last vars (t, ty)))
   (* | _ => error (msg "impossible: >1") *)
   end.
 
@@ -120,6 +120,8 @@ Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CSt
   | CStan.Ederef e t =>
     do e <~ transf_target_expr tgt e;
     ret (CStan.Ederef e t)
+  | CStan.Ecast e t => ret (CStan.Ecast e t)
+  | CStan.Efield e i t => ret (CStan.Efield e i t)
   | CStan.Eunop uop e t =>
     do e <~ transf_target_expr tgt e;
     ret (CStan.Eunop uop e t)
@@ -233,6 +235,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_data:=p.(prog_data);
       prog_data_vars:=p.(prog_data_vars);
+      prog_data_struct:= p.(prog_data_struct);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_constraints := p.(prog_constraints);
@@ -244,8 +247,11 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_generated_quantities:=p.(prog_generated_quantities);
       prog_model:=p.(prog_model);
 
-      prog_comp_env:=p.(prog_comp_env);
       prog_main:=p.(prog_main);
+
+      prog_types:=p.(prog_types);
+      prog_comp_env:=p.(prog_comp_env);
+      prog_comp_env_eq:=p.(prog_comp_env_eq);
 
       prog_math_functions:= p.(prog_math_functions);
       prog_dist_functions:= p.(prog_dist_functions);
