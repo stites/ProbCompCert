@@ -199,9 +199,8 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
           (Ssequence
             f.(fn_body)
             (Sassign (Evar params.(res_glbl) TParamStruct)
-                     (Ederef (Etempvar ptmp TParamStructp) TParamStructp)))
+                     (Ederef (Etempvar ptmp TParamStructp) TParamStruct)))
     in
-
     ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
