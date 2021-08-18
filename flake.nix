@@ -52,12 +52,13 @@
               parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
               cd $root_dir
             '';
-            run = {build ? null, cmd, finally ? null}:
+            run = {build ? null, cmd, debug ? null, finally ? null}:
               let
-                err-str = if finally == null then cmd else "${cmd}, attempting ${finally}...";
-                final-cmd = if finally == null then "" else "&& ${finally}";
-                runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${final-cmd})";
-              in if build == null then runnable else "${build} && (${runnable})";
+                err-str = if debug == null then cmd else "${cmd}, attempting ${debug}...";
+                debug-cmd = if debug == null then "" else "&& ${debug}";
+                final-cmd = if finally == null then "" else "&& (${finally})";
+                runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${debug-cmd})";
+              in if build == null then runnable else "${build} && (${runnable}) ${final-cmd}";
 
             watch = {at-root ? true, exts ? "v,ml,stan,c,Makefile", build ? null, cmd, finally ? null}: ''
               ${if at-root then cd-root-with-prog else ""}
