@@ -11,9 +11,24 @@ exception SNIY of string
 exception NIY_elab of string
 
 (* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
+
+let sizeof_basic t =
+  begin match t with
+  | StanE.Bint -> 4l
+  | StanE.Breal -> 8l
+  | StanE.Bvector n -> Int32.mul 8l  (Camlcoq.camlint_of_coqint n)
+  | StanE.Brow n -> Int32.mul 8l  (Camlcoq.camlint_of_coqint n)
+  | StanE.Bmatrix (r, c) -> Int32.mul 8l  (Int32.mul (Camlcoq.camlint_of_coqint r) (Camlcoq.camlint_of_coqint c))
+  | _ -> raise (Invalid_argument "Sparse does not calculate the size of this type")
+  end
+
+let sizeof_struct vars =
+  List.fold_left (fun total var -> Int32.add total (sizeof_basic (snd var))) 0l vars
+
 let init_int = AST.Init_space (Camlcoq.coqint_of_camlint 4l)
 let init_dbl = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 let init_ptr = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
+let init_struct members = AST.Init_space (Camlcoq.coqint_of_camlint (sizeof_struct members))
 
 let ctarray (t, sz) = Ctypes.Tarray (t, sz, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tdouble = Stypes.Treal
@@ -53,12 +68,6 @@ let mk_global_func str ast_args_list =
        AST.cc_default
     ))
 
-(* uniform sample is used for initialzation *)
-let st_uniform_sample = "uniform_sample"
-let id_uniform_sample = Camlcoq.intern_string st_uniform_sample
-let ty_uniform_sample = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))), Some bdouble)
-let gl_uniform_sample = mk_global_func st_uniform_sample [AST.Tfloat; AST.Tfloat]
-
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
@@ -69,13 +78,15 @@ let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
 let gl_bernoulli_lpmf = mk_global_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
 
-let transf_dist_idents = Hashtbl.create 2;;
+let transf_dist_idents = Hashtbl.create 3;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
 Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
 let stanlib_functions = [
     (id_uniform_lpdf,   gl_uniform_lpdf);
     (id_bernoulli_lpmf, gl_bernoulli_lpmf)
   ]
+let pr_dist_functions = [(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id_uniform_lpdf)]
+
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                              math functions                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
@@ -84,15 +95,27 @@ let (st_log, id_log, gl_log, clog)       = unary_math_fn "log"
 let (st_exp, id_exp, gl_exp, cexp)       = unary_math_fn "exp"
 let (st_logit, id_logit, gl_logit, clogit) = unary_math_fn "logit"
 let (st_expit, id_expit, gl_expit, cexpit) = unary_math_fn "expit"
-let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit)]
+
+let st_init_unconstrained = "init_unconstrained"
+let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
+let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
+let gl_init_unconstrained = mk_global_func st_init_unconstrained []
+
+let pr_math_functions = [((CStan.MFLog, id_log), clog);
+                         ((CStan.MFLogit, id_logit), clogit);
+                         ((CStan.MFExp, id_exp), cexp);
+                         ((CStan.MFExpit, id_expit), cexpit);
+                         ((CStan.MFInitUnconstrained, id_init_unconstrained), mk_cfunc [])
+                        ]
+let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit);(id_init_unconstrained, gl_init_unconstrained)]
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Struct work                                    *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let mkGlobalStruct i = AST.Gvar {
+let mkGlobalStruct i members = AST.Gvar {
   AST.gvar_readonly = false;
   AST.gvar_volatile = false;
-  AST.gvar_init = [init_ptr];
+  AST.gvar_init = [init_struct members];
   AST.gvar_info = {
     StanE.vd_type = StanE.Bstruct i;
     StanE.vd_constraint = StanE.Cidentity;
@@ -102,7 +125,7 @@ let mkGlobalStruct i = AST.Gvar {
   };
 }
 
-let declareStruct s =
+let declareStruct s members =
   let id = Camlcoq.intern_string s in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -112,7 +135,7 @@ let declareStruct s =
       a_access = Sections.Access_default;
       a_inline = No_specifier;
       a_loc = (s,0) };
-  (id, mkGlobalStruct id)
+  (id, mkGlobalStruct id members)
 
 let declareGlobalStruct s =
   let id = Camlcoq.intern_string s in
@@ -125,26 +148,6 @@ let declareGlobalStruct s =
       a_inline = No_specifier;
       a_loc = (s,0) };
   id
-
-let (id_params_struct_typ, gl_params_struct) = declareStruct "Params"
-let id_params_struct_global_state = declareGlobalStruct "state"
-let id_params_struct_global_proposal = declareGlobalStruct "state"
-let id_params_struct_arg = Camlcoq.intern_string "__p__"
-let params_reserved = {
-  CStan.res_params_type = id_params_struct_typ;
-  CStan.res_params_global_state = id_params_struct_global_state;
-  CStan.res_params_global_proposal = id_params_struct_global_proposal;
-  CStan.res_params_arg  = id_params_struct_arg;
-}
-
-let (id_data_struct_typ, gl_data_struct) = declareStruct "Data"
-let id_data_struct_global = declareGlobalStruct "observation"
-let data_reserved = {
-  CStan.res_data_type = id_data_struct_typ;
-  CStan.res_data_global = id_data_struct_global;
-}
-
-let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)]
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Global Arrays                                  *)
@@ -453,7 +456,10 @@ let elaborate (p: Stan.program) =
     let get_code x = fromMaybe [Stan.Sskip] x in
     let unop x = fromMaybe [] x in
 
-    let data_variables = List.map declareVariable (unop d) in
+    let data_basics = List.map mkLocal (unop d) in
+    let data_variables = List.map mkVariableFromLocal data_basics in
+    let data_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) data_basics in
+
     let param_basics = List.map mkLocal (unop p) in
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
@@ -513,6 +519,27 @@ let elaborate (p: Stan.program) =
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
+    (* <><><><><><><><><><><><><><><> structs <><><><><><><><><><><><><><><> *)
+    let (id_params_struct_typ, gl_params_struct) = declareStruct "Params" param_fields in
+    let id_params_struct_global_state = declareGlobalStruct "state" in
+    let id_params_struct_global_proposal = declareGlobalStruct "candidate" in
+    let id_params_struct_arg = Camlcoq.intern_string "__p__" in
+    let params_reserved = {
+      CStan.res_params_type = id_params_struct_typ;
+      CStan.res_params_global_state = id_params_struct_global_state;
+      CStan.res_params_global_proposal = id_params_struct_global_proposal;
+      CStan.res_params_arg  = id_params_struct_arg;
+    } in
+
+    let (id_data_struct_typ, gl_data_struct) = declareStruct "Data" data_fields in
+    let id_data_struct_global = declareGlobalStruct "observation" in
+    let data_reserved = {
+      CStan.res_data_type = id_data_struct_typ;
+      CStan.res_data_global = id_data_struct_global;
+    } in
+
+    let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)] in
+    (* <><><><><><><><><><><><><><><> structs <><><><><><><><><><><><><><><> *)
 
     {
       StanE.pr_defs= data_variables @ param_variables @ structs @ stanlib_functions @ functions @ all_math_fns;
@@ -530,8 +557,8 @@ let elaborate (p: Stan.program) =
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;
-      StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
-      StanE.pr_dist_functions=[(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id_uniform_lpdf);(CStan.DUnifSample, id_uniform_sample)];
+      StanE.pr_math_functions=pr_math_functions;
+      StanE.pr_dist_functions=pr_dist_functions;
     }
 
 let location t =
