@@ -84,6 +84,7 @@ Definition transf_expr (res:struct_fns) (e: CStan.expr) : mon CStan.expr :=
   | CStan.Etempvar i t => ret (CStan.Etempvar i t)
   | CStan.Ederef e t => ret (CStan.Ederef e t)
   | CStan.Ecast e t => ret (CStan.Ecast e t)
+  | CStan.Eaddrof e t => ret (CStan.Eaddrof e t)
   | CStan.Efield e i t => ret (CStan.Efield e i t)
   | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
@@ -141,61 +142,85 @@ match s with
     error (msg "DNE at this stage of pipeline")
 end.
 
-Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement) :=
+Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
   let params := p.(prog_parameters_struct) in
 
   let TParamStruct := Tstruct params.(res_type) noattr in
+  let TParamStructp := tptr TParamStruct in
+
   let TDataStruct := Tstruct data.(res_type) noattr in
+  let TDataStructp := tptr TDataStruct in
 
   let data_map := {| is_member := in_list p.(prog_data_vars); transl := as_field data.(res_type) data.(res_glbl); |} in
 
+(* Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTOther. *)
   match f.(fn_blocktype) with
   | BTModel =>
-    do ptmp <~ gensym (tptr TParamStruct);
+    do ptmp <~ gensym TParamStructp;
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
       transl := as_fieldp params.(res_type) params.(res_arg);
     |} in
 
     let parg := CStan.Evar params.(res_arg) (tptr tvoid) in
-    let body := Ssequence (Sset ptmp (CStan.Ecast parg (tptr TParamStruct))) (f.(fn_body)) in
+    let body := Ssequence (Sset ptmp (CStan.Ecast parg TParamStructp)) f.(fn_body) in
 
     do body <~ transf_statement params_map body;
     do body <~ transf_statement data_map body;
 
-    ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body)
+    ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
-  | BTData =>
-    do body <~ transf_statement data_map f.(fn_body);
-    ret (f.(fn_params), f.(fn_vars), body)
-
-  | BTParams =>
+  | BTParameters =>
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
       transl := as_field params.(res_type) params.(res_glbl);
     |} in
     do body <~ transf_statement params_map f.(fn_body);
-    ret (f.(fn_params), f.(fn_vars), body)
+    ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
-  (* | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body)) *)
-  (* redundant??? *)
+  | BTData =>
+    do body <~ transf_statement data_map f.(fn_body);
+    ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
+
+  | BTGetState =>
+    let body :=
+          Ssequence
+            f.(fn_body)
+            (Sreturn (Some (CStan.Eaddrof (Evar params.(res_glbl) TParamStructp) TParamStructp))) in
+    ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
+
+  | BTSetState =>
+    do ptmp <~ gensym TParamStructp;
+    let parg := CStan.Evar params.(res_arg) (tptr tvoid) in
+    let body :=
+        Ssequence
+          (Sset ptmp (CStan.Ecast parg TParamStructp))
+          (Ssequence
+            f.(fn_body)
+            (Sassign (Evar params.(res_glbl) TParamStruct)
+                     (Ederef (Etempvar ptmp TParamStructp) TParamStructp)))
+    in
+
+    ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+
+  | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 
   end.
 
 Definition transf_function (p:CStan.program) (f: function): res function :=
   match transf_statement_toplevel p f f.(fn_generator) with
   | SimplExpr.Err msg => Error msg
-  | SimplExpr.Res (params, vars, tbody) g i =>
+  | SimplExpr.Res (params, vars, tbody, rtype) g i =>
     OK {|
       fn_body := tbody;
       fn_params := params;
       fn_vars := vars;
+      fn_return := rtype;
 
       fn_temps := f.(fn_temps);
       fn_generator := g;
 
-      fn_return := f.(fn_return);
       fn_callconv := f.(fn_callconv);
       fn_blocktype := f.(fn_blocktype);
     |}

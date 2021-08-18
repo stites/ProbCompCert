@@ -224,6 +224,7 @@ Fixpoint transf_constraints_expr (pmap: AST.ident -> option AST.ident) (e: CStan
   | CStan.Ecast e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Ecast e t)
   | CStan.Efield e i t => do e <~ transf_constraints_expr pmap e; ret (CStan.Efield e i t)
   | CStan.Ederef e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Ederef e t) (* a transformation downstream would be invalid*)
+  | CStan.Eaddrof e t => do e <~ transf_constraints_expr pmap e; ret (Eaddrof e t)
   | CStan.Eunop uop e t => do e <~ transf_constraints_expr pmap e; ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t =>
     do e0 <~ transf_constraints_expr pmap e0;

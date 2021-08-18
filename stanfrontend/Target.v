@@ -129,6 +129,7 @@ Fixpoint transf_target_expr (tgt: AST.ident) (e: CStan.expr) {struct e}: mon CSt
     do e0 <~ transf_target_expr tgt e0;
     do e1 <~ transf_target_expr tgt e1;
     ret (CStan.Ebinop bop e0 e1 t)
+  | CStan.Eaddrof e t => ret (CStan.Eaddrof e t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => ret (CStan.Ealignof t0 t1)
   | CStan.Etarget ty => ret (CStan.Evar tgt ty)

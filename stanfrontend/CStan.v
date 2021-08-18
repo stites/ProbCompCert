@@ -40,6 +40,7 @@ Inductive expr : Type :=
   | Ederef: expr -> type -> expr          (**r pointer dereference (unary [*]) *)
   | Ecast: expr -> type -> expr           (**r type cast ([(ty) e]) *)
   | Efield: expr -> ident -> type -> expr (**r access to a member of a struct or union *)
+  | Eaddrof: expr -> type -> expr         (**r address-of operator ([&]) *)
   | Eunop: unary_operation -> expr -> type -> expr  (**r unary operation *)
   | Ebinop: binary_operation -> expr -> expr -> type -> expr (**r binary operation *)
   | Esizeof: type -> type -> expr         (**r size of a type *)
@@ -55,6 +56,7 @@ Definition typeof (e: expr) : type :=
   | Evar _ ty => ty
   | Etempvar _ ty => ty
   | Ederef _ ty => ty
+  | Eaddrof _ ty => ty
   | Ecast _ ty => ty
   | Efield _ _ ty => ty
   | Eunop _ _ ty => ty
@@ -117,7 +119,7 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-Inductive blocktype := BTModel | BTParameters | BTData | BTOther.
+Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type;

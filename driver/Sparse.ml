@@ -384,6 +384,10 @@ let mkFunction name body rt params extraVars =
     | "model" -> CStan.BTModel
     | "parameters" -> CStan.BTParameters
     | "data" -> CStan.BTData
+
+    | "get_state" -> CStan.BTGetState (* neither of these are really blocks... *)
+    | "set_state" -> CStan.BTSetState
+
     | _ -> CStan.BTOther
   in
 
@@ -531,8 +535,7 @@ let elaborate (p: Stan.program) =
 let location t =
   match t with
   (* These four tokens have a payload we ignore *)
-  | STRINGLITERAL sp | REALNUMERAL sp | INTNUMERAL sp | IDENTIFIER sp -> 
-    snd sp
+  | STRINGLITERAL sp | REALNUMERAL sp | INTNUMERAL sp | IDENTIFIER sp -> snd sp
   (* All of the following tokens have no payload, just a position *)
   | WHILE p | VOID p | VECTOR p | UPPER p | UNITVECTOR p | TRUNCATE p 
   | TRANSPOSE p | TRANSFORMEDPARAMETERSBLOCK p | TRANSFORMEDDATABLOCK p 

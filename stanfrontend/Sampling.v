@@ -45,6 +45,7 @@ Definition transf_expr (e: CStan.expr) : mon CStan.expr :=
   | CStan.Ederef e t => ret (CStan.Ederef e t)
   | CStan.Ecast e t => ret (CStan.Ecast e t)
   | CStan.Efield e i t => ret (CStan.Efield e i t)
+  | CStan.Eaddrof e t => ret (CStan.Eaddrof e t)
   | CStan.Eunop uop e t => ret (CStan.Eunop uop e t)
   | CStan.Ebinop bop e0 e1 t => ret (CStan.Ebinop bop e0 e1 t)
   | CStan.Esizeof t0 t1 => ret (CStan.Esizeof t0 t1)
