@@ -159,8 +159,7 @@ Defined.
 Record reserved := mkreserved {
   res_type: AST.ident;
   res_glbl: AST.ident;
-  (* res_temp: AST.ident; *)
-  res_arg: AST.ident;
+  res_arg: AST.ident; (* arguments may not be in the temp list and, therefore, cannot be trivially added through gensym *)
 }.
 
 Record program : Type := {

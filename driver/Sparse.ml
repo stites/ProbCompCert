@@ -127,7 +127,7 @@ let declareGlobalStruct s struct_decl =
   (id, structid, gltype)
 
 let (id_params_struct_glb, id_params_struct_typ, gl_params_struct) = declareGlobalStruct "state" (declareStruct "Params")
-let id_params_struct_arg = Camlcoq.intern_string "pi"
+let id_params_struct_arg = Camlcoq.intern_string "__p__"
 let params_reserved = {
   CStan.res_type = id_params_struct_typ;
   CStan.res_glbl = id_params_struct_glb;
@@ -139,7 +139,6 @@ let id_data_struct_arg = Camlcoq.intern_string "o"
 let data_reserved = {
   CStan.res_type = id_data_struct_typ;
   CStan.res_glbl = id_data_struct_glb;
-  (* CStan.res_temp = id_data_struct_tmp; *)
   CStan.res_arg  = id_data_struct_arg;
 }
 
@@ -521,7 +520,6 @@ let elaborate (p: Stan.program) =
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
       StanE.pr_parameters_vars=param_fields;
-      (* StanE.pr_parameters_vars=List.map fst param_variables; *)
       StanE.pr_parameters_struct=params_reserved;
       StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
