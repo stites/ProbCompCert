@@ -152,7 +152,7 @@ Proof.
 decide equality.
 Defined.
 
-Inductive dist_func := DBern | DUnif.
+Inductive dist_func := DBernPMF | DUnifPDF | DUnifSample.
 Definition dist_func_eq_dec : forall (x y : dist_func), { x = y } + { x <> y }.
 Proof.
 decide equality.

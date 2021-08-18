@@ -51,8 +51,16 @@ double bernoulli_lpmf(int x, double p)
     return k * log(p) + (1-k) * log(1-p);
 }
 
+double uniform_sample(double l, double r)
+{
+  if (l > r) {
+    return NAN;
+  } else {
+	  return l + (rand() / (RAND_MAX / (r - l)));
+  }
+}
 
-double uniform_sample(double mu, double sigma)
+double normal_sample(double mu, double sigma)
 {
   return randn(mu, sigma);
 }

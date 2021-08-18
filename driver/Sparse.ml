@@ -53,11 +53,16 @@ let mk_global_func str ast_args_list =
        AST.cc_default
     ))
 
+(* uniform sample is used for initialzation *)
+let st_uniform_sample = "uniform_sample"
+let id_uniform_sample = Camlcoq.intern_string st_uniform_sample
+let ty_uniform_sample = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))), Some bdouble)
+let gl_uniform_sample = mk_global_func st_uniform_sample [AST.Tfloat; AST.Tfloat]
+
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
 let gl_uniform_lpdf = mk_global_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
-
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
@@ -529,7 +534,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;
       StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
-      StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
+      StanE.pr_dist_functions=[(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id_uniform_lpdf);(CStan.DUnifSample, id_uniform_sample)];
     }
 
 let location t =
