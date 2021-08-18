@@ -146,6 +146,31 @@ end.
 Definition init_unconstrained (p: program) : mon (AST.ident * statement) :=
   Constraints.callmath p MFInitUnconstrained nil.
 
+Fixpoint generate_propose_body
+         (params : CStan.reserved_params)
+         (perturb: AST.ident * statement)
+         (body:statement)
+         (fields: list (AST.ident * Ctypes.type))
+  : statement :=
+  match fields with
+  | nil => body
+  | (i,t)::rest =>
+
+    let x := fst perturb in
+    let call := snd perturb in
+
+    let field_of      := as_field params.(res_params_type) in
+    let propose_field := field_of params.(res_params_global_proposal) i t in
+
+    let state_field   := field_of params.(res_params_global_state) i t in
+    let proposal      := Ebinop Oadd state_field (Etempvar x t) t in
+
+    generate_propose_body params perturb (Ssequence (Ssequence call (Sassign propose_field proposal)) body) rest
+  end.
+
+Definition return_var_pointer (ptr : AST.ident) (ty : Ctypes.type): statement :=
+  Sreturn (Some (CStan.Eaddrof (Evar ptr ty) ty)).
+
 Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
   let params := p.(prog_parameters_struct) in
@@ -191,7 +216,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     let body :=
           Ssequence
             f.(fn_body)
-            (Sreturn (Some (CStan.Eaddrof (Evar params.(res_params_global_state) TParamStructp) TParamStructp))) in
+            (return_var_pointer params.(res_params_global_state) TParamStructp) in
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTSetState =>
