@@ -146,13 +146,13 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
   | External id args res cc => Tfunction args res cc
   end.
 
-Inductive math_func := MFLog | MFExp | MFLogit | MFExpit.
+Inductive math_func := MFLog | MFExp | MFLogit | MFExpit | MFInitUnconstrained.
 Definition math_func_eq_dec : forall (x y : math_func), { x = y } + { x <> y }.
 Proof.
 decide equality.
 Defined.
 
-Inductive dist_func := DBernPMF | DUnifPDF | DUnifSample.
+Inductive dist_func := DBernPMF | DUnifPDF.
 Definition dist_func_eq_dec : forall (x y : dist_func), { x = y } + { x <> y }.
 Proof.
 decide equality.

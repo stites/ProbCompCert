@@ -143,6 +143,9 @@ match s with
     error (msg "DNE at this stage of pipeline")
 end.
 
+Definition init_unconstrained (p: program) : mon (AST.ident * statement) :=
+  Constraints.callmath p MFInitUnconstrained nil.
+
 Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
   let params := p.(prog_parameters_struct) in

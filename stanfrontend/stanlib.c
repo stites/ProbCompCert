@@ -79,3 +79,8 @@ double expit(double a)
 {
   return 1 / (1 + exp(-a));
 }
+
+double init_unconstrained()
+{
+  return uniform_sample(-2, 2);
+}

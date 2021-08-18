@@ -12,4 +12,6 @@ double normal_sample(double mu, double sigma);
 
 double logit(double p);
 double expit(double a);
+
+double init_unconstrained();
 #endif // STANLIB_H_
