@@ -1,5 +1,5 @@
 data {
-  real flips[3];
+  int flips[3];
 }
 parameters {
   real mu;
