@@ -60,13 +60,6 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
   | Some x => do x <~ f x; ret (Some x)
   end.
 
-Fixpoint maybe_ident (e: expr): option AST.ident :=
-match e with
-  | CStan.Evar i t => Some i
-  | CStan.Etempvar i t => Some i
-  | _ => None
-end.
-
 Fixpoint getmathfunc (t:math_func) (fs: list (math_func * AST.ident * Ctypes.type)) : mon (AST.ident * Ctypes.type) :=
   match fs with
   | nil => error (msg "impossible")

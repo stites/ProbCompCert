@@ -14,6 +14,7 @@ Require Import Integers.
 Require Import Clightdefs.
 Require AST.
 Require SimplExpr.
+Require Import Constraints.
 
 (* FIXME how do I share this notation? *)
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
@@ -202,6 +203,12 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
                      (Ederef (Etempvar ptmp TParamStructp) TParamStruct)))
     in
     ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+
+  | BTPropose =>
+    do init <~ init_unconstrained p;
+    let body := generate_propose_body params init f.(fn_body) p.(prog_parameters_vars) in
+    let body := Ssequence body (return_var_pointer params.(res_params_global_state) TParamStructp) in
+    ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 

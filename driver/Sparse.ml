@@ -392,6 +392,7 @@ let mkFunction name body rt params extraVars =
 
     | "get_state" -> CStan.BTGetState (* neither of these are really blocks... *)
     | "set_state" -> CStan.BTSetState
+    | "propose" -> CStan.BTPropose
 
     | _ -> CStan.BTOther
   in
