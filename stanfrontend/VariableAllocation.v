@@ -146,13 +146,13 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
   let data := p.(prog_data_struct) in
   let params := p.(prog_parameters_struct) in
 
-  let TParamStruct := Tstruct params.(res_type) noattr in
+  let TParamStruct := Tstruct params.(res_params_type) noattr in
   let TParamStructp := tptr TParamStruct in
 
-  let TDataStruct := Tstruct data.(res_type) noattr in
+  let TDataStruct := Tstruct data.(res_data_type) noattr in
   let TDataStructp := tptr TDataStruct in
 
-  let data_map := {| is_member := in_list p.(prog_data_vars); transl := as_field data.(res_type) data.(res_glbl); |} in
+  let data_map := {| is_member := in_list p.(prog_data_vars); transl := as_field data.(res_data_type) data.(res_data_global); |} in
 
 (* Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTOther. *)
   match f.(fn_blocktype) with
@@ -160,21 +160,21 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     do ptmp <~ gensym TParamStructp;
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
-      transl := as_fieldp params.(res_type) params.(res_arg);
+      transl := as_fieldp params.(res_params_type) params.(res_params_arg);
     |} in
 
-    let parg := CStan.Evar params.(res_arg) (tptr tvoid) in
+    let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
     let body := Ssequence (Sset ptmp (CStan.Ecast parg TParamStructp)) f.(fn_body) in
 
     do body <~ transf_statement params_map body;
     do body <~ transf_statement data_map body;
 
-    ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTParameters =>
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
-      transl := as_field params.(res_type) params.(res_glbl);
+      transl := as_field params.(res_params_type) params.(res_params_global_state);
     |} in
     do body <~ transf_statement params_map f.(fn_body);
     ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
@@ -187,21 +187,21 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     let body :=
           Ssequence
             f.(fn_body)
-            (Sreturn (Some (CStan.Eaddrof (Evar params.(res_glbl) TParamStructp) TParamStructp))) in
+            (Sreturn (Some (CStan.Eaddrof (Evar params.(res_params_global_state) TParamStructp) TParamStructp))) in
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTSetState =>
     do ptmp <~ gensym TParamStructp;
-    let parg := CStan.Evar params.(res_arg) (tptr tvoid) in
+    let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
     let body :=
         Ssequence
           (Sset ptmp (CStan.Ecast parg TParamStructp))
           (Ssequence
             f.(fn_body)
-            (Sassign (Evar params.(res_glbl) TParamStruct)
+            (Sassign (Evar params.(res_params_global_state) TParamStruct)
                      (Ederef (Etempvar ptmp TParamStructp) TParamStruct)))
     in
-    ret ((params.(res_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 

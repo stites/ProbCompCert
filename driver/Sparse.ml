@@ -112,13 +112,9 @@ let declareStruct s =
       a_access = Sections.Access_default;
       a_inline = No_specifier;
       a_loc = (s,0) };
-  (* Hashtbl.add type_table v.Stan.vd_id basic; *)
-  (* (id, basic) *)
   (id, mkGlobalStruct id)
 
-let declareGlobalStruct s struct_decl =
-  let structid = fst struct_decl in
-  let gltype = snd struct_decl in
+let declareGlobalStruct s =
   let id = Camlcoq.intern_string s in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -128,26 +124,27 @@ let declareGlobalStruct s struct_decl =
       a_access = Sections.Access_default;
       a_inline = No_specifier;
       a_loc = (s,0) };
-  (* Hashtbl.add type_table v.Stan.vd_id basic; *)
-  (id, structid, gltype)
+  id
 
-let (id_params_struct_glb, id_params_struct_typ, gl_params_struct) = declareGlobalStruct "state" (declareStruct "Params")
+let (id_params_struct_typ, gl_params_struct) = declareStruct "Params"
+let id_params_struct_global_state = declareGlobalStruct "state"
+let id_params_struct_global_proposal = declareGlobalStruct "state"
 let id_params_struct_arg = Camlcoq.intern_string "__p__"
 let params_reserved = {
-  CStan.res_type = id_params_struct_typ;
-  CStan.res_glbl = id_params_struct_glb;
-  CStan.res_arg  = id_params_struct_arg;
+  CStan.res_params_type = id_params_struct_typ;
+  CStan.res_params_global_state = id_params_struct_global_state;
+  CStan.res_params_global_proposal = id_params_struct_global_proposal;
+  CStan.res_params_arg  = id_params_struct_arg;
 }
 
-let (id_data_struct_glb, id_data_struct_typ, gl_data_struct) = declareGlobalStruct "observation" (declareStruct "Data")
-let id_data_struct_arg = Camlcoq.intern_string "o"
+let (id_data_struct_typ, gl_data_struct) = declareStruct "Data"
+let id_data_struct_global = declareGlobalStruct "observation"
 let data_reserved = {
-  CStan.res_type = id_data_struct_typ;
-  CStan.res_glbl = id_data_struct_glb;
-  CStan.res_arg  = id_data_struct_arg;
+  CStan.res_data_type = id_data_struct_typ;
+  CStan.res_data_global = id_data_struct_global;
 }
 
-let structs = [(id_params_struct_glb, gl_params_struct); (id_data_struct_glb, gl_data_struct)]
+let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)]
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Global Arrays                                  *)

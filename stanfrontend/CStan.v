@@ -158,10 +158,15 @@ Proof.
 decide equality.
 Defined.
 
-Record reserved := mkreserved {
-  res_type: AST.ident;
-  res_glbl: AST.ident;
-  res_arg: AST.ident; (* arguments may not be in the temp list and, therefore, cannot be trivially added through gensym *)
+Record reserved_params := mkreserved_params {
+  res_params_type: AST.ident;
+  res_params_global_state: AST.ident;
+  res_params_global_proposal: AST.ident;
+  res_params_arg: AST.ident; (* arguments may not be in the temp list and, therefore, cannot be trivially added through gensym *)
+}.
+Record reserved_data := mkreserved_data {
+  res_data_type: AST.ident;
+  res_data_global: AST.ident;
 }.
 
 Record program : Type := {
@@ -172,11 +177,11 @@ Record program : Type := {
   prog_constraints: list (ident * constraint);
   prog_parameters: ident;
   prog_parameters_vars: list (ident * type);
-  prog_parameters_struct: reserved;
+  prog_parameters_struct: reserved_params;
   prog_transformed_parameters: ident;
   prog_data: ident;
   prog_data_vars: list ident;
-  prog_data_struct: reserved;
+  prog_data_struct: reserved_data;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;
   prog_types: list composite_definition;

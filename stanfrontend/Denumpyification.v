@@ -441,7 +441,7 @@ Definition transf_program(p: StanE.program): res CStan.program :=
   let all_defs := map_values tranf_elaborated_globdef all_elaborated_defs in
   let all_contraints := cat_values (map_values eglobdef_to_constr all_elaborated_defs) in
 
-  let params_struct_id := CStan.res_type (StanE.pr_parameters_struct p) in
+  let params_struct_id := CStan.res_params_type (StanE.pr_parameters_struct p) in
   (* (* let params_struct := mk_composite all_defs params_struct_id p.(StanE.pr_parameters_vars) in *) *)
   (* let params_struct := Composite params_struct_id Ctypes.Struct (filter_globvars all_defs p.(StanE.pr_parameters_vars)) Ctypes.noattr in *)
   (* (* Error (MSG "list of params: " :: (List.map CTX p.(StanE.pr_parameters_vars))). *) *)
@@ -449,7 +449,7 @@ Definition transf_program(p: StanE.program): res CStan.program :=
   do parameter_vars <- list_mmap (fun ib => do b <- transf_type (snd ib); OK (fst ib, b)) p.(StanE.pr_parameters_vars);
   let params_struct := Composite params_struct_id Ctypes.Struct parameter_vars Ctypes.noattr in
 
-  let data_struct_id := CStan.res_type (StanE.pr_data_struct p) in
+  let data_struct_id := CStan.res_data_type (StanE.pr_data_struct p) in
   let data_struct := mk_composite all_defs data_struct_id p.(StanE.pr_data_vars) in
 
   let composite_types := data_struct :: params_struct :: nil in
