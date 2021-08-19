@@ -201,6 +201,12 @@ Definition print_struct (p : program) (params : CStan.reserved_params) (fields: 
   do pstart <~ Constraints.callmath p MFPrintStart nil;
   ret (Ssequence (snd pstart) pfields).
 
+Definition cons_tail {X:Type} (x : X) (xs : list X) :=
+  match xs with
+  | nil => x::nil
+  | h :: rest => h :: x :: rest
+  end.
+
 Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
   let params := p.(prog_parameters_struct) in
@@ -228,7 +234,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     do body <~ transf_statement params_map body;
     do body <~ transf_statement data_map body;
 
-    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    ret (cons_tail (params.(res_params_arg), tptr tvoid) f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTParameters =>
     let params_map := {|

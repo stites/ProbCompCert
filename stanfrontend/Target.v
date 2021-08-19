@@ -105,7 +105,7 @@ Notation localvar := (prod AST.ident Ctypes.type).
 Definition get_target_ident (vars: list localvar) : mon AST.ident :=
   match vars with
   | nil => error (msg "impossible: 0")
-  | (t, ty)::_ => ret (fst (List.last vars (t, ty)))
+  | (t, ty)::_ => ret t
   (* | _ => error (msg "impossible: >1") *)
   end.
 
