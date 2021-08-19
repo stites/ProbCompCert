@@ -90,7 +90,10 @@ let pr_dist_functions = [(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                              math functions                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat], mk_cfunc [AST.Tfloat])
+let mk_math_fn args s = (s, Camlcoq.intern_string s, mk_global_func s args, mk_cfunc args)
+let mk_unary_math_fn t = mk_math_fn [t]
+let unary_math_fn = mk_unary_math_fn AST.Tfloat
+
 let (st_log, id_log, gl_log, clog)       = unary_math_fn "log"
 let (st_exp, id_exp, gl_exp, cexp)       = unary_math_fn "exp"
 let (st_logit, id_logit, gl_logit, clogit) = unary_math_fn "logit"
@@ -101,11 +104,22 @@ let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
 let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
 let gl_init_unconstrained = mk_global_func st_init_unconstrained []
 
+(* temporary printing support *)
+let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_math_fn [AST.Tfloat] "print_double"
+let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_math_fn [AST.Tint] "print_int"
+let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_math_fn [] "print_start"
+let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_math_fn [] "print_end"
+
 let pr_math_functions = [((CStan.MFLog, id_log), clog);
                          ((CStan.MFLogit, id_logit), clogit);
                          ((CStan.MFExp, id_exp), cexp);
                          ((CStan.MFExpit, id_expit), cexpit);
-                         ((CStan.MFInitUnconstrained, id_init_unconstrained), mk_cfunc [])
+                         ((CStan.MFInitUnconstrained, id_init_unconstrained), mk_cfunc []);
+
+                         ((CStan.MFPrintStart, id_print_start), cprint_start);
+                         ((CStan.MFPrintDouble, id_print_double), cprint_double);
+                         ((CStan.MFPrintInt, id_print_int), cprint_int);
+                         ((CStan.MFPrintEnd, id_print_end), cprint_end);
                         ]
 let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit);(id_init_unconstrained, gl_init_unconstrained)]
 
@@ -393,6 +407,7 @@ let mkFunction name body rt params extraVars =
     | "get_state" -> CStan.BTGetState (* neither of these are really blocks... *)
     | "set_state" -> CStan.BTSetState
     | "propose" -> CStan.BTPropose
+    | "print_state" -> CStan.BTPrintState
 
     | _ -> CStan.BTOther
   in
@@ -506,6 +521,10 @@ let elaborate (p: Stan.program) =
     IdxHashtbl.clear index_set;
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
+    let functions = (id_print, f_print) :: functions in
 
     IdxHashtbl.clear index_set;
     let (id_main,f_main) = declareFundef "model_pdf" [Stan.Sskip] None [] in

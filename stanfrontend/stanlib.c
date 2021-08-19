@@ -84,3 +84,20 @@ double init_unconstrained()
 {
   return uniform_sample(-2, 2);
 }
+
+double print_start()
+{
+  printf("state { ");
+}
+double print_double(double x)
+{
+  printf("%f ", x);
+}
+double print_int(int x)
+{
+  printf("%i ", x);
+}
+double print_end()
+{
+  printf("}\n");
+}

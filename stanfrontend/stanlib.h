@@ -14,4 +14,10 @@ double logit(double p);
 double expit(double a);
 
 double init_unconstrained();
+
+// temporary until printing is supported
+double print_start();
+double print_double(double x);
+double print_int(int x);
+double print_end();
 #endif // STANLIB_H_

@@ -146,30 +146,60 @@ end.
 Definition init_unconstrained (p: program) : mon (AST.ident * statement) :=
   Constraints.callmath p MFInitUnconstrained nil.
 
-Fixpoint generate_propose_body
-         (params : CStan.reserved_params)
-         (perturb: AST.ident * statement)
+Fixpoint over_fields
+         (f : AST.ident * Ctypes.type -> statement)
          (body:statement)
          (fields: list (AST.ident * Ctypes.type))
   : statement :=
   match fields with
   | nil => body
-  | (i,t)::rest =>
-
-    let x := fst perturb in
-    let call := snd perturb in
-
-    let field_of      := as_field params.(res_params_type) in
-    let propose_field := field_of params.(res_params_global_proposal) i t in
-
-    let state_field   := field_of params.(res_params_global_state) i t in
-    let proposal      := Ebinop Oadd state_field (Etempvar x t) t in
-
-    generate_propose_body params perturb (Ssequence (Ssequence call (Sassign propose_field proposal)) body) rest
+  | struct_field::rest =>
+    over_fields f (Ssequence (f struct_field) body) rest
   end.
+
+Definition adjust_proposal (params : CStan.reserved_params) (perturb: AST.ident * statement) (struct_field : AST.ident * Ctypes.type): statement :=
+  let (i, t)        := struct_field in
+  let (x, call)     := perturb in
+  let field_of      := as_field params.(res_params_type) in
+  let propose_field := field_of params.(res_params_global_proposal) i t in
+
+  let state_field   := field_of params.(res_params_global_state) i t in
+  let proposal      := Ebinop Oadd state_field (Etempvar x t) t in
+  Ssequence call (Sassign propose_field proposal).
 
 Definition return_var_pointer (ptr : AST.ident) (ty : Ctypes.type): statement :=
   Sreturn (Some (CStan.Eaddrof (Evar ptr ty) ty)).
+
+Fixpoint over_fieldsM
+         (f : AST.ident * Ctypes.type -> mon statement)
+         (body: statement)
+         (fields: list (AST.ident * Ctypes.type))
+  : mon statement :=
+  match fields with
+  | nil => ret body
+  | struct_field::rest =>
+    do x <~ f struct_field;
+    over_fieldsM f (Ssequence x body) rest
+  end.
+
+Definition call_print (p : program) (state_field:expr) (t:Ctypes.type) : mon statement :=
+  match t with
+  | Tint _ _ _ => do x <~ Constraints.callmath p MFPrintInt (state_field::nil); ret (snd x)
+  | Tfloat _ _ => do x <~ Constraints.callmath p MFPrintDouble (state_field::nil); ret (snd x)
+  | _ => error (msg "no support for printing this type")
+  end.
+
+Definition print_field (p : program) (params : CStan.reserved_params) (struct_field : AST.ident * Ctypes.type): mon statement :=
+  let (i, t)        := struct_field in
+  let field_of      := as_field params.(res_params_type) in
+  let state_field   := field_of params.(res_params_global_state) i t in
+  call_print p state_field t.
+
+Definition print_struct (p : program) (params : CStan.reserved_params) (fields: list (AST.ident * Ctypes.type)): mon statement :=
+  do pend <~ Constraints.callmath p MFPrintEnd nil;
+  do pfields <~ over_fieldsM (print_field p params) (snd pend) fields;
+  do pstart <~ Constraints.callmath p MFPrintStart nil;
+  ret (Ssequence (snd pstart) pfields).
 
 Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
@@ -234,9 +264,14 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
 
   | BTPropose =>
     do init <~ init_unconstrained p;
-    let body := generate_propose_body params init f.(fn_body) p.(prog_parameters_vars) in
+    let body := over_fields (adjust_proposal params init) f.(fn_body) p.(prog_parameters_vars) in
     let body := Ssequence body (return_var_pointer params.(res_params_global_state) TParamStructp) in
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
+
+  | BTPrintState =>
+    let body := print_struct p params p.(prog_parameters_vars) in
+    do body <~ print_struct p params p.(prog_parameters_vars);
+    ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 

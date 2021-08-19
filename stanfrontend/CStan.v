@@ -119,7 +119,7 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTPropose | BTOther.
+Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTPropose | BTPrintState | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type;
@@ -146,7 +146,12 @@ Definition type_of_fundef (f: fundef) : Ctypes.type :=
   | External id args res cc => Tfunction args res cc
   end.
 
-Inductive math_func := MFLog | MFExp | MFLogit | MFExpit | MFInitUnconstrained.
+Inductive math_func := MFLog | MFExp | MFLogit | MFExpit
+                       | MFPrintStart
+                       | MFPrintDouble
+                       | MFPrintInt
+                       | MFPrintEnd
+                       | MFInitUnconstrained.
 Definition math_func_eq_dec : forall (x y : math_func), { x = y } + { x <> y }.
 Proof.
 decide equality.
