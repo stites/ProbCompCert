@@ -97,10 +97,23 @@ let compile_i_file sourcename preproname =
 (* From Stan to asm *)
   
 let compile_stan_file sourcename ifile ofile =
+ (* Prepare to dump Clight, RTL, etc, if requested *)
+  let set_dest dst opt ext =
+    dst := if !opt then Some (output_filename sourcename ".stan" ext)
+      else None in
+  set_dest Cprint.destination option_dparse ".parsed.c";
+  set_dest PrintCsyntax.destination option_dcmedium ".compcert.c";
+  set_dest PrintClight.destination option_dclight ".light.c";
+  set_dest PrintCminor.destination option_dcminor ".cm";
+  set_dest PrintRTL.destination option_drtl ".rtl";
+  set_dest Regalloc.destination_alloctrace option_dalloctrace ".alloctrace";
+  set_dest PrintLTL.destination option_dltl ".ltl";
+  set_dest PrintMach.destination option_dmach ".mach";
+  set_dest AsmToJSON.destination option_sdump !sdump_suffix;
   (* Parse the ast *)
   let stan = Sparse.parse_stan_file sourcename ifile in
   (* Convert to Asm *)
-let asm =
+  let asm =
     match Compiler.apply_partial
                (Scompiler.transf_stan_program_complete stan)
                Asmexpand.expand_program with

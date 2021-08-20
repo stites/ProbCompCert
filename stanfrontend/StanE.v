@@ -118,11 +118,13 @@ Record program := mkprogram {
   pr_public: list ident;
   pr_model: ident;
   pr_parameters: ident;
-  pr_parameters_vars: list ident;
-  pr_parameters_struct: ident * ident;
+  pr_parameters_vars: list (ident * basic);
+  (* pr_parameters_vars: list ident; *)
+  pr_parameters_struct: CStan.reserved_params;
   pr_transformed_parameters: ident;
   pr_data: ident;
   pr_data_vars: list ident;
+  pr_data_struct: CStan.reserved_data;
   pr_transformed_data: ident;
   pr_generated: ident;
   pr_main: ident;

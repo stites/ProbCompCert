@@ -11,9 +11,24 @@ exception SNIY of string
 exception NIY_elab of string
 
 (* <><><><><><><><><><> should be moved to Sstanlib.ml <><><><><><><><><><><><> *)
+
+let sizeof_basic t =
+  begin match t with
+  | StanE.Bint -> 4l
+  | StanE.Breal -> 8l
+  | StanE.Bvector n -> Int32.mul 8l  (Camlcoq.camlint_of_coqint n)
+  | StanE.Brow n -> Int32.mul 8l  (Camlcoq.camlint_of_coqint n)
+  | StanE.Bmatrix (r, c) -> Int32.mul 8l  (Int32.mul (Camlcoq.camlint_of_coqint r) (Camlcoq.camlint_of_coqint c))
+  | _ -> raise (Invalid_argument "Sparse does not calculate the size of this type")
+  end
+
+let sizeof_struct vars =
+  List.fold_left (fun total var -> Int32.add total (sizeof_basic (snd var))) 0l vars
+
 let init_int = AST.Init_space (Camlcoq.coqint_of_camlint 4l)
 let init_dbl = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
 let init_ptr = AST.Init_space (Camlcoq.coqint_of_camlint 8l)
+let init_struct members = AST.Init_space (Camlcoq.coqint_of_camlint (sizeof_struct members))
 
 let ctarray (t, sz) = Ctypes.Tarray (t, sz, Ctypes.noattr) (* FIXME defined in Clightdefs *)
 let tdouble = Stypes.Treal
@@ -58,45 +73,101 @@ let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
 let gl_uniform_lpdf = mk_global_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
 
-
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
 let gl_bernoulli_lpmf = mk_global_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
 
-let transf_dist_idents = Hashtbl.create 2;;
+let transf_dist_idents = Hashtbl.create 3;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
 Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
 let stanlib_functions = [
     (id_uniform_lpdf,   gl_uniform_lpdf);
     (id_bernoulli_lpmf, gl_bernoulli_lpmf)
   ]
+let pr_dist_functions = [(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id_uniform_lpdf)]
+
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                              math functions                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let unary_math_fn s = (s, Camlcoq.intern_string s, mk_global_func s [AST.Tfloat], mk_cfunc [AST.Tfloat])
+let mk_math_fn args s = (s, Camlcoq.intern_string s, mk_global_func s args, mk_cfunc args)
+let mk_unary_math_fn t = mk_math_fn [t]
+let unary_math_fn = mk_unary_math_fn AST.Tfloat
+
 let (st_log, id_log, gl_log, clog)       = unary_math_fn "log"
 let (st_exp, id_exp, gl_exp, cexp)       = unary_math_fn "exp"
 let (st_logit, id_logit, gl_logit, clogit) = unary_math_fn "logit"
 let (st_expit, id_expit, gl_expit, cexpit) = unary_math_fn "expit"
-let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit)]
+
+let st_init_unconstrained = "init_unconstrained"
+let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
+let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
+let gl_init_unconstrained = mk_global_func st_init_unconstrained []
+
+(* temporary printing support *)
+let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_math_fn [AST.Tfloat] "print_double"
+let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_math_fn [AST.Tint] "print_int"
+let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_math_fn [] "print_start"
+let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_math_fn [] "print_end"
+
+let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
+                         (CStan.MFLogit, id_logit, gl_logit, clogit);
+                         (CStan.MFExp, id_exp, gl_exp, cexp);
+                         (CStan.MFExpit, id_expit, gl_expit, cexpit);
+                         (CStan.MFInitUnconstrained, id_init_unconstrained, gl_init_unconstrained, mk_cfunc []);
+
+                         (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start);
+                         (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double);
+                         (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int);
+                         (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end);
+                        ]
+
+let _as_prog_math_functions (e, i, g, c) = ((e, i), c)
+let _as_global_math_functions (e, i, g, c) = (i, g)
+
+let pr_math_functions = List.map _as_prog_math_functions __math_functions
+let all_math_fns = List.map _as_global_math_functions __math_functions
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Struct work                                    *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let id_params_struct = Camlcoq.intern_string "Params"
-let gl_params_struct = AST.Gvar {
+let mkGlobalStruct i members = AST.Gvar {
   AST.gvar_readonly = false;
   AST.gvar_volatile = false;
-  AST.gvar_init = [init_ptr];
+  AST.gvar_init = [init_struct members];
   AST.gvar_info = {
-    StanE.vd_type = StanE.Bstruct id_params_struct;
+    StanE.vd_type = StanE.Bstruct i;
     StanE.vd_constraint = StanE.Cidentity;
     StanE.vd_dims = [];
     StanE.vd_init = None;
     StanE.vd_global = true;
   };
 }
+
+let declareStruct s members =
+  let id = Camlcoq.intern_string s in
+  Hashtbl.add decl_atom id
+    { a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_data false];
+      a_access = Sections.Access_default;
+      a_inline = No_specifier;
+      a_loc = (s,0) };
+  (id, mkGlobalStruct id members)
+
+let declareGlobalStruct s =
+  let id = Camlcoq.intern_string s in
+  Hashtbl.add decl_atom id
+    { a_storage = C.Storage_default;
+      a_alignment = None;
+      a_size = None;
+      a_sections = [Sections.Section_data false];
+      a_access = Sections.Access_default;
+      a_inline = No_specifier;
+      a_loc = (s,0) };
+  id
+
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Global Arrays                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
@@ -292,7 +363,7 @@ let el_c c =
   | Stan.Ccorrelation -> StanE.Ccorrelation
   | Stan.Ccovariance -> StanE.Ccovariance
 
-let mkVariable v t =
+let mkLocal v =
   let id = Camlcoq.intern_string v.Stan.vd_id in
   Hashtbl.add decl_atom id
     { a_storage = C.Storage_default;
@@ -302,10 +373,11 @@ let mkVariable v t =
       a_access = Sections.Access_default;
       a_inline = No_specifier;
       a_loc = (v.Stan.vd_id,0) };
-  let volatile = false in
-  let readonly = false in
   let basic = el_b v.Stan.vd_type v.Stan.vd_dims in
   Hashtbl.add type_table v.Stan.vd_id basic;
+  (v, id, basic)
+
+let mkVariableFromLocal (v, id, basic) =
   let vd = {
     StanE.vd_type = basic;
     StanE.vd_constraint = el_c(v.Stan.vd_constraint);
@@ -314,9 +386,11 @@ let mkVariable v t =
     StanE.vd_global = true;
   } in
   (id,  AST.Gvar { AST.gvar_info = vd; gvar_init = transf_v_init v.Stan.vd_type v.Stan.vd_dims;
-                   gvar_readonly = readonly; gvar_volatile = volatile})
+                   gvar_readonly = false; gvar_volatile = false})
 
-let declareVariable v = mkVariable v None
+let mkVariable v = mkVariableFromLocal (mkLocal v)
+let declareVariable = mkVariable
+
 let mkFunction name body rt params extraVars =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
@@ -328,10 +402,18 @@ let mkFunction name body rt params extraVars =
     a_inline = Noinline;
     a_loc = (name,0) };
   let body = List.fold_left (fun s1 s2 -> StanE.Ssequence (s1, (el_s s2))) StanE.Sskip body in
-  let params = List.map (fun ((x,y),z) -> ((x,y),Camlcoq.intern_string z)) params in
+  let params = List.map (fun ((x,y),z) -> ((x,y), Camlcoq.intern_string z)) params in
 
   let blocktypeFundef = function
     | "model" -> CStan.BTModel
+    | "parameters" -> CStan.BTParameters
+    | "data" -> CStan.BTData
+
+    | "get_state" -> CStan.BTGetState (* neither of these are really blocks... *)
+    | "set_state" -> CStan.BTSetState
+    | "propose" -> CStan.BTPropose
+    | "print_state" -> CStan.BTPrintState
+
     | _ -> CStan.BTOther
   in
 
@@ -375,10 +457,9 @@ let initOneVariable var =
       | (Stan.Bint,  []) -> Stan.Sassign (evar, None, Stan.Econst_int "0")
       | (Stan.Breal, []) -> Stan.Sassign (evar, None, Stan.Econst_float "0")
       | (Stan.Bint,  [Stan.Econst_int sz]) ->
-        (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_int "0")) *)
         Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
-      | (Stan.Breal,  [Stan.Econst_int sz]) -> Stan.Sskip
-        (* Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0")) *)
+      | (Stan.Breal,  [Stan.Econst_int sz]) ->
+        Stan.Sforeach ("i", evar, Stan.Sassign (Stan.Eindexed (evar, [Stan.Isingle (Stan.Evar "i")]), None, Stan.Econst_float "0"))
       | _ -> Stan.Sskip
       end
     end
@@ -396,8 +477,13 @@ let elaborate (p: Stan.program) =
     let get_code x = fromMaybe [Stan.Sskip] x in
     let unop x = fromMaybe [] x in
 
-    let data_variables = List.map declareVariable (unop d) in
-    let param_variables = List.map declareVariable (unop p) in
+    let data_basics = List.map mkLocal (unop d) in
+    let data_variables = List.map mkVariableFromLocal data_basics in
+    let data_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) data_basics in
+
+    let param_basics = List.map mkLocal (unop p) in
+    let param_variables = List.map mkVariableFromLocal param_basics in
+    let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
     let functions = [] in
 
@@ -418,7 +504,8 @@ let elaborate (p: Stan.program) =
     let functions = (id_tr_params,f_tr_params) :: functions in
 
     IdxHashtbl.clear index_set;
-    (* let target_param = ((Stypes.Aauto_diffable, Stypes.Treal), "target") in *)
+    (* let target_arg = ((Stypes.Aauto_diffable, StanE.Breal), "target") in
+     * let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [target_arg] [] in *)
     let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
     let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
 
@@ -441,6 +528,10 @@ let elaborate (p: Stan.program) =
     let functions = (id_set,f_set) :: functions in
 
     IdxHashtbl.clear index_set;
+    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
+    let functions = (id_print, f_print) :: functions in
+
+    IdxHashtbl.clear index_set;
     let (id_main,f_main) = declareFundef "model_pdf" [Stan.Sskip] None [] in
     let functions = (id_main,f_main) :: functions in
 
@@ -453,33 +544,52 @@ let elaborate (p: Stan.program) =
 
     let gl1 = C2C.convertGlobdecls Env.empty [] (Env.initial_declarations()) in
     let _ = C2C.globals_for_strings gl1 in
+    (* <><><><><><><><><><><><><><><> structs <><><><><><><><><><><><><><><> *)
+    let (id_params_struct_typ, gl_params_struct) = declareStruct "Params" param_fields in
+    let id_params_struct_global_state = declareGlobalStruct "state" in
+    let id_params_struct_global_proposal = declareGlobalStruct "candidate" in
+    let id_params_struct_arg = Camlcoq.intern_string "__p__" in
+    let params_reserved = {
+      CStan.res_params_type = id_params_struct_typ;
+      CStan.res_params_global_state = id_params_struct_global_state;
+      CStan.res_params_global_proposal = id_params_struct_global_proposal;
+      CStan.res_params_arg  = id_params_struct_arg;
+    } in
+
+    let (id_data_struct_typ, gl_data_struct) = declareStruct "Data" data_fields in
+    let id_data_struct_global = declareGlobalStruct "observation" in
+    let data_reserved = {
+      CStan.res_data_type = id_data_struct_typ;
+      CStan.res_data_global = id_data_struct_global;
+    } in
+
+    let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)] in
+    (* <><><><><><><><><><><><><><><> structs <><><><><><><><><><><><><><><> *)
 
     {
-      StanE.pr_defs=all_math_fns @ [(Camlcoq.intern_string "state", gl_params_struct)] @ data_variables @ param_variables @ stanlib_functions @ functions;
+      StanE.pr_defs= data_variables @ param_variables @ structs @ stanlib_functions @ functions @ all_math_fns;
       StanE.pr_public=
         List.map fst functions
-        (* TODO remove these when data and params live on structs? *)
-        @ List.map fst data_variables @ List.map fst param_variables
         @ List.map fst stanlib_functions @ List.map fst all_math_fns;
       StanE.pr_data=id_data;
       StanE.pr_data_vars=List.map fst data_variables;
+      StanE.pr_data_struct=data_reserved;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;
-      StanE.pr_parameters_vars=List.map fst param_variables;
+      StanE.pr_parameters_vars=param_fields;
+      StanE.pr_parameters_struct=params_reserved;
       StanE.pr_transformed_parameters=id_tr_params;
-      StanE.pr_parameters_struct=(id_params_struct, Camlcoq.intern_string "pi");
       StanE.pr_model=id_model;
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;
-      StanE.pr_math_functions=[((CStan.MFLog, id_log), clog);((CStan.MFLogit, id_logit), clogit);((CStan.MFExp, id_exp), cexp);((CStan.MFExpit, id_expit), cexpit)];
-      StanE.pr_dist_functions=[(CStan.DBern, id_bernoulli_lpmf);(CStan.DUnif, id_uniform_lpdf)];
+      StanE.pr_math_functions=pr_math_functions;
+      StanE.pr_dist_functions=pr_dist_functions;
     }
 
 let location t =
   match t with
   (* These four tokens have a payload we ignore *)
-  | STRINGLITERAL sp | REALNUMERAL sp | INTNUMERAL sp | IDENTIFIER sp -> 
-    snd sp
+  | STRINGLITERAL sp | REALNUMERAL sp | INTNUMERAL sp | IDENTIFIER sp -> snd sp
   (* All of the following tokens have no payload, just a position *)
   | WHILE p | VOID p | VECTOR p | UPPER p | UNITVECTOR p | TRUNCATE p 
   | TRANSPOSE p | TRANSFORMEDPARAMETERSBLOCK p | TRANSFORMEDDATABLOCK p 

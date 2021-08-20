@@ -51,8 +51,16 @@ double bernoulli_lpmf(int x, double p)
     return k * log(p) + (1-k) * log(1-p);
 }
 
+double uniform_sample(double l, double r)
+{
+  if (l > r) {
+    return NAN;
+  } else {
+	  return l + (rand() / (RAND_MAX / (r - l)));
+  }
+}
 
-double uniform_sample(double mu, double sigma)
+double normal_sample(double mu, double sigma)
 {
   return randn(mu, sigma);
 }
@@ -70,4 +78,26 @@ double logit(double p)
 double expit(double a)
 {
   return 1 / (1 + exp(-a));
+}
+
+double init_unconstrained()
+{
+  return uniform_sample(-2, 2);
+}
+
+double print_start()
+{
+  printf("state { ");
+}
+double print_double(double x)
+{
+  printf("%f ", x);
+}
+double print_int(int x)
+{
+  printf("%i ", x);
+}
+double print_end()
+{
+  printf("}\n");
 }

@@ -52,12 +52,13 @@
               parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
               cd $root_dir
             '';
-            run = {build ? null, cmd, finally ? null}:
+            run = {build ? null, cmd, debug ? null, finally ? null}:
               let
-                err-str = if finally == null then cmd else "${cmd}, attempting ${finally}...";
-                final-cmd = if finally == null then "" else "&& ${finally}";
-                runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${final-cmd})";
-              in if build == null then runnable else "${build} && (${runnable})";
+                err-str = if debug == null then cmd else "${cmd}, attempting ${debug}...";
+                debug-cmd = if debug == null then "" else "&& ${debug}";
+                final-cmd = if finally == null then "" else "&& (${finally})";
+                runnable = "${cmd} && echo '>>> done: ${cmd}.' || ( echo '>>> error! ${err-str}' ${debug-cmd})";
+              in if build == null then runnable else "${build} && (${runnable}) ${final-cmd}";
 
             watch = {at-root ? true, exts ? "v,ml,stan,c,Makefile", build ? null, cmd, finally ? null}: ''
               ${if at-root then cd-root-with-prog else ""}
@@ -87,7 +88,7 @@
             (mk-watcher "watch-clightgen" {
               command = watch {
                 build = "make -j && make install && rm ccomp clightgen";
-                cmd = "./clightgen $current_dir/$1";
+                cmd = "./out/bin/clightgen $current_dir/$1";
               };
             })
             {
@@ -116,30 +117,6 @@
             }
             {
               category = "build";
-              name = "ccompstan-exe";
-              command = pkgs.lib.strings.concatStringsSep "\n" [
-                # boilerplate for some env variables used below
-                cd-root-with-prog
-
-                # working directory is stan dir
-                "cd stanfrontend"
-
-                # ccomp doesn't compile down to object files, just asm
-                ''ccomp -c $current_dir/$1 && ccomp -c ''${name}.s''
-
-                # build libstan.so
-                ''ccomp -c stanlib.c && ld -shared stanlib.o -o libstan.so''
-
-                # compile the final binary
-                ''ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o -o runit''
-
-                # tell the user what to do next
-                ''echo "compiled! ./stanfrontend/runit [int]"''
-              ];
-            }
-
-            {
-              category = "build";
               name = "ccompstan";
               command = pkgs.lib.strings.concatStringsSep "\n" [
                 # boilerplate for some env variables used below
@@ -154,7 +131,7 @@
                 # build libstan.so
                 ''ccomp -c stanlib.c && ld -shared stanlib.o -o libstan.so''
 
-                # TODO runtime has hard-coded proposals, and so is dependent on libstan, temporarily.
+                # runtime is dependent on libstan, temporarily.
                 ''ccomp -I''${stan_dir} -c Runtime.c''
 
                 # compile the final binary

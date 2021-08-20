@@ -182,14 +182,15 @@ with transf_index (i: StanE.index) {struct i}: res CStan.expr :=
   end.
 
 
-Fixpoint transf_expression_list (l: list (StanE.expr)) {struct l}: res (list CStan.expr) :=
+Fixpoint list_mmap {X Y: Type} (f: X-> res Y)(l: list X) {struct l}: res (list Y) :=
   match l with
   | nil => OK (nil)
   | cons e l =>
-    do e <- (transf_expression e);
-    do l <- (transf_expression_list l);
+    do e <- f e;
+    do l <- list_mmap f l;
     OK (cons e l)
   end.
+
 
 Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :=
   match s with
@@ -244,7 +245,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
     (*OK (CStan.Sset i (CStan.Evar i ...))*)
     Error (msg "Denumpyification.transf_statement (NYI): Svar")
   | Scall i el =>
-    do el <- transf_expression_list el;
+    do el <- list_mmap transf_expression el;
     (*OK (CStan.Scall (Some i) Tvoid el)*)
     Error (msg "Denumpyification.transf_statement (NYI): Scall")
   | Sruntime _ _ => Error (msg "Denumpyification.transf_statement (NYI): Sruntime")
@@ -276,7 +277,7 @@ Fixpoint transf_statement (s: StanE.statement) {struct s}: res CStan.statement :
   | Stilde e d el (oe1, oe2) =>
     do e <- transf_expression e;
     do d <- transf_expression d;
-    do el <- transf_expression_list el;
+    do el <- list_mmap transf_expression el;
     do oe1 <- option_mmap transf_expression oe1;
     do oe2 <- option_mmap transf_expression oe2;
     OK (CStan.Stilde e d el (oe1, oe2))
@@ -328,7 +329,7 @@ Definition transf_var (v: AST.ident * StanE.basic) : res (AST.ident * type) :=
     | (i, t) => do t <- transf_type t; OK (i, t)
   end.
 
-Fixpoint transf_vars (vs: list (AST.ident * StanE.basic)) : res (list (AST.ident * type)) :=
+Definition transf_vars (vs: list (AST.ident * StanE.basic)) : res (list (AST.ident * type)) :=
   mapM transf_var vs.
 
 (* FIXME: lambdas are too general? typechecker seems to want something more concrete... *)
@@ -424,39 +425,56 @@ Definition cat_values {K V :Type} (kvs : list (K * option V)) : list (K * V) :=
   catMaybes (List.map (fun tpl => option_map (fun x => (fst tpl, x)) (snd tpl)) kvs).
 
 Parameter comp_env_eq : forall pty prog_comp_env,
-   build_composite_env pty = OK prog_comp_env.
+  build_composite_env pty = OK prog_comp_env.
+
+Definition mk_composite (all_defs : list (AST.ident * AST.globdef CStan.fundef type)) (struct_ident : AST.ident) (vars : list AST.ident) : composite_definition :=
+  Composite
+    struct_ident
+    Ctypes.Struct
+    (filter_globvars all_defs vars)
+    Ctypes.noattr.
 
 Definition transf_program(p: StanE.program): res CStan.program :=
   do p1 <- AST.transform_partial_program2 transf_fundef transf_variable p;
 
   let all_elaborated_defs := AST.prog_defs p1 in
   let all_defs := map_values tranf_elaborated_globdef all_elaborated_defs in
-  let all_contraints := (map_values eglobdef_to_constr all_elaborated_defs) in
-  let all_contraints := cat_values all_contraints in
+  let all_contraints := cat_values (map_values eglobdef_to_constr all_elaborated_defs) in
 
-  let ctype_members := filter_globvars all_defs p.(StanE.pr_parameters_vars) in
-  let params_struct := Composite p.(StanE.pr_parameters) Ctypes.Struct ctype_members Ctypes.noattr in
+  let params_struct_id := CStan.res_params_type (StanE.pr_parameters_struct p) in
+  (* (* let params_struct := mk_composite all_defs params_struct_id p.(StanE.pr_parameters_vars) in *) *)
+  (* let params_struct := Composite params_struct_id Ctypes.Struct (filter_globvars all_defs p.(StanE.pr_parameters_vars)) Ctypes.noattr in *)
+  (* (* Error (MSG "list of params: " :: (List.map CTX p.(StanE.pr_parameters_vars))). *) *)
 
-  do comp_env <- Ctypes.build_composite_env (cons params_struct nil);
+  do parameter_vars <- list_mmap (fun ib => do b <- transf_type (snd ib); OK (fst ib, b)) p.(StanE.pr_parameters_vars);
+  let params_struct := Composite params_struct_id Ctypes.Struct parameter_vars Ctypes.noattr in
 
-  let types := nil in (*FIXME*)
+  let data_struct_id := CStan.res_data_type (StanE.pr_data_struct p) in
+  let data_struct := mk_composite all_defs data_struct_id p.(StanE.pr_data_vars) in
 
-  OK {| 
+  let composite_types := data_struct :: params_struct :: nil in
+
+  do comp_env <- Ctypes.build_composite_env composite_types;
+
+
+  OK {|
       CStan.prog_defs := all_defs;
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
       CStan.prog_data:=p.(StanE.pr_data);
       CStan.prog_data_vars:=p.(StanE.pr_data_vars);
+      CStan.prog_data_struct:= p.(StanE.pr_data_struct);
       CStan.prog_transformed_data:=p.(StanE.pr_parameters);
       CStan.prog_constraints := all_contraints;
       CStan.prog_parameters:= p.(StanE.pr_parameters);
-      CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars);
+      (* CStan.prog_parameters_vars:= p.(StanE.pr_parameters_vars); *)
+      CStan.prog_parameters_vars:=parameter_vars;
       CStan.prog_parameters_struct:= p.(StanE.pr_parameters_struct);
-      CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);   
+      CStan.prog_transformed_parameters:=p.(StanE.pr_transformed_parameters);
       CStan.prog_generated_quantities:=p.(StanE.pr_generated);
-      CStan.prog_types:=types;
+      CStan.prog_types:=composite_types;
       CStan.prog_comp_env:=comp_env;
-      CStan.prog_comp_env_eq:= comp_env_eq types comp_env;
+      CStan.prog_comp_env_eq:= comp_env_eq composite_types comp_env;
       CStan.prog_main:=p.(StanE.pr_main);
       CStan.prog_math_functions:= p.(StanE.pr_math_functions);
       CStan.prog_dist_functions:= p.(StanE.pr_dist_functions);
