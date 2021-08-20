@@ -110,18 +110,23 @@ let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_math_fn [AST.Tin
 let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_math_fn [] "print_start"
 let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_math_fn [] "print_end"
 
-let pr_math_functions = [((CStan.MFLog, id_log), clog);
-                         ((CStan.MFLogit, id_logit), clogit);
-                         ((CStan.MFExp, id_exp), cexp);
-                         ((CStan.MFExpit, id_expit), cexpit);
-                         ((CStan.MFInitUnconstrained, id_init_unconstrained), mk_cfunc []);
+let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
+                         (CStan.MFLogit, id_logit, gl_logit, clogit);
+                         (CStan.MFExp, id_exp, gl_exp, cexp);
+                         (CStan.MFExpit, id_expit, gl_expit, cexpit);
+                         (CStan.MFInitUnconstrained, id_init_unconstrained, gl_init_unconstrained, mk_cfunc []);
 
-                         ((CStan.MFPrintStart, id_print_start), cprint_start);
-                         ((CStan.MFPrintDouble, id_print_double), cprint_double);
-                         ((CStan.MFPrintInt, id_print_int), cprint_int);
-                         ((CStan.MFPrintEnd, id_print_end), cprint_end);
+                         (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start);
+                         (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double);
+                         (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int);
+                         (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end);
                         ]
-let all_math_fns = [(id_log, gl_log);(id_exp, gl_exp);(id_logit, gl_logit);(id_expit, gl_expit);(id_init_unconstrained, gl_init_unconstrained)]
+
+let _as_prog_math_functions (e, i, g, c) = ((e, i), c)
+let _as_global_math_functions (e, i, g, c) = (i, g)
+
+let pr_math_functions = List.map _as_prog_math_functions __math_functions
+let all_math_fns = List.map _as_global_math_functions __math_functions
 
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                               Struct work                                    *)

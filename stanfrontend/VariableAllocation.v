@@ -54,7 +54,7 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
 Definition as_fieldp (_Struct:AST.ident) (ref:AST.ident) (var:AST.ident) (fieldTy:Ctypes.type) : CStan.expr :=
   (Efield
     (Ederef
-      (Evar ref (tptr (Tstruct _Struct noattr)))
+      (Etempvar ref (tptr (Tstruct _Struct noattr)))
       (Tstruct _Struct noattr))
     var fieldTy).
 
@@ -157,6 +157,13 @@ Fixpoint over_fields
     over_fields f (Ssequence (f struct_field) body) rest
   end.
 
+Definition init_params (params : CStan.reserved_params) (perturb: AST.ident * statement) (struct_field : AST.ident * Ctypes.type): statement :=
+  let (i, t)        := struct_field in
+  let (x, call)     := perturb in
+  let state_field   := as_field params.(res_params_type) params.(res_params_global_state) i t in
+  Sassign state_field (Etempvar x t).
+
+
 Definition adjust_proposal (params : CStan.reserved_params) (perturb: AST.ident * statement) (struct_field : AST.ident * Ctypes.type): statement :=
   let (i, t)        := struct_field in
   let (x, call)     := perturb in
@@ -189,15 +196,13 @@ Definition call_print (p : program) (state_field:expr) (t:Ctypes.type) : mon sta
   | _ => error (msg "no support for printing this type")
   end.
 
-Definition print_field (p : program) (params : CStan.reserved_params) (struct_field : AST.ident * Ctypes.type): mon statement :=
-  let (i, t)        := struct_field in
-  let field_of      := as_field params.(res_params_type) in
-  let state_field   := field_of params.(res_params_global_state) i t in
-  call_print p state_field t.
+Definition print_field (p : program) (v:AST.ident) (gt: AST.ident) (struct_field : AST.ident * Ctypes.type): mon statement :=
+  let (i, t) := struct_field in
+  call_print p (as_fieldp gt v i t) t.
 
-Definition print_struct (p : program) (params : CStan.reserved_params) (fields: list (AST.ident * Ctypes.type)): mon statement :=
+Definition print_struct (p : program) (v:AST.ident) (gt: AST.ident) (fields: list (AST.ident * Ctypes.type)): mon statement :=
   do pend <~ Constraints.callmath p MFPrintEnd nil;
-  do pfields <~ over_fieldsM (print_field p params) (snd pend) fields;
+  do pfields <~ over_fieldsM (print_field p v gt) (snd pend) fields;
   do pstart <~ Constraints.callmath p MFPrintStart nil;
   ret (Ssequence (snd pstart) pfields).
 
@@ -225,7 +230,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     do ptmp <~ gensym TParamStructp;
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
-      transl := as_fieldp params.(res_params_type) params.(res_params_arg);
+      transl := as_fieldp params.(res_params_type) ptmp;
     |} in
 
     let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
@@ -237,11 +242,8 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     ret (cons_tail (params.(res_params_arg), tptr tvoid) f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTParameters =>
-    let params_map := {|
-      is_member := in_list (List.map fst p.(prog_parameters_vars));
-      transl := as_field params.(res_params_type) params.(res_params_global_state);
-    |} in
-    do body <~ transf_statement params_map f.(fn_body);
+    do init <~ init_unconstrained p;
+    let body := over_fields (init_params params init) f.(fn_body) p.(prog_parameters_vars) in
     ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTData =>
@@ -271,13 +273,16 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
   | BTPropose =>
     do init <~ init_unconstrained p;
     let body := over_fields (adjust_proposal params init) f.(fn_body) p.(prog_parameters_vars) in
-    let body := Ssequence body (return_var_pointer params.(res_params_global_state) TParamStructp) in
+    let body := Ssequence body (return_var_pointer params.(res_params_global_proposal) TParamStructp) in
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTPrintState =>
-    let body := print_struct p params p.(prog_parameters_vars) in
-    do body <~ print_struct p params p.(prog_parameters_vars);
-    ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    do ptmp <~ gensym TParamStructp;
+    do body <~ print_struct p ptmp params.(res_params_type) p.(prog_parameters_vars);
+
+    let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
+    let body := Ssequence (Sset ptmp (CStan.Ecast parg TParamStructp)) body in
+    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 
