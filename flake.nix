@@ -155,7 +155,7 @@
               command = ''
                 ${cd-root}
                 rm -f *.s clightgen ccomp *.so *.o
-	              rm -f compcert.ini compcert.config .depend .lia.cache
+                rm -f compcert.ini compcert.config .depend .lia.cache
 
                 cd ./stanfrontend
                 rm -f *.s *.so runit *.vo *.vok *.glob *.vos *.s *.o
