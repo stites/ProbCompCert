@@ -126,16 +126,16 @@
                 "cd stanfrontend"
 
                 # ccomp doesn't compile down to object files, just asm
-                ''ccomp -c $current_dir/$1 && ccomp -c ''${name}.s''
+                ''ccomp -g3 -O0 -c $current_dir/$1 && ccomp -c ''${name}.s''
 
                 # build libstan.so
-                ''ccomp -c stanlib.c && ld -shared stanlib.o -o libstan.so''
+                ''ccomp -O0 -g3 -c stanlib.c && ld -shared stanlib.o -o libstan.so''
 
                 # runtime is dependent on libstan, temporarily.
-                ''ccomp -I''${stan_dir} -c Runtime.c''
+                ''ccomp -g3 -O0 -I''${stan_dir} -c Runtime.c''
 
                 # compile the final binary
-                ''ccomp -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit''
+                ''ccomp -g3 -O0 -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit''
 
                 # tell the user what to do next
                 ''echo "compiled! ./stanfrontend/runit [int]"''
