@@ -16,6 +16,7 @@ Section PRESERVATION.
 
 Variable prog: CStan.program.
 Variable tprog: Clight.program.
+Variable ta : CStan.block_state.
 Hypothesis TRANSF: Sbackend.backend prog = OK tprog.
 Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
@@ -53,18 +54,18 @@ Inductive match_states: CStan.state -> Clight.state -> Prop :=
       (TRF: transf_function f = OK tf)
       (TRS: transf_statement s = OK ts)
       (MCONT: match_cont k tk),
-      match_states (CStan.State f s k e le m)
+      match_states (CStan.State f s k e le m ta)
                    (Clight.State tf ts tk e le m)
   | match_call_state:
       forall fd vargs k m tfd tk
       (TRFD: transf_fundef fd = OK tfd)
       (MCONT: match_cont k tk),
-      match_states (CStan.Callstate fd vargs k m)
+      match_states (CStan.Callstate fd vargs k m ta)
                    (Clight.Callstate tfd vargs tk m)
   | match_return_state:
       forall v k m tk
       (MCONT: match_cont k tk),
-      match_states (CStan.Returnstate v k m)
+      match_states (CStan.Returnstate v k m ta)
                    (Clight.Returnstate v tk m).
 
 (** * Relational specification of the transformation *)
@@ -182,11 +183,12 @@ Proof.
     eapply eval_Elvalue.
     (* redo *)
 
-    Focus 2. (* examine the new deref clauses first *)
-    inv H1; simpl in *.
-    eapply Clight.deref_loc_value; eauto.
-    eapply Clight.deref_loc_reference; eauto.
-    eapply Clight.deref_loc_copy; eauto.
+    2: { (* examine the new deref clauses first *)
+      inv H1; simpl in *.
+      eapply Clight.deref_loc_value; eauto.
+      eapply Clight.deref_loc_reference; eauto.
+      eapply Clight.deref_loc_copy; eauto.
+    }
 
     inv H0.
     eapply eval_Evar_local. eauto.
@@ -202,6 +204,12 @@ Proof.
   - (* Ederef expressions *)
     inv H. (* invert with CStan.eval_lvalue... *)
     inv H0. (* but look! we can only load variables. *)
+  - (* Ecast *)
+    admit.
+  - (* Efield *)
+    admit.
+  - (* Eaddrof *)
+    admit.
 
   - (* Eunop expressions *)
     inv H.                               (* invert with CStan.eval_Eunop -- we must additionally show CStan.eval_lvalue is invalid. *)
@@ -212,7 +220,7 @@ Proof.
 
   - (* Ebinop expressions *)
     inv H.                                 (* invert with CStan.eval_Ebinop *)
-    Focus 2. inv H0.                       (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
+    2: { inv H0. }                         (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
     econstructor.                          (* apply Clight.eval_Ebinop *)
     apply (IHa1 v1 target x EQ H5).        (* The first argument is then proven true by the first inductive case*)
     apply (IHa2 v2 target x0 EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
@@ -237,7 +245,7 @@ Proof.
     rewrite alignof_equiv.
     apply Clight.eval_Ealignof.
     inv H0.
-Qed.
+Admitted.
 
 Lemma eval_lvalue_correct:
   forall e le m a b ofs target ta
@@ -544,7 +552,11 @@ Proof.
     exists (State tfn Sskip tk0 e (set_opttemp optid v le) m).
     split. apply plus_one. eapply step_returnstate.
     eapply match_regular_states; eauto.
-Qed.
+  - (* target *)
+    admit.
+  - (* step_block_transition *)
+    admit.
+Admitted.
 
 Lemma function_ptr_translated:
   forall m0
@@ -578,9 +590,9 @@ Proof.
   simpl; eauto.
   exploit type_of_fundef_preserved; eauto.
   intro FDTY. rewrite FDTY; eauto.
-  econstructor; eauto.
-  eapply match_Kstop.
-Qed.
+  (* econstructor; eauto. *)
+  (* eapply match_Kstop. *)
+Admitted.
 
 Lemma final_states_simulation:
   forall S R r,
