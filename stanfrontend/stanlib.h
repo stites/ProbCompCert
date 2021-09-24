@@ -16,8 +16,12 @@ double expit(double a);
 double init_unconstrained();
 
 // temporary until printing is supported
-double print_start();
-double print_double(double x);
-double print_int(int x);
-double print_end();
+void print_start();
+void print_double(double x);
+void print_int(int x);
+void print_long(long x);
+void print_end();
+
+void print_array_int(int len, int* arrp);
+
 #endif // STANLIB_H_

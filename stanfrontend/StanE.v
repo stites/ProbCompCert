@@ -123,7 +123,7 @@ Record program := mkprogram {
   pr_parameters_struct: CStan.reserved_params;
   pr_transformed_parameters: ident;
   pr_data: ident;
-  pr_data_vars: list ident;
+  pr_data_vars: list (ident * basic);
   pr_data_struct: CStan.reserved_data;
   pr_transformed_data: ident;
   pr_generated: ident;

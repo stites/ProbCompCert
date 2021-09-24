@@ -119,7 +119,7 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTPropose | BTPrintState | BTOther.
+Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTPropose | BTPrintState | BTPrintData | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type;
@@ -150,6 +150,7 @@ Inductive math_func := MFLog | MFExp | MFLogit | MFExpit
                        | MFPrintStart
                        | MFPrintDouble
                        | MFPrintInt
+                       | MFPrintArrayInt
                        | MFPrintEnd
                        | MFInitUnconstrained.
 Definition math_func_eq_dec : forall (x y : math_func), { x = y } + { x <> y }.
@@ -172,6 +173,7 @@ Record reserved_params := mkreserved_params {
 Record reserved_data := mkreserved_data {
   res_data_type: AST.ident;
   res_data_global: AST.ident;
+  res_data_arg: AST.ident; (* arguments may not be in the temp list and, therefore, cannot be trivially added through gensym *)
 }.
 
 Record program : Type := {
@@ -185,7 +187,7 @@ Record program : Type := {
   prog_parameters_struct: reserved_params;
   prog_transformed_parameters: ident;
   prog_data: ident;
-  prog_data_vars: list ident;
+  prog_data_vars: list (ident * type);
   prog_data_struct: reserved_data;
   prog_transformed_data: ident;
   prog_generated_quantities: ident;

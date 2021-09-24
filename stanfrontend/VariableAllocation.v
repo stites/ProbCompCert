@@ -190,10 +190,22 @@ Fixpoint over_fieldsM
   end.
 
 Definition call_print (p : program) (state_field:expr) (t:Ctypes.type) : mon statement :=
+  let errmsg := fun sty => msg ("cannot print type: " ++ sty) in
   match t with
   | Tint _ _ _ => do x <~ Constraints.callmath p MFPrintInt (state_field::nil); ret (snd x)
+  | Tlong _ _ => error (errmsg "long")
   | Tfloat _ _ => do x <~ Constraints.callmath p MFPrintDouble (state_field::nil); ret (snd x)
-  | _ => error (msg "no support for printing this type")
+
+  | Tarray (Tint a b c) len _ => do x <~ Constraints.callmath p MFPrintArrayInt ((Econst_int (Int.repr len) (Tint a b c))::state_field::nil); ret (snd x)
+  | Tarray (Tlong _ _) _ _ => error (errmsg "array<long>")
+  | Tarray (Tfloat _ _) _ _ => error (errmsg "array<float>")
+
+  | Tpointer _ _ => error (errmsg "pointer")
+  | Tfunction _ _ _ => error (errmsg "function")
+  | Tstruct _ _ => error (errmsg "struct")
+  | Tunion _ _ => error (errmsg "union")
+  | Tvoid => error (errmsg "void")
+  | _ => error (errmsg "<unknown>")
   end.
 
 Definition print_field (p : program) (v:AST.ident) (gt: AST.ident) (struct_field : AST.ident * Ctypes.type): mon statement :=
@@ -222,7 +234,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
   let TDataStruct := Tstruct data.(res_data_type) noattr in
   let TDataStructp := tptr TDataStruct in
 
-  let data_map := {| is_member := in_list p.(prog_data_vars); transl := as_field data.(res_data_type) data.(res_data_global); |} in
+  let data_map := {| is_member := in_list (List.map fst p.(prog_data_vars)); transl := as_field data.(res_data_type) data.(res_data_global); |} in
 
 (* Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTOther. *)
   match f.(fn_blocktype) with
@@ -283,6 +295,14 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
     let body := Ssequence (Sset ptmp (CStan.Ecast parg TParamStructp)) body in
     ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+
+  | BTPrintData =>
+    do tmp <~ gensym TDataStructp;
+    do body <~ print_struct p tmp data.(res_data_type) p.(prog_data_vars);
+
+    let arg := CStan.Evar data.(res_data_arg) (tptr tvoid) in
+    let body := Ssequence (Sset tmp (CStan.Ecast arg TDataStructp)) body in
+    ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 

@@ -85,19 +85,34 @@ double init_unconstrained()
   return uniform_sample(-2, 2);
 }
 
-double print_start()
+void print_start()
 {
   printf("state { ");
 }
-double print_double(double x)
+void print_double(double x)
 {
   printf("%f ", x);
 }
-double print_int(int x)
+void print_int(int x)
 {
   printf("%i ", x);
 }
-double print_end()
+void print_long(long x)
+{
+  printf("%ld ", x);
+}
+
+void print_array_int(int* arrp, int len)
+{
+  int *max;
+  max = arrp + len;
+  printf("array<%i>[", len);
+  while (arrp < max) {
+    printf("%i, ", *arrp++);
+  }
+  printf("\b\b]\n");
+}
+void print_end()
 {
   printf("}\n");
 }

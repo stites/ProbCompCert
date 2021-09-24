@@ -55,12 +55,12 @@ let mk_ctypelist_from_astlist xs =
 
 let mk_cfunc xs = Ctypes.Tfunction (mk_ctypelist_from_astlist xs, ctdouble, AST.cc_default)
 
-let mk_global_func str ast_args_list =
+let mk_global_func ret str ast_args_list =
     AST.Gfun (Ctypes.External
        (AST.EF_external
           (to_charlist str, {
             AST.sig_args=ast_args_list;
-            AST.sig_res=AST.Tret AST.Tfloat;
+            AST.sig_res=ret;
             AST.sig_cc=AST.cc_default;
           }),
        mk_ctypelist_from_astlist ast_args_list,
@@ -68,15 +68,17 @@ let mk_global_func str ast_args_list =
        AST.cc_default
     ))
 
+let mk_global_math_func = mk_global_func (AST.Tret AST.Tfloat)
+
 let st_uniform_lpdf = "uniform_lpdf"
 let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
-let gl_uniform_lpdf = mk_global_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
+let gl_uniform_lpdf = mk_global_math_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
 
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
-let gl_bernoulli_lpmf = mk_global_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
+let gl_bernoulli_lpmf = mk_global_math_func st_bernoulli_lpmf [AST.Tint; AST.Tfloat]
 
 let transf_dist_idents = Hashtbl.create 3;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
@@ -90,7 +92,8 @@ let pr_dist_functions = [(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
 (*                              math functions                                  *)
 (* <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> *)
-let mk_math_fn args s = (s, Camlcoq.intern_string s, mk_global_func s args, mk_cfunc args)
+let mk_fn ret args s = (s, Camlcoq.intern_string s, mk_global_func ret s args, mk_cfunc args)
+let mk_math_fn = mk_fn (AST.Tret AST.Tfloat)
 let mk_unary_math_fn t = mk_math_fn [t]
 let unary_math_fn = mk_unary_math_fn AST.Tfloat
 
@@ -102,13 +105,14 @@ let (st_expit, id_expit, gl_expit, cexpit) = unary_math_fn "expit"
 let st_init_unconstrained = "init_unconstrained"
 let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
 let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
-let gl_init_unconstrained = mk_global_func st_init_unconstrained []
+let gl_init_unconstrained = mk_global_math_func st_init_unconstrained []
 
 (* temporary printing support *)
-let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_math_fn [AST.Tfloat] "print_double"
-let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_math_fn [AST.Tint] "print_int"
-let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_math_fn [] "print_start"
-let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_math_fn [] "print_end"
+let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_fn AST.Tvoid [AST.Tfloat] "print_double"
+let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_fn AST.Tvoid [AST.Tint] "print_int"
+let (st_print_array_int, id_print_array_int, gl_print_array_int, cprint_array_int) = mk_fn AST.Tvoid [AST.Tint; AST.Tany64] "print_array_int"
+let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_fn AST.Tvoid [] "print_start"
+let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_fn AST.Tvoid [] "print_end"
 
 let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFLogit, id_logit, gl_logit, clogit);
@@ -119,6 +123,7 @@ let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start);
                          (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double);
                          (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int);
+                         (CStan.MFPrintArrayInt, id_print_array_int, gl_print_array_int, cprint_array_int);
                          (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end);
                         ]
 
@@ -413,6 +418,7 @@ let mkFunction name body rt params extraVars =
     | "set_state" -> CStan.BTSetState
     | "propose" -> CStan.BTPropose
     | "print_state" -> CStan.BTPrintState
+    | "print_data" -> CStan.BTPrintData
 
     | _ -> CStan.BTOther
   in
@@ -532,6 +538,10 @@ let elaborate (p: Stan.program) =
     let functions = (id_print, f_print) :: functions in
 
     IdxHashtbl.clear index_set;
+    let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
+    let functions = (id_print_data, f_print_data) :: functions in
+
+    IdxHashtbl.clear index_set;
     let (id_main,f_main) = declareFundef "model_pdf" [Stan.Sskip] None [] in
     let functions = (id_main,f_main) :: functions in
 
@@ -558,9 +568,11 @@ let elaborate (p: Stan.program) =
 
     let (id_data_struct_typ, gl_data_struct) = declareStruct "Data" data_fields in
     let id_data_struct_global = declareGlobalStruct "observation" in
+    let id_data_struct_arg = Camlcoq.intern_string "__d__" in
     let data_reserved = {
       CStan.res_data_type = id_data_struct_typ;
       CStan.res_data_global = id_data_struct_global;
+      CStan.res_data_arg = id_data_struct_arg;
     } in
 
     let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)] in
@@ -572,7 +584,7 @@ let elaborate (p: Stan.program) =
         List.map fst functions
         @ List.map fst stanlib_functions @ List.map fst all_math_fns;
       StanE.pr_data=id_data;
-      StanE.pr_data_vars=List.map fst data_variables;
+      StanE.pr_data_vars=data_fields;
       StanE.pr_data_struct=data_reserved;
       StanE.pr_transformed_data=id_tr_data;
       StanE.pr_parameters=id_params;

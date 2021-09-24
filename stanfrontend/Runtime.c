@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include <stanlib.h>
 
-struct Data;
-struct Data {
-  int flips[100];
-};
-struct Data observation;
+// struct Data;
+//struct Data {
+//  int flips[100];
+//};
+void* observation;
+void print_data(void *);
 
 void* state;
 void print_state(void*);
@@ -24,23 +25,15 @@ void generated_quantities();
 
 void* propose();
 
-void init_data() {
-  int num_elements = sizeof(observation.flips) / sizeof(int);
-  int mod = 2;
-  printf("num_items: %d\n", num_elements);
-  for (int i = 0; i <= num_elements; ++i) {
-    *( observation.flips+i ) = (i % mod == 0) ? 1 : 0;
-  }
-  printf("%% 1s: %f\n", (double) ceil((double) num_elements / (double) mod) / 100);
-}
-void print_data() {
-  int num_elements = sizeof(observation.flips) / sizeof(int);
-  printf("flips: [");
-  for (int i = 0; i < num_elements; ++i) {
-    printf("%i, ", *(observation.flips+i));
-  }
-  printf("\b\b]\n");
-}
+// void init_data() {
+//   int num_elements = sizeof(observation.flips) / sizeof(int);
+//   int mod = 2;
+//   printf("num_items: %d\n", num_elements);
+//   for (int i = 0; i <= num_elements; ++i) {
+//     *( observation.flips+i ) = (i % mod == 0) ? 1 : 0;
+//   }
+//   printf("%% 1s: %f\n", (double) ceil((double) num_elements / (double) mod) / 100);
+// }
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
@@ -51,10 +44,10 @@ int main(int argc, char* argv[]) {
   int n = atoi(argv[1]);
   data();
   transformed_data();
-  print_data();
+  print_data(&observation);
 
-  init_data();
-  print_data();
+  // init_data();
+  // print_data(&observation);
 
   parameters();
 
