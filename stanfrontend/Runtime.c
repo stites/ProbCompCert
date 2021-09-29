@@ -2,11 +2,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <stanlib.h>
+#include <staninput.h>
 
-// struct Data;
-//struct Data {
-//  int flips[100];
-//};
+// see staninput.c
+void initialize_data_from_cli(void *, int, char* []);
+
 void* observation;
 void print_data(void *);
 
@@ -25,29 +25,18 @@ void generated_quantities();
 
 void* propose();
 
-// void init_data() {
-//   int num_elements = sizeof(observation.flips) / sizeof(int);
-//   int mod = 2;
-//   printf("num_items: %d\n", num_elements);
-//   for (int i = 0; i <= num_elements; ++i) {
-//     *( observation.flips+i ) = (i % mod == 0) ? 1 : 0;
-//   }
-//   printf("%% 1s: %f\n", (double) ceil((double) num_elements / (double) mod) / 100);
-// }
-
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    printf("One argument required: number of iterations\n");
+  if (argc == 1) {
+    printf("At least one argument required: number of iterations\n");
+    printf("Optionally, add data fields as *.csv files in order of appearance\n");
     exit(1);
   }
-
   int n = atoi(argv[1]);
+
   data();
+  initialize_data_from_cli(&observation, argc, argv);
   transformed_data();
   print_data(&observation);
-
-  // init_data();
-  // print_data(&observation);
 
   parameters();
 

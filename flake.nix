@@ -129,7 +129,9 @@
                 ''ccomp -g3 -O0 -c $current_dir/$1 && ccomp -c ''${name}.s''
 
                 # build libstan.so
-                ''ccomp -O0 -g3 -c stanlib.c && ld -shared stanlib.o -o libstan.so''
+                ''ccomp -O0 -g3 -c stanlib.c''
+                ''ccomp -O0 -g3 -c staninput.c''
+                ''ld -shared stanlib.o staninput.o -o libstan.so''
 
                 # runtime is dependent on libstan, temporarily.
                 ''ccomp -g3 -O0 -I''${stan_dir} -c Runtime.c''
@@ -138,7 +140,7 @@
                 ''ccomp -g3 -O0 -L''${stan_dir} -Wl,-rpath=''${stan_dir} -L../out/lib/compcert -lm -lstan ''${name}.o Runtime.o -o runit''
 
                 # tell the user what to do next
-                ''echo "compiled! ./stanfrontend/runit [int]"''
+                ''echo "compiled! ./stanfrontend/runit INT [DATA_FIELD...]"''
               ];
             }
             {
