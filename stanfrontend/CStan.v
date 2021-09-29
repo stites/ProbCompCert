@@ -119,7 +119,14 @@ Inductive constraint :=
   | Ccorrelation
   | Ccovariance.
 
-Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTPropose | BTPrintState | BTPrintData | BTOther.
+Inductive blocktype
+  := BTModel
+  | BTParameters
+  | BTData
+  | BTGetState | BTSetState
+  | BTPropose
+  | BTPrintState | BTPrintData | BTSetData
+  | BTOther.
 
 Record function := mkfunction {
   fn_return: Ctypes.type;

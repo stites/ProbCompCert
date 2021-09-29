@@ -419,6 +419,7 @@ let mkFunction name body rt params extraVars =
     | "propose" -> CStan.BTPropose
     | "print_state" -> CStan.BTPrintState
     | "print_data" -> CStan.BTPrintData
+    | "set_data" -> CStan.BTSetData
 
     | _ -> CStan.BTOther
   in
@@ -540,6 +541,10 @@ let elaborate (p: Stan.program) =
     IdxHashtbl.clear index_set;
     let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
     let functions = (id_print_data, f_print_data) :: functions in
+
+    IdxHashtbl.clear index_set;
+    let (id_set_data,f_set_data) = declareFundef "set_data" [Stan.Sskip] None [] in
+    let functions = (id_set_data, f_set_data) :: functions in
 
     IdxHashtbl.clear index_set;
     let (id_main,f_main) = declareFundef "model_pdf" [Stan.Sskip] None [] in
