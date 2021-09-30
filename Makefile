@@ -42,8 +42,8 @@ COQINCLUDES += -R MenhirLib MenhirLib
 endif
 
 ifeq ($(LIBRARY_COQPROBA),local)
-DIRS += coq-proba/theories/basic coq-proba/theories/measure coq-proba/theories/monad coq-proba/theories/prob coq-proba/theories/rec
-COQINCLUDES += -R coq-proba/theories discprob
+ DIRS += coq-proba/theories/basic coq-proba/theories/measure coq-proba/theories/monad coq-proba/theories/prob coq-proba/theories/rec
+ COQINCLUDES += -R coq-proba/theories discprob
 endif
 
 COQCOPTS ?= -w -undeclared-scope -w -omega-is-deprecated
@@ -131,7 +131,12 @@ PARSER=Cabs.v Parser.v
 
 # Stan front-end
 
-STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v CStan.v Scompiler.v Runtime.v System.v Stemplate.v \
+STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v \
+  CStan.v \
+  CStanSemanticsBackend.v \
+  CStanSemanticsTarget.v \
+  CStanSemanticsVariableAllocation.v \
+  Scompiler.v Runtime.v System.v Stemplate.v \
   Denumpyification.v  \
   Sampling.v \
   Constraints.v \

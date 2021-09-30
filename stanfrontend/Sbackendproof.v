@@ -11,6 +11,7 @@ Require Import Maps.
 Require Import Values.
 Require Import Linking Ctypes Stypes.
 Import Integers.
+Require CStanSemanticsBackend.
 
 Section PRESERVATION.
 
@@ -21,50 +22,50 @@ Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
 
 (** Matching continuations *)
-Inductive match_cont : CStan.cont -> Clight.cont -> Prop :=
+Inductive match_cont : CStanSemanticsBackend.cont -> Clight.cont -> Prop :=
   | match_Kstop:
-      match_cont CStan.Kstop Kstop
+      match_cont CStanSemanticsBackend.Kstop Clight.Kstop
   | match_Kseq: forall s k ts tk ,
       transf_statement s = OK ts ->
       match_cont k tk ->
-      match_cont (CStan.Kseq s k) (Kseq ts tk)
+      match_cont (CStanSemanticsBackend.Kseq s k) (Kseq ts tk)
   | match_Kloop1: forall s1 s2 k ts1 ts2 tk ,
       transf_statement s1 = OK ts1 ->
       transf_statement s2 = OK ts2 ->
       match_cont k tk ->
-      match_cont (CStan.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
+      match_cont (CStanSemanticsBackend.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
   | match_Kloop2: forall s1 s2 k ts1 ts2 tk ,
       transf_statement s1 = OK ts1 ->
       transf_statement s2 = OK ts2 ->
       match_cont k tk ->
-      match_cont (CStan.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
+      match_cont (CStanSemanticsBackend.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
   | match_Kswitch: forall k tk ,
       match_cont k tk ->
-      match_cont (CStan.Kswitch k) (Kswitch tk)
+      match_cont (CStanSemanticsBackend.Kswitch k) (Kswitch tk)
   | match_Kcall: forall optid fn e le k tfn tk ,
       transf_function fn = OK tfn ->
       match_cont k tk ->
-      match_cont (CStan.Kcall optid fn e le k)
+      match_cont (CStanSemanticsBackend.Kcall optid fn e le k)
                         (Kcall optid tfn e le tk). (* FIXME: also asserting that te = e since this is an identity tranformation *)
 
-Inductive match_states: CStan.state -> Clight.state -> Prop :=
+Inductive match_states: CStanSemanticsBackend.state -> Clight.state -> Prop :=
   | match_regular_states:
       forall f s k e le m tf ts tk
       (TRF: transf_function f = OK tf)
       (TRS: transf_statement s = OK ts)
       (MCONT: match_cont k tk),
-      match_states (CStan.State f s k e le m)
+      match_states (CStanSemanticsBackend.State f s k e le m)
                    (Clight.State tf ts tk e le m)
   | match_call_state:
       forall fd vargs k m tfd tk
       (TRFD: transf_fundef fd = OK tfd)
       (MCONT: match_cont k tk),
-      match_states (CStan.Callstate fd vargs k m)
+      match_states (CStanSemanticsBackend.Callstate fd vargs k m)
                    (Clight.Callstate tfd vargs tk m)
   | match_return_state:
       forall v k m tk
       (MCONT: match_cont k tk),
-      match_states (CStan.Returnstate v k m)
+      match_states (CStanSemanticsBackend.Returnstate v k m)
                    (Clight.Returnstate v tk m).
 
 (** * Relational specification of the transformation *)
@@ -163,7 +164,7 @@ Qed.
 Lemma eval_expr_correct:
   forall e le m a v target ta
   (TRE: transf_expression a = OK ta),
-  CStan.eval_expr ge e le m target a v -> Clight.eval_expr tge e le m ta v.
+  CStanSemanticsBackend.eval_expr ge e le m target a v -> Clight.eval_expr tge e le m ta v.
 Proof.
   intros e le m a.
   induction a; intros; simpl in TRE; monadInv TRE; simpl.
@@ -203,6 +204,28 @@ Proof.
     inv H. (* invert with CStan.eval_lvalue... *)
     inv H0. (* but look! we can only load variables. *)
 
+  - (* cast *)
+    inv H.
+    econstructor; eauto.
+    admit.
+    inv H0.
+
+  - (* field struct *)
+    inv H.
+    admit.
+    inv H0.
+    (* inv H0. *)
+    (* rewrite <- comp_env_preserved in *. *)
+    (* exploit eval_simpl_expr; eauto. intros [tv [A B]]. *)
+    (* inversion B. subst. *)
+    (* econstructor; econstructor; split. *)
+    (* eapply eval_Efield_struct; eauto. rewrite typeof_simpl_expr; eauto. *)
+    (* econstructor; eauto. repeat rewrite Ptrofs.add_assoc. decEq. apply Ptrofs.add_commut. *)
+
+  - (* addrof *)
+    inv H.
+    inv H0.
+
   - (* Eunop expressions *)
     inv H.                               (* invert with CStan.eval_Eunop -- we must additionally show CStan.eval_lvalue is invalid. *)
     econstructor.                        (* apply Clight.eval_Eunop -- we must additionally show Cop.sem_unary_operation *)
@@ -237,12 +260,12 @@ Proof.
     rewrite alignof_equiv.
     apply Clight.eval_Ealignof.
     inv H0.
-Qed.
+Admitted.
 
 Lemma eval_lvalue_correct:
   forall e le m a b ofs target ta
   (TRE: transf_expression a = OK ta),
-  CStan.eval_lvalue ge e le m target a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
+  CStanSemanticsBackend.eval_lvalue ge e le m target a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
 Proof.
   intros e le m a.
   induction a; intros; monadInv TRE; try (inv H).
@@ -261,16 +284,16 @@ Qed.
 Lemma match_cont_call_cont:
   forall k tk ,
   match_cont k tk  ->
-  match_cont (CStan.call_cont k) (call_cont tk) .
+  match_cont (CStanSemanticsBackend.call_cont k) (call_cont tk) .
 Proof.
   induction 1; simpl; auto; intros; econstructor; eauto.
 Qed.
 
 Lemma blocks_of_env_preserved:
-  forall e, blocks_of_env tge e = CStan.blocks_of_env ge e.
+  forall e, blocks_of_env tge e = CStanSemanticsBackend.blocks_of_env ge e.
 Proof.
-  intros; unfold blocks_of_env, CStan.blocks_of_env.
-  unfold block_of_binding, CStan.block_of_binding.
+  intros; unfold blocks_of_env, CStanSemanticsBackend.blocks_of_env.
+  unfold block_of_binding, CStanSemanticsBackend.block_of_binding.
   rewrite comp_env_preserved. auto.
 Qed.
 
@@ -290,7 +313,7 @@ Qed.
 
 Lemma alloc_variables_preserved:
   forall e m params e' m',
-  CStan.alloc_variables ge e m params e' m' ->
+  CStanSemanticsBackend.alloc_variables ge e m params e' m' ->
   alloc_variables tge e m params e' m'.
 Proof.
   induction 1; econstructor; eauto. rewrite comp_env_preserved; auto.
@@ -298,7 +321,7 @@ Qed.
 
 Lemma bind_parameters_preserved:
   forall e m params args m',
-  CStan.bind_parameters ge e m params args m' ->
+  CStanSemanticsBackend.bind_parameters ge e m params args m' ->
   bind_parameters tge e m params args m'.
 Proof.
   induction 1; econstructor; eauto. inv H0.
@@ -309,7 +332,7 @@ Qed.
 Lemma eval_exprlist_correct_simple:
   forall env le es tes tys m vs ta
   (TREL: transf_expression_list es = OK tes)
-  (EVEL: CStan.eval_exprlist ge env le m ta es tys vs),
+  (EVEL: CStanSemanticsBackend.eval_exprlist ge env le m ta es tys vs),
   eval_exprlist tge env le m tes tys vs.
 Proof.
   intros env le es.
@@ -326,7 +349,7 @@ Proof.
 Qed.
 
 Lemma step_simulation:
-  forall S1 t S2, CStan.stepf ge S1 t S2 ->
+  forall S1 t S2, CStanSemanticsBackend.stepf ge S1 t S2 ->
   forall S1' (MS: match_states S1 S1'), exists S2', plus Clight.step1 tge S1' t S2' /\ match_states S2 S2'.
 Proof.
   induction 1. simpl; intros; inv MS; simpl in *; try (monadInv TRS).
@@ -491,7 +514,7 @@ Proof.
     econstructor.
     split. eapply plus_one; unfold step1.
     econstructor.
-    unfold CStan.is_call_cont in H.
+    unfold CStanSemanticsBackend.is_call_cont in H.
     assert (is_call_cont tk). inv MCONT; simpl in *; auto. auto.
     rewrite blocks_of_env_preserved. eauto.
     eapply match_return_state; eauto.
@@ -561,7 +584,7 @@ Proof.
 Qed.
 
 Lemma initial_states_simulation:
-  forall S, CStan.initial_state prog S ->
+  forall S, CStanSemanticsBackend.initial_state prog S ->
   exists R, Clight.initial_state tprog R /\ match_states S R.
 Proof.
   intros. inv H.
@@ -584,13 +607,13 @@ Qed.
 
 Lemma final_states_simulation:
   forall S R r,
-  match_states S R -> CStan.final_state S r -> Clight.final_state R r.
+  match_states S R -> CStanSemanticsBackend.final_state S r -> Clight.final_state R r.
 Proof.
   intros. inv H0. inv H. inv MCONT. constructor.
 Qed.
 
 Theorem transf_program_correct:
-  forward_simulation (CStan.semantics prog) (Clight.semantics1 tprog).
+  forward_simulation (CStanSemanticsBackend.semantics prog) (Clight.semantics1 tprog).
 Proof.
   eapply forward_simulation_plus.
   apply senv_preserved.
