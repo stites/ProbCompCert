@@ -12,6 +12,7 @@ Require Import Values.
 Require Import Linking Ctypes Stypes.
 Import Integers.
 Require CStanSemanticsBackend.
+Require CStanCont.
 
 Section PRESERVATION.
 
@@ -22,30 +23,30 @@ Let ge := CStan.globalenv prog.
 Let tge := globalenv tprog.
 
 (** Matching continuations *)
-Inductive match_cont : CStanSemanticsBackend.cont -> Clight.cont -> Prop :=
+Inductive match_cont : CStanCont.cont -> Clight.cont -> Prop :=
   | match_Kstop:
-      match_cont CStanSemanticsBackend.Kstop Clight.Kstop
+      match_cont CStanCont.Kstop Clight.Kstop
   | match_Kseq: forall s k ts tk ,
       transf_statement s = OK ts ->
       match_cont k tk ->
-      match_cont (CStanSemanticsBackend.Kseq s k) (Kseq ts tk)
+      match_cont (CStanCont.Kseq s k) (Kseq ts tk)
   | match_Kloop1: forall s1 s2 k ts1 ts2 tk ,
       transf_statement s1 = OK ts1 ->
       transf_statement s2 = OK ts2 ->
       match_cont k tk ->
-      match_cont (CStanSemanticsBackend.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
+      match_cont (CStanCont.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
   | match_Kloop2: forall s1 s2 k ts1 ts2 tk ,
       transf_statement s1 = OK ts1 ->
       transf_statement s2 = OK ts2 ->
       match_cont k tk ->
-      match_cont (CStanSemanticsBackend.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
+      match_cont (CStanCont.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
   | match_Kswitch: forall k tk ,
       match_cont k tk ->
-      match_cont (CStanSemanticsBackend.Kswitch k) (Kswitch tk)
+      match_cont (CStanCont.Kswitch k) (Kswitch tk)
   | match_Kcall: forall optid fn e le k tfn tk ,
       transf_function fn = OK tfn ->
       match_cont k tk ->
-      match_cont (CStanSemanticsBackend.Kcall optid fn e le k)
+      match_cont (CStanCont.Kcall optid fn e le k)
                         (Kcall optid tfn e le tk). (* FIXME: also asserting that te = e since this is an identity tranformation *)
 
 Inductive match_states: CStanSemanticsBackend.state -> Clight.state -> Prop :=
@@ -284,7 +285,7 @@ Qed.
 Lemma match_cont_call_cont:
   forall k tk ,
   match_cont k tk  ->
-  match_cont (CStanSemanticsBackend.call_cont k) (call_cont tk) .
+  match_cont (CStanCont.call_cont k) (call_cont tk) .
 Proof.
   induction 1; simpl; auto; intros; econstructor; eauto.
 Qed.
@@ -514,7 +515,7 @@ Proof.
     econstructor.
     split. eapply plus_one; unfold step1.
     econstructor.
-    unfold CStanSemanticsBackend.is_call_cont in H.
+    unfold CStanCont.is_call_cont in H.
     assert (is_call_cont tk). inv MCONT; simpl in *; auto. auto.
     rewrite blocks_of_env_preserved. eauto.
     eapply match_return_state; eauto.
