@@ -332,7 +332,8 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
       fn_vars := vars;
       fn_return := rtype;
 
-      fn_temps := f.(fn_temps);
+      (* NOTE only extract gen_trail here *)
+      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
       fn_generator := g;
 
       fn_callconv := f.(fn_callconv);
