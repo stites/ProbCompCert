@@ -163,9 +163,9 @@ Proof.
 Qed.
 
 Lemma eval_expr_correct:
-  forall e le m a v target ta
+  forall e le m a v ta
   (TRE: transf_expression a = OK ta),
-  CStanSemanticsBackend.eval_expr ge e le m target a v -> Clight.eval_expr tge e le m ta v.
+  CStanSemanticsBackend.eval_expr ge e le m a v -> Clight.eval_expr tge e le m ta v.
 Proof.
   intros e le m a.
   induction a; intros; simpl in TRE; monadInv TRE; simpl.
@@ -230,7 +230,7 @@ Proof.
   - (* Eunop expressions *)
     inv H.                               (* invert with CStan.eval_Eunop -- we must additionally show CStan.eval_lvalue is invalid. *)
     econstructor.                        (* apply Clight.eval_Eunop -- we must additionally show Cop.sem_unary_operation *)
-    apply (IHa v1 target x EQ H4).       (* Eunop is then shown to be valid by inductive case of it's argument *)
+    apply (IHa v1 x EQ H4).       (* Eunop is then shown to be valid by inductive case of it's argument *)
     rewrite (transf_types_eq a x) in H5; eauto. (* Cop.sem_unary_operation is true by transf_types_eq, so long as EQ *)
     inv H0.                                     (* CStan.eval_lvalue is invalid. *)
 
@@ -238,8 +238,8 @@ Proof.
     inv H.                                 (* invert with CStan.eval_Ebinop *)
     Focus 2. inv H0.                       (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
     econstructor.                          (* apply Clight.eval_Ebinop *)
-    apply (IHa1 v1 target x EQ H5).        (* The first argument is then proven true by the first inductive case*)
-    apply (IHa2 v2 target x0 EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
+    apply (IHa1 v1 x EQ H5).        (* The first argument is then proven true by the first inductive case*)
+    apply (IHa2 v2 x0 EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
 
     rewrite (transf_types_eq a1 x ) in H7. (* we additionally need to show that Cop.sem_binary_operation is true. *)
     rewrite (transf_types_eq a2 x0) in H7.
@@ -264,9 +264,9 @@ Proof.
 Admitted.
 
 Lemma eval_lvalue_correct:
-  forall e le m a b ofs target ta
+  forall e le m a b ofs ta
   (TRE: transf_expression a = OK ta),
-  CStanSemanticsBackend.eval_lvalue ge e le m target a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
+  CStanSemanticsBackend.eval_lvalue ge e le m a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
 Proof.
   intros e le m a.
   induction a; intros; monadInv TRE; try (inv H).
@@ -331,9 +331,9 @@ Proof.
 Qed.
 
 Lemma eval_exprlist_correct_simple:
-  forall env le es tes tys m vs ta
+  forall env le es tes tys m vs
   (TREL: transf_expression_list es = OK tes)
-  (EVEL: CStanSemanticsBackend.eval_exprlist ge env le m ta es tys vs),
+  (EVEL: CStanSemanticsBackend.eval_exprlist ge env le m es tys vs),
   eval_exprlist tge env le m tes tys vs.
 Proof.
   intros env le es.

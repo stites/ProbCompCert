@@ -105,7 +105,6 @@ Section EXPR.
 Variable e: env.
 Variable le: temp_env.
 Variable m: mem.
-Variable ta: float.
 
 Inductive eval_expr: expr -> val -> Prop :=
   | eval_Econst_int:   forall i ty,
@@ -143,8 +142,8 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_lvalue a loc ofs ->
       deref_loc (typeof a) m loc ofs v ->
       eval_expr a v
-  | eval_Etarget: forall ty,
-      eval_expr (Etarget ty) (Vfloat ta)
+  (* | eval_Etarget: forall ty, *)
+  (*     eval_expr (Etarget ty) (Vfloat ta) *)
 with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
@@ -240,27 +239,27 @@ with find_label_ls (lbl: label) (sl: labeled_statements) (k: cont)
 Variable function_entry: function -> list val -> mem -> env -> temp_env -> mem -> Prop.
 
 Inductive step: state -> trace -> state -> Prop :=
-  | step_assign:   forall f a1 a2 k e le m ta loc ofs v2 v m',
-      eval_lvalue e le m ta a1 loc ofs ->
-      eval_expr e le m ta a2 v2 ->
+  | step_assign:   forall f a1 a2 k e le m loc ofs v2 v m',
+      eval_lvalue e le m a1 loc ofs ->
+      eval_expr e le m a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
       assign_loc ge (typeof a1) m loc ofs v m' ->
       step (State f (Sassign a1 a2) k e le m)
         E0 (State f Sskip k e le m')
-  | step_set:   forall f id a k e le m ta v,
-      eval_expr e le m ta a v ->
+  | step_set:   forall f id a k e le m v,
+      eval_expr e le m a v ->
       step (State f (Sset id a) k e le m)
         E0 (State f Sskip k e (PTree.set id v le) m)
-  | step_call:   forall f optid a al k e le m ta tyargs tyres cconv vf vargs fd,
+  | step_call:   forall f optid a al k e le m tyargs tyres cconv vf vargs fd,
       classify_fun (typeof a) = fun_case_f tyargs tyres cconv ->
-      eval_expr e le m ta a vf ->
-      eval_exprlist e le m ta al tyargs vargs ->
+      eval_expr e le m a vf ->
+      eval_exprlist e le m al tyargs vargs ->
       Genv.find_funct ge vf = Some fd ->
       type_of_fundef fd = Tfunction tyargs tyres cconv ->
       step (State f (Scall optid a al) k e le m)
         E0 (Callstate fd vargs (Kcall optid f e le k) m)
-  | step_builtin:   forall f optid ef tyargs al k e le m ta vargs t vres m',
-      eval_exprlist e le m ta al tyargs vargs ->
+  | step_builtin:   forall f optid ef tyargs al k e le m vargs t vres m',
+      eval_exprlist e le m al tyargs vargs ->
       external_call ef ge vargs m t vres m' ->
       step (State f (Sbuiltin optid ef tyargs al) k e le m)
          t (State f Sskip k e (set_opttemp optid vres le) m')
@@ -276,8 +275,8 @@ Inductive step: state -> trace -> state -> Prop :=
   | step_break_seq: forall f s k e le m,
       step (State f Sbreak (Kseq s k) e le m)
         E0 (State f Sbreak k e le m)
-  | step_ifthenelse:  forall f a s1 s2 k e le m ta v1 b,
-      eval_expr e le m ta a v1 ->
+  | step_ifthenelse:  forall f a s1 s2 k e le m v1 b,
+      eval_expr e le m a v1 ->
       bool_val v1 (typeof a) m = Some b ->
       step (State f (Sifthenelse a s1 s2) k e le m)
         E0 (State f (if b then s1 else s2) k e le m)
@@ -301,8 +300,8 @@ Inductive step: state -> trace -> state -> Prop :=
       Mem.free_list m (blocks_of_env e) = Some m' ->
       step (State f (Sreturn None) k e le m)
         E0 (Returnstate Vundef (call_cont k) m')
-  | step_return_1: forall f a k e le m ta v v' m',
-      eval_expr e le m ta a v ->
+  | step_return_1: forall f a k e le m v v' m',
+      eval_expr e le m a v ->
       sem_cast v (typeof a) f.(fn_return) m = Some v' ->
       Mem.free_list m (blocks_of_env e) = Some m' ->
       step (State f (Sreturn (Some a)) k e le m)
