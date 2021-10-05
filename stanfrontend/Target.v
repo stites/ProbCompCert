@@ -190,9 +190,9 @@ end.
 
 
 Definition transf_statement_pipeline (p: program) (f: function) : res CStan.statement :=
-  do body <- transf_statement f.(fn_body);                 (* apply Starget transform *)
   match f.(fn_blocktype) with
   | BTModel =>
+    do body <- transf_statement f.(fn_body);                 (* apply Starget transform *)
     do tgt <- get_target_ident f.(fn_vars);
     transf_target_statement tgt
       (Ssequence (Sassign (CStan.Etarget tdouble) (Econst_float (Float.of_bits (Integers.Int64.repr 0)) tdouble))
