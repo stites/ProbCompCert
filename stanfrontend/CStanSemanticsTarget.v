@@ -20,7 +20,8 @@ Section SEMANTICS.
 
 (**********************************************************************************************************)
 Inductive block_state : Type :=
-  | Model (ta : float) : block_state.
+  | Model (ta : float) : block_state
+  | Other : block_state.
 (**********************************************************************************************************)
 
 
@@ -202,10 +203,12 @@ Inductive step: state -> trace -> state -> Prop :=
       step (State f Sbreak (Kloop2 s1 s2 k) e le m ta)
         E0 (State f Sskip k e le m ta)
   | step_return_0: forall f k e le m m' ta,
+      f.(fn_blocktype) <> CStan.BTModel ->
       Mem.free_list m (CStanSemanticsBackend.blocks_of_env ge e) = Some m' ->
       step (State f (Sreturn None) k e le m ta)
         E0 (Returnstate Vundef (call_cont k) m' ta)
   | step_return_1: forall f a k e le m ta v v' m',
+      f.(fn_blocktype) <> CStan.BTModel ->
       eval_expr e le m ta a v ->
       sem_cast v (typeof a) f.(fn_return) m = Some v' ->
       Mem.free_list m (CStanSemanticsBackend.blocks_of_env ge e) = Some m' ->
@@ -213,9 +216,18 @@ Inductive step: state -> trace -> state -> Prop :=
         E0 (Returnstate v' (call_cont k) m' ta)
   | step_skip_call: forall f k e le m m' ta,
       is_call_cont k ->
+      f.(fn_blocktype) <> CStan.BTModel ->
       Mem.free_list m (CStanSemanticsBackend.blocks_of_env ge e) = Some m' ->
       step (State f Sskip k e le m ta)
         E0 (Returnstate Vundef k m' ta)
+  | step_skip_call_model: forall f k e le m m' bs v,
+      is_call_cont k ->
+      f.(fn_blocktype) = CStan.BTModel ->
+      bs = Model v ->
+      Mem.free_list m (CStanSemanticsBackend.blocks_of_env ge e) = Some m' ->
+      step (State f Sskip k e le m bs)
+        E0 (Returnstate (Vfloat v) k m' Other)
+
   | step_skip_break_switch: forall f x k e le m ta,
       x = Sskip \/ x = Sbreak ->
       step (State f x (Kswitch k) e le m ta)
@@ -223,10 +235,23 @@ Inductive step: state -> trace -> state -> Prop :=
   | step_continue_switch: forall f k e le m ta,
       step (State f Scontinue (Kswitch k) e le m ta)
         E0 (State f Scontinue k e le m ta)
+  (* | step_internal_function: forall f vargs k m e le m1 ta, *)
+  (*     function_entry f vargs m e le m1 -> *)
+  (*     step (Callstate (Internal f) vargs k m ta) *)
+  (*       E0 (State f f.(fn_body) k e le m1 ta) *)
+
   | step_internal_function: forall f vargs k m e le m1 ta,
       function_entry f vargs m e le m1 ->
+      f.(fn_blocktype) <> CStan.BTModel ->
       step (Callstate (Internal f) vargs k m ta)
         E0 (State f f.(fn_body) k e le m1 ta)
+
+  | step_internal_function_model: forall f vargs k m e le m1,
+      function_entry f vargs m e le m1 ->
+      f.(fn_blocktype) = CStan.BTModel ->
+      step (Callstate (Internal f) vargs k m Other)
+        E0 (State f f.(fn_body) k e le m1 (Model (Float.of_int (Int.repr  0))))
+
   | step_external_function: forall ef targs tres cconv vargs k m vres t m' ta,
       external_call ef ge vargs m t vres m' ->
       step (Callstate (External ef targs tres cconv) vargs k m ta)
@@ -234,14 +259,14 @@ Inductive step: state -> trace -> state -> Prop :=
   | step_returnstate: forall v optid f e le k m ta,
       step (Returnstate v (Kcall optid f e le k) m ta)
         E0 (State f Sskip k e (CStanSemanticsBackend.set_opttemp optid v le) m ta)
-(**********************************************************************************************************)
+
   | step_target: forall f a k e le m bs ta v ta',
       eval_expr e le m bs a v ->
       bs = Model ta ->
       v = Vfloat ta' ->
       step (State f (Starget a) k e le m bs)
         E0 (State f Sskip k e le m (Model (Float.add ta ta')))
-(**********************************************************************************************************)
+
   .
 End SEMANTICS.
 
@@ -256,17 +281,17 @@ Inductive function_entry (ge: genv) (f: function) (vargs: list val) (m: mem) (e:
 Definition stepf (ge: genv) := step ge (function_entry ge).
 
 Inductive initial_state (p: program): state -> Prop :=
-  | initial_state_data_intro: forall b f m0 bs,
+  | initial_state_data_intro: forall b f m0 ,
       let ge := Genv.globalenv p in
       Genv.init_mem p = Some m0 ->
       Genv.find_symbol ge p.(prog_main) = Some b ->
       Genv.find_funct_ptr ge b = Some f ->
       type_of_fundef f = Tfunction Tnil type_int32s cc_default ->
-      initial_state p (Callstate f nil Kstop m0 bs).
+      initial_state p (Callstate f nil Kstop m0 Other).
 
 Inductive final_state: state -> int -> Prop :=
-  | final_state_data_intro: forall r m bs,
-      final_state (Returnstate (Vint r) Kstop m bs) r.
+  | final_state_data_intro: forall r m,
+      final_state (Returnstate (Vint r) Kstop m Other) r.
 
 Definition semantics (p: program) :=
   let ge := globalenv p in
