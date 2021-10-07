@@ -236,7 +236,7 @@ Proof.
 
   - (* Ebinop expressions *)
     inv H.                                 (* invert with CStan.eval_Ebinop *)
-    Focus 2. inv H0.                       (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
+    2: inv H0.                       (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
     econstructor.                          (* apply Clight.eval_Ebinop *)
     apply (IHa1 v1 x EQ H5).        (* The first argument is then proven true by the first inductive case*)
     apply (IHa2 v2 x0 EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
@@ -544,10 +544,9 @@ Proof.
     split. eapply plus_one; unfold step1.
     eapply step_internal_function.
     inversion H.
-    assert (tr_function f x). {
+    assert (tr_function f x).
       intros; monadInv EQ.
       econstructor; eauto.
-    }.
     inv H4.
     econstructor; try (rewrite H7); try (rewrite H8); eauto.
     eapply alloc_variables_preserved; eauto.
