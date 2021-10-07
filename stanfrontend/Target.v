@@ -198,8 +198,6 @@ Definition add_prelude_epilogue (body: statement) : CStan.statement :=
   let epilogue := Sreturn (Some (CStan.Etarget tytarget)) in
   Ssequence prelude (Ssequence body epilogue).
 
-(* Definition transf_statement (f: function) : res CStan.statement := *)
-
 Definition transf_function (f: function): res function :=
   match f.(fn_blocktype) with
   | BTModel =>
@@ -266,3 +264,100 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_math_functions:= p.(prog_math_functions);
       prog_dist_functions:= p.(prog_dist_functions);
     |}.
+
+(*******************************************************************)
+
+Fixpoint transf_etarget_expr_alt (ot : option AST.ident) (e: CStan.expr) {struct e}: res CStan.expr :=
+  match e with
+  | CStan.Econst_int i t => OK (CStan.Econst_int i t)
+  | CStan.Econst_float f t => OK (CStan.Econst_float f t)
+  | CStan.Econst_single f t => OK (CStan.Econst_single f t)
+  | CStan.Econst_long i t => OK (CStan.Econst_long i t)
+  | CStan.Evar i t => OK (CStan.Evar i t)
+  | CStan.Etempvar i t => OK (CStan.Etempvar i t)
+  | CStan.Ederef e t =>
+    do e <- transf_etarget_expr_alt ot e;
+    OK (CStan.Ederef e t)
+  | CStan.Ecast e t => OK (CStan.Ecast e t)
+  | CStan.Efield e i t => OK (CStan.Efield e i t)
+  | CStan.Eunop uop e t =>
+    do e <- transf_etarget_expr_alt ot e;
+    OK (CStan.Eunop uop e t)
+  | CStan.Ebinop bop e0 e1 t =>
+    do e0 <- transf_etarget_expr_alt ot e0;
+    do e1 <- transf_etarget_expr_alt ot e1;
+    OK (CStan.Ebinop bop e0 e1 t)
+  | CStan.Eaddrof e t => OK (CStan.Eaddrof e t)
+  | CStan.Esizeof t0 t1 => OK (CStan.Esizeof t0 t1)
+  | CStan.Ealignof t0 t1 => OK (CStan.Ealignof t0 t1)
+  | CStan.Etarget ty =>
+    match ot with
+    | None => Error (msg "impossible: etarget transformation called out of order in compiler phases")
+    | Some tgt => OK (CStan.Evar tgt ty)
+    end
+end.
+
+Fixpoint transf_etarget_statement_alt (ot : option AST.ident) (s: CStan.statement) {struct s}: res CStan.statement :=
+match s with
+  | Sassign e0 e1 =>
+    do e0 <- transf_etarget_expr_alt ot e0;
+    do e1 <- transf_etarget_expr_alt ot e1;
+    OK (Sassign e0 e1)
+  | Sset i e => do e <- transf_etarget_expr_alt ot e; OK (Sset i e)
+  | Scall oi e le =>
+    do e <- transf_etarget_expr_alt ot e;
+    do le <- res_mmap (transf_etarget_expr_alt ot) le;
+    OK (Scall oi e le)
+  | Sbuiltin oi ef lt le => Error (msg "ret (Sbuiltin oi ef lt le)")
+  | Ssequence s0 s1 =>
+    do s0 <- transf_etarget_statement_alt ot s0;
+    do s1 <- transf_etarget_statement_alt ot s1;
+    OK (Ssequence s0 s1)
+  | Sifthenelse e s0 s1 =>
+    do e <- transf_etarget_expr_alt ot e;
+    do s0 <- transf_etarget_statement_alt ot s0;
+    do s1 <- transf_etarget_statement_alt ot s1;
+    OK (Sifthenelse e s0 s1)
+  | Sloop s0 s1 =>
+    do s0 <- transf_etarget_statement_alt ot s0;
+    do s1 <- transf_etarget_statement_alt ot s1;
+    OK (Sloop s0 s1)
+  | Sreturn oe =>
+    do oe <- option_res_mmap (transf_etarget_expr_alt ot) oe;
+    OK (Sreturn oe)
+  | Starget e =>
+    Error (msg "Starget DNE in this stage of pipeline")
+  | Stilde e i le (oe0, oe1) =>
+    Error (msg "Stilde DNE in this stage of pipeline")
+  | Sbreak => OK Sbreak
+  | Sskip => OK Sskip
+  | Scontinue => OK Scontinue
+end.
+
+Definition transf_statement_alt (ot: option AST.ident) (body: statement) : res CStan.statement :=
+  do body <- transf_starget_statement body;
+  transf_etarget_statement_alt ot body.
+
+Definition transf_function_body_alt (f: function): res statement :=
+match f.(fn_blocktype) with
+| BTModel =>
+  do tgt <- get_target_ident f.(fn_vars);
+  transf_statement_alt (Some tgt) (add_prelude_epilogue f.(fn_body))
+| _ => transf_statement_alt None f.(fn_body)
+end.
+
+Definition transf_function_alt (f: function): res function :=
+  do body <- transf_function_body_alt f;
+  OK {|
+      fn_params := f.(fn_params);
+      fn_body := body;
+
+      fn_temps := f.(fn_temps);
+      fn_vars := f.(fn_vars);
+      fn_generator := f.(fn_generator);
+
+      (*should not change*)
+      fn_return := f.(fn_return);
+      fn_callconv := f.(fn_callconv);
+      fn_blocktype := f.(fn_blocktype);
+     |}.
