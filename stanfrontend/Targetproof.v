@@ -157,22 +157,13 @@ Proof.
   apply (Genv.find_symbol_match (proj1 TRANSL)).
 Qed.
 
-(* Lemma functions_translated: *)
-(*   forall (v: val) (f: CStan.fundef), *)
-(*   Genv.find_funct ge v = Some f -> *)
-(*   exists tf, Genv.find_funct tge v = Some tf /\ transf_fundef f = OK tf. *)
-(* Proof. *)
-(*   intros. *)
-(*   edestruct (Genv.find_funct_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto. *)
-(* Qed. *)
-
-(* Lemma type_of_fundef_preserved: *)
-(*   forall fd tfd, *)
-(*   transf_fundef fd = OK tfd -> type_of_fundef tfd = CStan.type_of_fundef fd. *)
-(* Proof. *)
-(*   intros. destruct fd; monadInv H; auto. *)
-(*   monadInv EQ. simpl; unfold type_of_function; simpl. auto. *)
-(* Qed. *)
+Lemma type_of_fundef_preserved:
+  forall fd tfd i,
+  transf_fundef i fd = OK tfd -> type_of_fundef tfd = CStan.type_of_fundef fd.
+Proof.
+  intros. destruct fd; monadInv H; auto.
+  monadInv EQ. simpl; unfold type_of_function; simpl. auto.
+Qed.
 
 Lemma sizeof_equiv :
   forall t,
@@ -377,8 +368,8 @@ Qed.
 
 
 Lemma step_simulation:
-  forall S1 t S2 i, CStanSemanticsTarget.stepf ge S1 t S2 ->
-  forall S1' (MS: match_states i S1 S1'), exists S2', plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states i S2 S2'.
+  forall S1 t S2, CStanSemanticsTarget.stepf ge S1 t S2 ->
+  forall S1' (MS: match_states (prog_target prog) S1 S1'), exists S2', plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states (prog_target prog) S2 S2'.
 Proof.
   induction 1.
 
@@ -424,7 +415,7 @@ Proof.
       monadInv TRS; monadInv EQ; monadInv EQ0.
       econstructor.
       split. eapply plus_one.
-      destruct (id =? i)%positive eqn:TEQ.
+      destruct (id =? (prog_target prog))%positive eqn:TEQ.
       inv EQ1.
       monadInv EQ1.
       unfold stepf.
@@ -436,7 +427,7 @@ Proof.
       monadInv EQ.
       monadInv EQ0.
       econstructor.
-      destruct (id =? i)%positive eqn:TEQ.
+      destruct (id =? (prog_target prog))%positive eqn:TEQ.
       inv EQ1.
       monadInv EQ1.
       split. eapply plus_one.
@@ -445,20 +436,30 @@ Proof.
       eapply eval_expr_correct; eauto.
       eapply match_regular_states_model; eauto.
       apply Pos.eqb_neq in TEQ.
-      Search PTree.set.
       rewrite PTree.gso; auto.
 
   - (* call *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
-    exploit eval_expr_correct; eauto; intro.
-    exploit eval_exprlist_correct_simple; eauto. intro tvargs.
-    exploit functions_translated; eauto. intros [tfd [P Q]].
-    econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
-    generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
-    eauto. eauto. eauto.
-    rewrite (type_of_fundef_preserved fd); eauto.
-    eapply match_call_state; eauto.
-    econstructor; eauto.
+    + (* other *)
+      exploit eval_expr_correct; eauto; intro.
+      exploit eval_exprlist_correct_simple; eauto. intro tvargs.
+      exploit functions_translated; eauto. intros [tfd [P Q]].
+      econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
+      generalize (types_correct _ _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+      eauto. eauto. eauto.
+      rewrite (type_of_fundef_preserved fd _ (prog_target prog)); eauto.
+      destruct fd eqn:FD.
+      * assert (fn_blocktype f0 = BTModel \/ fn_blocktype f0 <> BTModel).
+        { destruct (fn_blocktype f0); intuition congruence. }.
+        destruct H5.
+        ** eapply match_call_state_model; eauto.
+        ** eapply match_call_state_model; eauto.
+
+
+
+
+      eapply match_call_state; eauto.
+      econstructor; eauto.
 
 
     intros; inv MS.
