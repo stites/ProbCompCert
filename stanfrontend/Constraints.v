@@ -405,6 +405,7 @@ Definition transf_program(p: CStan.program): res CStan.program :=
 
       prog_generated_quantities:=p.(prog_generated_quantities);
       prog_model:=p.(prog_model);
+      prog_target:=p.(prog_target);
       prog_main:=p.(prog_main);
 
       prog_types:=p.(prog_types);

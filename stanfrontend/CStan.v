@@ -188,6 +188,7 @@ Record program : Type := {
   prog_public: list ident;
   prog_main: ident;
   prog_model: ident;
+  prog_target: ident;
   prog_constraints: list (ident * constraint);
   prog_parameters: ident;
   prog_parameters_vars: list (ident * type);
