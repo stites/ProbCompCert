@@ -26,88 +26,97 @@ Hypothesis TRANSF: Target.transf_program prog = OK tprog.
 Let ge := globalenv prog.
 Let tge := globalenv tprog.
 
+Definition get_blockstate (bs : CStanSemanticsTarget.block_state) : blocktype :=
+match bs with
+| CStanSemanticsTarget.Other => BTOther
+| CStanSemanticsTarget.Model f => BTModel
+end.
+
 (** Matching continuations *)
-Inductive match_cont : AST.ident -> cont -> cont -> Prop :=
-  | match_Kstop: forall ti,
-      match_cont ti Kstop Kstop
-  | match_Kseq: forall s k ts ti tk ,
-      transf_statement ti s = OK ts ->
-      match_cont ti k tk ->
-      match_cont ti (Kseq s k) (Kseq ts tk)
-  | match_Kloop1: forall s1 s2 k ts1 ts2 ti tk ,
-      transf_statement ti s1 = OK ts1 ->
-      transf_statement ti s2 = OK ts2 ->
-      match_cont ti k tk ->
-      match_cont ti (Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
-  | match_Kloop2: forall s1 s2 k ts1 ts2 ti tk ,
-      transf_statement ti s1 = OK ts1 ->
-      transf_statement ti s2 = OK ts2 ->
-      match_cont ti k tk ->
-      match_cont ti (Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
-  | match_Kswitch: forall k ti tk ,
-      match_cont ti k tk ->
-      match_cont ti (Kswitch k) (Kswitch tk)
-  | match_Kcall: forall optid fn e le k tfn ti tk ,
-      transf_function ti fn = OK tfn ->
-      fn.(fn_blocktype) <> BTModel ->
-      match_cont ti k tk ->
-      match_cont ti (Kcall optid fn e le k)
+Inductive match_cont : blocktype -> cont -> cont -> Prop :=
+  | match_Kstop: forall bt,
+      match_cont bt Kstop Kstop
+  | match_Kseq: forall s k ts tk bt ,
+      transf_statement (prog_target prog) s = OK ts ->
+      match_cont bt k tk ->
+      match_cont bt (Kseq s k) (Kseq ts tk)
+  | match_Kloop1: forall s1 s2 k ts1 ts2 tk bt,
+      transf_statement (prog_target prog) s1 = OK ts1 ->
+      transf_statement (prog_target prog) s2 = OK ts2 ->
+      match_cont bt k tk ->
+      match_cont bt (Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
+  | match_Kloop2: forall s1 s2 k ts1 ts2 tk bt ,
+      transf_statement (prog_target prog) s1 = OK ts1 ->
+      transf_statement (prog_target prog) s2 = OK ts2 ->
+      match_cont bt k tk ->
+      match_cont bt (Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
+  | match_Kswitch: forall k tk bt ,
+      match_cont bt k tk ->
+      match_cont bt (Kswitch k) (Kswitch tk)
+  | match_Kcall: forall optid fn e le k tfn tk bt,
+      transf_function (prog_target prog) fn = OK tfn ->
+      bt <> BTModel ->
+      match_cont fn.(fn_blocktype) k tk ->
+      match_cont bt (Kcall optid fn e le k)
                         (Kcall optid tfn e le tk)
-  | match_Kcall_model: forall optid fn e le k tfn ti tk,
-      transf_function ti fn = OK tfn ->
-      fn.(fn_blocktype) = BTModel ->
-      match_cont ti k tk ->
-      match_cont ti (Kcall optid fn e le k)
-                        (Kseq (Sreturn (Some (Evar ti tdouble))) (Kcall optid tfn e le tk))
+  | match_Kcall_model: forall optid fn e le k tfn tk bt,
+      transf_function (prog_target prog) fn = OK tfn ->
+      bt = BTModel ->
+      match_cont fn.(fn_blocktype) k tk ->
+      match_cont bt (Kcall optid fn e le k)
+                        (Kseq (Sreturn (Some (Evar (prog_target prog) tdouble))) (Kcall optid tfn e le tk))
 . (* NOTE: target register is updated local environment -- assuming e and le are identical is probably wrong.*)
 
 
-Inductive match_states: AST.ident -> CStanSemanticsTarget.state -> CStanSemanticsBackend.state -> Prop :=
+Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.state -> Prop :=
   | match_regular_states:
-      forall f s k e le m tf ts tk bs i
-      (TRF: transf_function i f = OK tf)
-      (TRS: transf_statement i s = OK ts)
+      forall f s k e le m tf ts tk bs
+      (TRF: transf_function (prog_target prog) f = OK tf)
+      (TRS: transf_statement (prog_target prog) s = OK ts)
       (BS_OTHER: bs = CStanSemanticsTarget.Other)
-      (MCONT: match_cont i k tk),
-      match_states i (CStanSemanticsTarget.State f s k e le m bs)
+      (BS_SYNC: f.(fn_blocktype) = BTOther)
+      (MCONT: match_cont (get_blockstate bs) k tk),
+      match_states (CStanSemanticsTarget.State f s k e le m bs)
                    (CStanSemanticsBackend.State tf ts tk e le m)
   | match_call_state:
-      forall fd vargs k m tfd tk bs i
-      (TRFD: transf_fundef i fd = OK tfd)
-      (GET_FN: (exists e tl r cc, fd = External e tl r cc) \/ (exists fn, fd = Internal fn /\ fn.(fn_blocktype) <> BTModel))
-      (MCONT: match_cont i k tk),
-      match_states i (CStanSemanticsTarget.Callstate fd vargs k m bs)
+      forall fd vargs k m tfd tk bs
+      (TRFD: transf_fundef (prog_target prog) fd = OK tfd)
+      (* (GET_FN: (exists e tl r cc, fd = External e tl r cc) \/ (exists fn, fd = Internal fn /\ fn.(fn_blocktype) <> BTModel)) *)
+      (MCONT: match_cont BTOther k tk),
+      match_states (CStanSemanticsTarget.Callstate fd vargs k m bs)
                    (CStanSemanticsBackend.Callstate tfd vargs tk m)
   | match_return_state:
-      forall v k m tk bs i
+      forall v k m tk bs
       (BS_OTHER: bs = CStanSemanticsTarget.Other)
-      (MCONT: match_cont i k tk),
-      match_states i (CStanSemanticsTarget.Returnstate v k m bs)
+      (MCONT: match_cont (get_blockstate bs) k tk),
+      match_states (CStanSemanticsTarget.Returnstate v k m bs)
                    (CStanSemanticsBackend.Returnstate v tk m)
 
   | match_regular_states_model:
-      forall f s k e le m tf ts tk bs i ta
-      (TRF: transf_function i f = OK tf)
-      (TRS: transf_statement i s = OK ts)
+      forall f s k e le m tf ts tk bs ta
+      (TRF: transf_function (prog_target prog) f = OK tf)
+      (TRS: transf_statement (prog_target prog) s = OK ts)
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
-      (TAR_MATCH: le!i = Some (Vfloat ta))
-      (MCONT: match_cont i k tk),
-      match_states i (CStanSemanticsTarget.State f s k e le m bs)
+      (BS_SYNC: f.(fn_blocktype) = BTModel)
+      (TAR_MATCH: le!(prog_target prog)  = Some (Vfloat ta))
+      (MCONT: match_cont (get_blockstate bs) k tk),
+      match_states (CStanSemanticsTarget.State f s k e le m bs)
                    (CStanSemanticsBackend.State tf ts tk e le m)
-  | match_call_state_model:
-      forall fd vargs k m tfd tk bs fn tgt
-      (GET_FN: fd = Internal fn)
-      (BS_OTHER: bs = CStanSemanticsTarget.Other)
-      (BMODEL: fn.(fn_blocktype) = BTModel)
-      (TRFD: transf_fundef tgt fd = OK tfd)
-      (MCONT: match_cont tgt k (Kseq (Sreturn (Some (Evar tgt tdouble))) tk)),
-      match_states tgt (CStanSemanticsTarget.Callstate fd vargs k m bs)
-                   (CStanSemanticsBackend.Callstate tfd vargs tk m)
+  (* | match_call_state_model: *)
+  (*     forall fd vargs k m tfd tk bs fn *)
+  (*     (GET_FN: fd = Internal fn) *)
+  (*     (BS_OTHER: bs = CStanSemanticsTarget.Other) *)
+  (*     (BMODEL: fn.(fn_blocktype) = BTModel) *)
+  (*     (TRFD: transf_fundef (prog_target prog) fd = OK tfd) *)
+  (*     (* (MCONT: match_cont (get_blockstate bs) k (Kseq (Sreturn (Some (Evar (prog_target prog) tdouble))) tk)), *) *)
+  (*     (MCONT: match_cont (get_blockstate bs) k tk), *)
+  (*     match_states (CStanSemanticsTarget.Callstate fd vargs k m bs) *)
+  (*                  (CStanSemanticsBackend.Callstate tfd vargs tk m) *)
   | match_return_state_model:
-      forall v k m tk bs ta tgt
+      forall v k m tk bs ta
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
-      (MCONT: match_cont tgt k tk),
-      match_states tgt (CStanSemanticsTarget.Returnstate v k m bs)
+      (MCONT: match_cont (get_blockstate bs) k tk),
+      match_states (CStanSemanticsTarget.Returnstate v k m bs)
                    (CStanSemanticsBackend.Returnstate v tk m)
 .
 
@@ -158,8 +167,8 @@ Proof.
 Qed.
 
 Lemma type_of_fundef_preserved:
-  forall fd tfd i,
-  transf_fundef i fd = OK tfd -> type_of_fundef tfd = CStan.type_of_fundef fd.
+  forall fd tfd ,
+  transf_fundef (prog_target prog) fd = OK tfd -> type_of_fundef tfd = CStan.type_of_fundef fd.
 Proof.
   intros. destruct fd; monadInv H; auto.
   monadInv EQ. simpl; unfold type_of_function; simpl. auto.
@@ -182,8 +191,8 @@ Proof.
 Qed.
 
 Lemma transf_types_eq :
-  forall e te i,
-  Target.transf_etarget_expr i e = OK te -> typeof e = typeof te.
+  forall e te ,
+  Target.transf_etarget_expr (prog_target prog) e = OK te -> typeof e = typeof te.
 Proof.
   intro e.
   induction e; intros; inv H;
@@ -196,8 +205,8 @@ Proof.
 Qed.
 
 Lemma eval_expr_correct:
-  forall e le m a v bs ta i
-  (TRE: Target.transf_etarget_expr i a = OK ta),
+  forall e le m a v bs ta
+  (TRE: Target.transf_etarget_expr (prog_target prog)  a = OK ta),
   CStanSemanticsTarget.eval_expr ge e le m bs a v -> eval_expr tge e le m ta v.
 Proof.
   intros e le m a.
@@ -238,19 +247,19 @@ Proof.
   - (* Eunop expressions *)
     inv H.                               (* invert with CStan.eval_Eunop -- we must additionally show CStan.eval_lvalue is invalid. *)
     econstructor.                        (* apply Clight.eval_Eunop -- we must additionally show Cop.sem_unary_operation *)
-    apply (IHa v1 bs x i EQ H4).       (* Eunop is then shown to be valid by inductive case of it's argument *)
-    rewrite (transf_types_eq a x i) in H5; eauto. (* Cop.sem_unary_operation is true by transf_types_eq, so long as EQ *)
+    apply (IHa v1 bs x EQ H4).       (* Eunop is then shown to be valid by inductive case of it's argument *)
+    rewrite (transf_types_eq a x) in H5; eauto. (* Cop.sem_unary_operation is true by transf_types_eq, so long as EQ *)
     inv H0.                                     (* CStan.eval_lvalue is invalid. *)
 
   - (* Ebinop expressions *)
     inv H.                                 (* invert with CStan.eval_Ebinop *)
     Focus 2. inv H0.                       (* this also pattern-matches on the invalid CStan.eval_lvalue -- just deal with that now. *)
     econstructor.                          (* apply Clight.eval_Ebinop *)
-    apply (IHa1 v1 bs x  i EQ H5).        (* The first argument is then proven true by the first inductive case*)
-    apply (IHa2 v2 bs x0 i EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
+    apply (IHa1 v1 bs x  EQ H5).        (* The first argument is then proven true by the first inductive case*)
+    apply (IHa2 v2 bs x0 EQ1 H6).      (* The second argument is then proven true by the second inductive case*)
 
-    rewrite (transf_types_eq a1 x  i) in H7. (* we additionally need to show that Cop.sem_binary_operation is true. *)
-    rewrite (transf_types_eq a2 x0 i) in H7.
+    rewrite (transf_types_eq a1 x ) in H7. (* we additionally need to show that Cop.sem_binary_operation is true. *)
+    rewrite (transf_types_eq a2 x0) in H7.
     rewrite comp_env_preserved.
     eauto.
     eauto.
@@ -272,8 +281,8 @@ Proof.
 Admitted.
 
 Lemma eval_lvalue_correct:
-  forall e le m a b ofs target ta i
-  (TRE: transf_etarget_expr i a = OK ta),
+  forall e le m a b ofs target ta
+  (TRE: transf_etarget_expr (prog_target prog) a = OK ta),
   CStanSemanticsTarget.eval_lvalue ge e le m target a b ofs -> CStanSemanticsBackend.eval_lvalue tge e le m ta b ofs.
 Proof.
   intros e le m a.
@@ -284,7 +293,7 @@ Proof.
 Qed.
 
 Lemma types_correct:
-  forall e x t, transf_etarget_expr t e = OK x -> typeof e = typeof x.
+  forall e x , transf_etarget_expr (prog_target prog)  e = OK x -> typeof e = typeof x.
 Proof.
   intro e.
   induction e; intros; simpl in *; monadInv H; simpl; trivial.
@@ -348,8 +357,8 @@ Qed.
 (* Qed. *)
 
 Lemma eval_exprlist_correct_simple:
-  forall env le es tes tys m vs ta t
-  (TREL: res_mmap (transf_etarget_expr t) es = OK tes)
+  forall env le es tes tys m vs ta
+  (TREL: res_mmap (transf_etarget_expr (prog_target prog)) es = OK tes)
   (EVEL: CStanSemanticsTarget.eval_exprlist ge env le m ta es tys vs),
   eval_exprlist tge env le m tes tys vs.
 Proof.
@@ -362,14 +371,14 @@ Proof.
   inv EVEL; eauto.
   econstructor; eauto.
   eapply eval_expr_correct; eauto.
-  generalize (types_correct _ _ _ EQ); intro.
+  generalize (types_correct _ _ EQ); intro.
   rewrite <- H; eauto.
 Qed.
 
 
 Lemma step_simulation:
   forall S1 t S2, CStanSemanticsTarget.stepf ge S1 t S2 ->
-  forall S1' (MS: match_states (prog_target prog) S1 S1'), exists S2', plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states (prog_target prog) S2 S2'.
+  forall S1' (MS: match_states S1 S1'), exists S2', plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states S2 S2'.
 Proof.
   induction 1.
 
@@ -379,8 +388,8 @@ Proof.
       exists (State tf Sskip tk e le m').
       split.
       eapply plus_one.
-      generalize (types_correct _ _ _ EQ); intro.
-      generalize (types_correct _ _ _ EQ0); intro.
+      generalize (types_correct _ _ EQ); intro.
+      generalize (types_correct _ _ EQ0); intro.
       rewrite H3 in *.
       rewrite H4 in *.
       unfold stepf.
@@ -396,8 +405,8 @@ Proof.
       exists (State tf Sskip tk e le m').
       split.
       eapply plus_one.
-      generalize (types_correct _ _ _ EQ); intro.
-      generalize (types_correct _ _ _ EQ0); intro.
+      generalize (types_correct _ _ EQ); intro.
+      generalize (types_correct _ _ EQ0); intro.
       rewrite H3 in *.
       rewrite H4 in *.
       unfold stepf.
@@ -445,26 +454,29 @@ Proof.
       exploit eval_exprlist_correct_simple; eauto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
       econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
-      generalize (types_correct _ _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+      generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
       eauto. eauto. eauto.
-      rewrite (type_of_fundef_preserved fd _ (prog_target prog)); eauto.
-      destruct fd eqn:FD.
-      * assert (fn_blocktype f0 = BTModel \/ fn_blocktype f0 <> BTModel).
-        { destruct (fn_blocktype f0); intuition congruence. }.
-        destruct H5.
-        ** eapply match_call_state_model; eauto.
-        ** eapply match_call_state_model; eauto.
-
-
-
-
+      rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
-      econstructor; eauto.
+      econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
+    + (* model *)
+      exploit eval_expr_correct; eauto; intro.
+      exploit eval_exprlist_correct_simple; eauto. intro tvargs.
+      exploit functions_translated; eauto. intros [tfd [P Q]].
+      econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
+      generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+      eauto. eauto. eauto.
+      rewrite (type_of_fundef_preserved fd _); eauto.
+      eapply match_call_state; eauto.
+      econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
+
+  - (* builtin *)
+    simpl; intros; inv MS; simpl in *; monadInv TRS; admit.
+  - (* seq *)
 
 
-    intros; inv MS.
-    monadInv TRS.
-    econstructor.
+
+
   (*   eapply eval_expr_correct; eauto. *)
   (*   exploit eval_expr_correct; eauto; intro. *)
   (*   exploit eval_exprlist_correct_simple; eauto. intro tvargs. *)

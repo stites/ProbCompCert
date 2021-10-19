@@ -156,6 +156,7 @@ match s with
     do le <- res_mmap (transf_etarget_expr t) le;
     OK (Scall oi e le)
   | Sbuiltin oi ef lt le => Error (msg "ret (Sbuiltin oi ef lt le)")
+                                  (*FIXME*)
   | Ssequence s0 s1 =>
     do s0 <- transf_etarget_statement t s0;
     do s1 <- transf_etarget_statement t s1;
