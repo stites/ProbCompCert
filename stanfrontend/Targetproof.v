@@ -98,7 +98,7 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       (TRS: transf_statement (prog_target prog) s = OK ts)
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
       (BS_SYNC: f.(fn_blocktype) = BTModel)
-      (TAR_MATCH: le!(prog_target prog)  = Some (Vfloat ta))
+      (TAR_MATCH: le!(prog_target prog)  = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
       (MCONT: match_cont (get_blockstate bs) k tk),
       match_states (CStanSemanticsTarget.State f s k e le m bs)
                    (CStanSemanticsBackend.State tf ts tk e le m)
@@ -138,14 +138,14 @@ Proof.
   congruence.
 Qed.
 
-(* Inductive tr_function: CStan.function -> CStan.function -> Prop := *)
-(*   | tr_function_intro: forall f tf, *)
-(*       (* tr_stmt f.(CStan.fn_body) tf.(fn_body) -> *) *)
-(*       fn_return tf = CStan.fn_return f -> *)
-(*       fn_callconv tf = CStan.fn_callconv f -> *)
-(*       fn_params tf = CStan.fn_params f -> *)
-(*       fn_vars tf = CStan.fn_vars f -> *)
-(*       tr_function f tf. *)
+Inductive tr_function: CStan.function -> CStan.function -> Prop :=
+  | tr_function_intro: forall f tf,
+      (* tr_stmt f.(CStan.fn_body) tf.(fn_body) -> *)
+      fn_return tf = CStan.fn_return f ->
+      fn_callconv tf = CStan.fn_callconv f ->
+      fn_params tf = CStan.fn_params f ->
+      fn_vars tf = CStan.fn_vars f ->
+      tr_function f tf.
 
 (* Inductive tr_fundef: CStan.fundef -> Clight.fundef -> Prop := *)
 (*   | tr_internal: forall f tf, *)
@@ -206,7 +206,8 @@ Qed.
 
 Lemma eval_expr_correct:
   forall e le m a v bs ta
-  (TRE: Target.transf_etarget_expr (prog_target prog)  a = OK ta),
+  (* (TAR: match bs with | CStanSemanticsTarget.Other => True | CStanSemanticsTarget.Model tv => le!(prog_target prog) = Some (Vfloat tv) end) *)
+  (TRE: Target.transf_etarget_expr (prog_target prog) a = OK ta),
   CStanSemanticsTarget.eval_expr ge e le m bs a v -> eval_expr tge e le m ta v.
 Proof.
   intros e le m a.
@@ -278,6 +279,7 @@ Proof.
     rewrite alignof_equiv.
     constructor.
     inv H0.
+  - (* Etarget expressions *)
 Admitted.
 
 Lemma eval_lvalue_correct:
@@ -325,37 +327,37 @@ Proof.
   rewrite comp_env_preserved. auto.
 Qed.
 
-(* Lemma transf_sem_cast_inject: *)
-(*   forall f tf x tx v v' m, *)
-(*   transf_expression x = OK tx -> *)
-(*   transf_function f = OK tf -> *)
-(*   Cop.sem_cast v (CStan.typeof x) (CStan.fn_return f) m = Some v' -> *)
-(*   Cop.sem_cast v (typeof tx) (fn_return tf) m = Some v'. *)
-(* Proof. *)
-(*   intros. *)
-(*   generalize (types_correct _ _ H); intro. *)
-(*   monadInv H0. simpl in *. *)
-(*   rewrite <- H2. *)
-(*   auto. *)
-(* Qed. *)
+Lemma transf_sem_cast_inject:
+  forall f tf x tx v v' m,
+  transf_etarget_expr (prog_target prog) x = OK tx ->
+  transf_function (prog_target prog) f = OK tf ->
+  Cop.sem_cast v (CStan.typeof x) (CStan.fn_return f) m = Some v' ->
+  Cop.sem_cast v (typeof tx) (fn_return tf) m = Some v'.
+Proof.
+  intros.
+  generalize (types_correct _ _ H); intro.
+  monadInv H0. simpl in *.
+  rewrite <- H2.
+  auto.
+Qed.
 
-(* Lemma alloc_variables_preserved: *)
-(*   forall e m params e' m', *)
-(*   CStanSemanticsBackend.alloc_variables ge e m params e' m' -> *)
-(*   alloc_variables tge e m params e' m'. *)
-(* Proof. *)
-(*   induction 1; econstructor; eauto. rewrite comp_env_preserved; auto. *)
-(* Qed. *)
+Lemma alloc_variables_preserved:
+  forall e m params e' m',
+  CStanSemanticsBackend.alloc_variables ge e m params e' m' ->
+  alloc_variables tge e m params e' m'.
+Proof.
+  induction 1; econstructor; eauto. rewrite comp_env_preserved; auto.
+Qed.
 
-(* Lemma bind_parameters_preserved: *)
-(*   forall e m params args m', *)
-(*   CStanSemanticsBackend.bind_parameters ge e m params args m' -> *)
-(*   bind_parameters tge e m params args m'. *)
-(* Proof. *)
-(*   induction 1; econstructor; eauto. inv H0. *)
-(* - eapply assign_loc_value; eauto. *)
-(* - eapply assign_loc_copy; eauto; rewrite <- comp_env_preserved in *; auto. *)
-(* Qed. *)
+Lemma bind_parameters_preserved:
+  forall e m params args m',
+  CStanSemanticsBackend.bind_parameters ge e m params args m' ->
+  bind_parameters tge e m params args m'.
+Proof.
+  induction 1; econstructor; eauto. inv H0.
+- eapply assign_loc_value; eauto.
+- eapply assign_loc_copy; eauto; rewrite <- comp_env_preserved in *; auto.
+Qed.
 
 Lemma eval_exprlist_correct_simple:
   forall env le es tes tys m vs ta
@@ -484,21 +486,39 @@ Proof.
       econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
 
   - (* builtin *)
-    admit.
-    (* simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0). *)
+    simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
   - (* step_seq *)
-    admit.
-    (* simpl; intros; inv MS; simpl in *. *)
-    (* + (* other *) *)
-    (*   monadInv TRS. monadInv EQ. monadInv EQ0. *)
-    (*   monadInv EQ1. monadInv EQ0. *)
-    (*   inv EQ2. monadInv EQ0. *)
-    (*   exists (State tf x (Kseq x2 tk) e le m). *)
-    (*   split. *)
-    (*   eapply plus_one. *)
-    (*   unfold stepf. *)
-    (*   eapply step_seq. *)
-    (*   eapply match_regular_states; eauto. *)
+    simpl; intros; inv MS; simpl in *.
+    + (* other *)
+      monadInv TRS.
+      monadInv EQ; monadInv EQ0.
+      econstructor.
+      split.
+      eapply plus_one.
+      unfold stepf.
+      eapply step_seq.
+      eapply match_regular_states; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      econstructor.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
+      simpl. eauto.
+    + (* model *)
+      monadInv TRS.
+      monadInv EQ; monadInv EQ0.
+      econstructor.
+      split.
+      eapply plus_one.
+      unfold stepf.
+      eapply step_seq.
+      eapply match_regular_states_model; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      econstructor.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
+      simpl. eauto.
 
   - (* step_skip_seq *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
@@ -567,10 +587,25 @@ Proof.
       eapply match_regular_states; eauto.
       destruct b; eauto.
       destruct EQ0; eauto.
-      admit.
-      admit.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
     + (* model*)
-      admit.
+      econstructor.
+      split.
+      eapply plus_one; unfold stepf.
+      econstructor.
+      eapply eval_expr_correct; eauto.
+      generalize (types_correct _ _ EQ2); intro.
+      rewrite <- H1; eauto.
+      eapply match_regular_states_model; eauto.
+      destruct b; eauto.
+      destruct EQ0; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
 
   - (* step_loop *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
@@ -580,11 +615,28 @@ Proof.
       eapply plus_one; unfold stepf.
       eapply step_loop.
       eapply match_regular_states; eauto.
-      admit.
-      admit.
-      (* eapply match_Kloop1; eauto. *)
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      simpl.
+      eapply match_Kloop1; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
     + (* model *)
-      admit.
+      econstructor.
+      split.
+      eapply plus_one; unfold stepf.
+      eapply step_loop.
+      eapply match_regular_states_model; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      simpl.
+      eapply match_Kloop1; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ; simpl; eauto.
 
   - (* step_skip_or_continue_loop1 *)
     simpl; intros; inv MS; simpl in *; inv MCONT.
@@ -594,11 +646,57 @@ Proof.
       econstructor; split.
       eapply plus_one; unfold stepf.
       eapply step_skip_or_continue_loop1.
-      admit. (* need to push x through EQ and EQ0 to get a ts *)
       admit.
+      eapply match_regular_states; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+      eapply match_Kloop2; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+
+      econstructor; split.
+      eapply plus_one; unfold stepf.
+      eapply step_skip_or_continue_loop1.
       admit.
+      eapply match_regular_states; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+      eapply match_Kloop2; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+
     + (* model *)
+      monadInv TRS. monadInv H4. monadInv H6.
+      destruct H eqn:F.
+      econstructor; split.
+      eapply plus_one; unfold stepf.
+      eapply step_skip_or_continue_loop1.
       admit.
+      eapply match_regular_states_model; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+      eapply match_Kloop2; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+
+      econstructor; split.
+      eapply plus_one; unfold stepf.
+      eapply step_skip_or_continue_loop1.
+      admit.
+      eapply match_regular_states_model; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
+      eapply match_Kloop2; eauto.
+      unfold transf_statement.
+      rewrite EQ1; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ3; simpl; eauto.
 
   - (* step_break_loop1 *)
     simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0; inv MCONT.
@@ -683,22 +781,18 @@ Proof.
     (* intros; inv MS. *)
     simpl; intros; inv MS; simpl in *.
     + (* other *)
+      monadInv TRS. monadInv EQ. monadInv EQ0. monadInv EQ.
       econstructor.
-      monadInv TRS. monadInv EQ.
       split. eapply plus_one; unfold stepf.
-      (* econstructor; eauto. *)
-
-      (* monadInv EQ0. *)
-      (* split. eapply plus_one; unfold stepf. *)
-      (* econstructor; eauto. *)
-      (* eapply eval_expr_correct; eauto. *)
-      (* eapply transf_sem_cast_inject; eauto. *)
-      (* rewrite blocks_of_env_preserved. eauto. *)
-      (* eapply match_return_state; eauto. *)
-      (* eapply match_cont_call_cont; eauto. *)
-      admit.
-      admit.
-    + admit.
+      eapply step_return_1.
+      eapply eval_expr_correct; eauto.
+      eapply transf_sem_cast_inject; eauto.
+      rewrite blocks_of_env_preserved. eauto.
+      eapply match_return_state; eauto.
+      eapply match_cont_call_cont; eauto.
+      simpl; congruence.
+    + (* model *)
+      simpl in *; congruence.
 
   - (* step_skip_call *)
     simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0.
@@ -712,17 +806,27 @@ Proof.
       rewrite blocks_of_env_preserved. eauto.
       eapply match_return_state; eauto.
     + (* model *)
+      simpl in *; congruence.
+  - (* step_skip_call_model *)
+    simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0.
+    + (* other *)
+      simpl in *; congruence.
+    + (* model *)
+      inv MCONT; simpl in H; destruct H.
+      admit. (* we don't want this state to arrive because we don't want to stop the program during the model block *)
+      congruence.
       econstructor.
-      split. eapply plus_one; unfold stepf.
+      split. eapply plus_left'. unfold stepf.
       econstructor.
+      eapply plus_one. unfold stepf.
+      econstructor.
+      eapply eval_expr_correct.
       unfold CStanCont.is_call_cont in H.
       assert (is_call_cont tk). inv MCONT; simpl in *; auto; try congruence.
       exact H2.
       rewrite blocks_of_env_preserved. eauto.
-      eapply match_return_state_model; eauto.
+      eapply match_return_state; eauto.
 
-  - (* step_skip_call_model *)
-    admit.
   - (* step_skip_break_switch *)
     intros; inv MS; simpl in *.
     + (* other *)
@@ -758,41 +862,114 @@ Proof.
       admit.
       admit.
 
-  (* - (* step_internal_function *) *)
-  (*   intros; inv MS. *)
-  (*   monadInv TRFD. *)
-  (*   exists (State x x.(fn_body) tk e le m1). *)
-  (*   split. eapply plus_one; unfold step1. *)
-  (*   eapply step_internal_function. *)
-  (*   inversion H. *)
-  (*   assert (tr_function f x). *)
-  (*     intros; monadInv EQ. *)
-  (*     econstructor; eauto. *)
-  (*   inv H4. *)
-  (*   econstructor; try (rewrite H7); try (rewrite H8); eauto. *)
-  (*   eapply alloc_variables_preserved; eauto. *)
-  (*   eapply bind_parameters_preserved; eauto. *)
-  (*   monadInv EQ; eauto. *)
-  (*   eapply match_regular_states; eauto. *)
-  (*   monadInv EQ. eauto. *)
+  - (* step_internal_function *)
+    (* other-only *)
+    intros; simpl; intros; inv MS; simpl in *.
+    monadInv TRFD.
+    econstructor.
+    split. eapply plus_one; unfold stepf.
+    eapply step_internal_function.
+    inversion H.
+    assert (tr_function f x).
+      intros; monadInv EQ.
+      econstructor; eauto.
+    inv H4.
+    econstructor; try (rewrite H7); try (rewrite H8); monadInv EQ; eauto.
+    eapply alloc_variables_preserved; eauto.
+    eapply bind_parameters_preserved; eauto.
+    (* lost information about (le = create_undef_temps (fn_temps x)) *)
+    (* Search create_undef_temps. *)
+    (* eapply match_regular_states; eauto. *)
+    admit.
 
-  (* - (* step_internal_function_model *) *)
+  - (* step_internal_function_model *)
+    (* model-only *)
+    intros; simpl; intros; inv MS; simpl in *.
+    monadInv TRFD.
+    econstructor.
+    split. eapply plus_one; unfold stepf.
+    eapply step_internal_function.
+    inversion H.
+    assert (tr_function f x).
+      intros; monadInv EQ.
+      econstructor; eauto.
+    inv H4.
+    econstructor; try (rewrite H7); try (rewrite H8); monadInv EQ; eauto.
+    eapply alloc_variables_preserved; eauto.
+    eapply bind_parameters_preserved; eauto.
+    (* lost information about (le = create_undef_temps (fn_temps x)) *)
+    (* Search create_undef_temps. *)
+    (* eapply match_regular_states_model; eauto. *)
+    admit.
 
-  (* - (* step_external_function *) *)
-  (*   intros. inv MS. *)
-  (*   monadInv TRFD. *)
-  (*   exists (Returnstate vres tk m'). *)
-  (*   split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved. *)
-  (*   eapply match_return_state; eauto. *)
+  - (* step_external_function *)
+    intros. inv MS.
+    monadInv TRFD.
+    exists (Returnstate vres tk m').
+    split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+    (* eapply match_return_state; eauto. *)
+    admit.
+    admit.
 
-  (* - (* step_returnstate *) *)
-  (*   intros. inv MS. *)
-  (*   inv MCONT. *)
-  (*   exists (State tfn Sskip tk0 e (set_opttemp optid v le) m). *)
-  (*   split. apply plus_one. eapply step_returnstate. *)
-  (*   eapply match_regular_states; eauto. *)
+  - (* step_returnstate *)
+    intros. inv MS.
+    + (* other *)
+      inv MCONT.
+      * econstructor. split. apply plus_one. eapply step_returnstate.
+        eapply match_regular_states; eauto. simpl in *. admit.
+        simpl in *. (* need (fn_blocktype f) *) admit.
+      * discriminate.
+    + (* model *)
+      inv MCONT.
+      * simpl in H7. congruence.
+      simpl in *.
+      econstructor. split.
+      apply plus_one. unfold stepf.
+      eapply step_returnstate.
 
-  (* - (* step_target *) *)
+      (* now deal with the epilouge *)
+      * inv MCONT; simpl in *.
+      ** admit.
+      ** eapply match_regular_states_model; eauto.
+      *** rewrite H6.
+        admit. (* transf_function (prog_target prog) f = OK ? *)
+      *** admit. (* transf_statement (prog_target prog) Sskip = OK ? *)
+      *** admit. (* fn_blocktype f = BTModel *)
+      *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *)
+      *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *)
+  - (* step_target *)
+    intros; inv MS; monadInv TRS; monadInv EQ; monadInv EQ0; simpl in *.
+    + (* other *) discriminate.
+    + (* model *)
+      econstructor. split. apply plus_one. unfold stepf.
+
+      * (* step the expression *)
+        monadInv EQ.
+        eapply step_assign; eauto.
+        eapply eval_lvalue_correct; eauto.
+        (* assert (eval_lvalue tge e le (Evar (prog_target prog) tdouble )). *)
+      (*   eapply eval_expr_correct; eauto. *)
+      (* inv H2. *)
+      (* eapply assign_loc_value; eauto. *)
+      (* eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto. *)
+      (* eapply match_regular_states; eauto. *)
+
+
+      * (* match the states *)
+
+Lemma eval_lvalue_correct:
+  forall e le m a b ofs target ta
+  (TRE: transf_etarget_expr (prog_target prog) a = OK ta),
+  CStanSemanticsTarget.eval_lvalue ge e le m target a b ofs -> CStanSemanticsBackend.eval_lvalue tge e le m ta b ofs.
+Proof.
+  intros e le m a.
+  induction a; intros; monadInv TRE; try (inv H).
+  - econstructor. eauto.
+  - eapply CStanSemanticsBackend.eval_Evar_global; eauto.
+    rewrite symbols_preserved; eauto.
+Qed.
+
+
 
 
 
