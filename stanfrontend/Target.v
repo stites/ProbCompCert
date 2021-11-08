@@ -137,7 +137,7 @@ Fixpoint transf_etarget_expr (ot : AST.ident) (e: CStan.expr) {struct e}: res CS
   | CStan.Eaddrof e t => OK (CStan.Eaddrof e t)
   | CStan.Esizeof t0 t1 => OK (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => OK (CStan.Ealignof t0 t1)
-  | CStan.Etarget ty => OK (CStan.Evar ot ty)
+  | CStan.Etarget ty => OK (CStan.Etempvar ot ty)
 end.
 
 Fixpoint transf_etarget_statement (t : AST.ident) (s: CStan.statement) {struct s}: res CStan.statement :=
