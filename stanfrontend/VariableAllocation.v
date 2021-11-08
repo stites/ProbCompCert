@@ -315,7 +315,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
             (Sassign (Evar data.(res_data_global) TDataStruct)
                      (Ederef (Etempvar ptmp TDataStructp) TDataStruct)))
     in
-    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
 
   | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
