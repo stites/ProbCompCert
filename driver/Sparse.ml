@@ -107,12 +107,12 @@ let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
 let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
 let gl_init_unconstrained = mk_global_math_func st_init_unconstrained []
 
-(* temporary printing support *)
-let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_fn AST.Tvoid [AST.Tfloat] "print_double"
-let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_fn AST.Tvoid [AST.Tint] "print_int"
-let (st_print_array_int, id_print_array_int, gl_print_array_int, cprint_array_int) = mk_fn AST.Tvoid [AST.Tint; AST.Tany64] "print_array_int"
-let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_fn AST.Tvoid [] "print_start"
-let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_fn AST.Tvoid [] "print_end"
+(* (\* temporary printing support *\) *)
+(* let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_fn AST.Tvoid [AST.Tfloat] "print_double" *)
+(* let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_fn AST.Tvoid [AST.Tint] "print_int" *)
+(* (\* let (st_print_array_int, id_print_array_int, gl_print_array_int, cprint_array_int) = mk_fn AST.Tvoid [AST.Tint; AST.Tany64] "print_array_int" *\) *)
+(* let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_fn AST.Tvoid [] "print_start" *)
+(* let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_fn AST.Tvoid [] "print_end" *)
 
 let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFLogit, id_logit, gl_logit, clogit);
@@ -120,11 +120,11 @@ let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFExpit, id_expit, gl_expit, cexpit);
                          (CStan.MFInitUnconstrained, id_init_unconstrained, gl_init_unconstrained, mk_cfunc []);
 
-                         (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start);
-                         (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double);
-                         (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int);
-                         (CStan.MFPrintArrayInt, id_print_array_int, gl_print_array_int, cprint_array_int);
-                         (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end);
+                         (* (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start); *)
+                         (* (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double); *)
+                         (* (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int); *)
+                         (* (\* (CStan.MFPrintArrayInt, id_print_array_int, gl_print_array_int, cprint_array_int); *\) *)
+                         (* (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end); *)
                         ]
 
 let _as_prog_math_functions (e, i, g, c) = ((e, i), c)
@@ -534,13 +534,13 @@ let elaborate (p: Stan.program) =
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
-    IdxHashtbl.clear index_set;
-    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
-    let functions = (id_print, f_print) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print, f_print) :: functions in *)
 
-    IdxHashtbl.clear index_set;
-    let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
-    let functions = (id_print_data, f_print_data) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print_data, f_print_data) :: functions in *)
 
     IdxHashtbl.clear index_set;
     let (id_set_data,f_set_data) = declareFundef "set_data" [Stan.Sskip] None [] in
