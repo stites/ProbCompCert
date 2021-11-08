@@ -396,7 +396,7 @@ let mkVariableFromLocal (v, id, basic) =
 let mkVariable v = mkVariableFromLocal (mkLocal v)
 let declareVariable = mkVariable
 
-let mkFunction name body rt params extraVars =
+let mkFunction name body rt params extraVars extraTemps =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
     a_storage = C.Storage_default;
@@ -430,12 +430,12 @@ let mkFunction name body rt params extraVars =
     StanE.fn_params = params;
     StanE.fn_blocktype = blocktypeFundef name;
     StanE.fn_vars = List.concat [extraVars; (IdxHashtbl.fold (fun k v acc -> (k,StanE.Bint)::acc) index_set [])];
-    StanE.fn_temps = [];
+    StanE.fn_temps = extraTemps;
     StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
 
 let declareFundef name body rt params =
-  mkFunction name body rt params []
+  mkFunction name body rt params [] []
 
 let mapMaybe fn mval =
   match mval with
@@ -513,8 +513,9 @@ let elaborate (p: Stan.program) =
     IdxHashtbl.clear index_set;
     (* let target_arg = ((Stypes.Aauto_diffable, StanE.Breal), "target") in
      * let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [target_arg] [] in *)
-    let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
-    let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
+    let (id_target, ty_target) = (Camlcoq.intern_string "target", StanE.Breal) in
+    let target_var = (id_target, ty_target) in
+    let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [] [target_var] in
 
     let functions = (id_model,f_model) :: functions in
 
@@ -597,6 +598,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters_struct=params_reserved;
       StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
+      StanE.pr_target=id_target;
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;
       StanE.pr_math_functions=pr_math_functions;
