@@ -65,7 +65,7 @@
               if [ -z "$1" ]; then
                   ignore=""
               else
-                  ignore="--ignore $name.v"
+                  ignore="--ignore $name.v --ignore $name.light.c"
               fi
               ${watchexec} -e ${exts} $ignore "${run {inherit build cmd finally; }}"
              '';
@@ -82,7 +82,8 @@
               command = watch {
                 build = "make -j && make install && rm ccomp clightgen";
                 cmd = "./out/bin/ccomp -c $current_dir/$1";
-                finally = "./out/bin/clightgen $current_dir/$1";
+                #finally = "./out/bin/clightgen $current_dir/$1";
+                finally ="./out/bin/ccomp -dclight -dcminor -c $current_dir/$1";
               };
             })
             (mk-watcher "watch-clightgen" {
