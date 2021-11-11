@@ -133,6 +133,7 @@ PARSER=Cabs.v Parser.v
 
 STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v \
   CStan.v \
+  CStanCont.v \
   CStanSemanticsBackend.v \
   CStanSemanticsTarget.v \
   CStanSemanticsVariableAllocation.v \
