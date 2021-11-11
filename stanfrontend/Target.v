@@ -80,7 +80,7 @@ match e with
   | _ => None
 end.
 
-Fixpoint transf_starget_statement (s: CStan.statement) {struct s}: res CStan.statement :=
+Fixpoint transf_starget_statement (tgt : AST.ident) (s: CStan.statement) {struct s}: res CStan.statement :=
   match s with
   | Sskip => OK Sskip
   | Sbreak => OK Sbreak
@@ -89,27 +89,26 @@ Fixpoint transf_starget_statement (s: CStan.statement) {struct s}: res CStan.sta
   | Sset i e => OK (Sset i e)
   | Scall oi e le => OK (Scall oi e le)
   | Sreturn oe => OK (Sreturn oe)
-  | Sbuiltin oi ef lt le => Error (msg "OK (Sbuiltin oi ef lt le)")
-
+  | Sbuiltin oi ef lt le => OK (Sbuiltin oi ef lt le)
   | Ssequence s0 s1 =>
-    do s0 <- transf_starget_statement s0;
-    do s1 <- transf_starget_statement s1;
+    do s0 <- transf_starget_statement tgt s0;
+    do s1 <- transf_starget_statement tgt s1;
     OK (Ssequence s0 s1)
 
   | Sifthenelse e s0 s1 =>
-    do s0 <- transf_starget_statement s0;
-    do s1 <- transf_starget_statement s1;
+    do s0 <- transf_starget_statement tgt s0;
+    do s1 <- transf_starget_statement tgt s1;
     OK (Sifthenelse e s0 s1)
 
   | Sloop s0 s1 =>
-    do s0 <- transf_starget_statement s0;
-    do s1 <- transf_starget_statement s1;
+    do s0 <- transf_starget_statement tgt s0;
+    do s1 <- transf_starget_statement tgt s1;
     OK (Sloop s0 s1)
 
   | Starget e =>
-    OK (Sassign (Etarget tdouble)
-              (Ebinop Cop.Oadd
-                      (Etarget tdouble) e tdouble))
+    OK (Sset tgt
+         (Ebinop Cop.Oadd
+           (Etempvar tgt tdouble) e tdouble))
 
   | Stilde e i le (oe0, oe1) => Error (msg "Stilde DNE in this stage of pipeline")
 end.
@@ -175,7 +174,8 @@ match s with
     do oe <- option_res_mmap (transf_etarget_expr t) oe;
     OK (Sreturn oe)
   | Starget e =>
-    Error (msg "Starget DNE in this stage of pipeline")
+    do e <- transf_etarget_expr t e;
+    OK (Starget e)
   | Stilde e i le (oe0, oe1) =>
     Error (msg "Stilde DNE in this stage of pipeline")
   | Sbreak => OK Sbreak
@@ -183,28 +183,28 @@ match s with
   | Scontinue => OK Scontinue
 end.
 
-Definition transf_statement (t: AST.ident) (body: statement) : res CStan.statement :=
-  do body <- transf_starget_statement body;
-  transf_etarget_statement t body.
+Definition transf_statement (t: AST.ident) (body: statement) : res statement :=
+  do body <- transf_etarget_statement t body;
+  transf_starget_statement t body.
 
-Definition add_prelude_epilogue (body: statement) : CStan.statement :=
-  let tytarget := tdouble in
-  let prelude  := Starget (Econst_float Float.zero tytarget) in
-  let epilogue := Sreturn (Some (CStan.Etarget tytarget)) in
+Definition add_prelude_epilogue (tgt: AST.ident) (body: statement) : statement :=
+  let prelude  := Sset tgt (Econst_float Float.zero tdouble) in
+  let epilogue := Sreturn (Some (Etempvar tgt tdouble)) in
   Ssequence prelude (Ssequence body epilogue).
 
-Definition transf_model_body (f: function): statement :=
-match f.(fn_blocktype) with
-| BTModel => add_prelude_epilogue f.(fn_body)
-| _ => f.(fn_body)
+Definition transf_model_body (tgt: AST.ident) (bt: blocktype) (body: statement): statement :=
+match bt with
+| BTModel => add_prelude_epilogue tgt body
+| _ => body
 end.
 
 Definition transf_function (tgt: AST.ident) (f: function): res function :=
-  do body <- transf_statement tgt (transf_model_body f);
+  do body <- transf_statement tgt f.(fn_body);
   OK {|
       fn_params := f.(fn_params);
-      fn_body := body;
+      fn_body := transf_model_body tgt f.(fn_blocktype) body;
 
+      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
       fn_temps := f.(fn_temps);
       fn_vars := f.(fn_vars);
       fn_generator := f.(fn_generator);

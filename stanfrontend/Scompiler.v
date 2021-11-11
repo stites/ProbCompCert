@@ -15,7 +15,7 @@ Require Import VariableAllocation.
 Require Import Target.
 Require Import Sbackend.
 
-Open Scope string_scope.						     
+Open Scope string_scope.
 
 Definition transf_stan_program(p: StanE.program): res Clight.program :=
   OK p
@@ -33,12 +33,12 @@ Theorem transf_stan_program_correct:
 Proof.
 Admitted.
 
-Definition transf_stan_program_complete(p: StanE.program): res Asm.program :=						 
+Definition transf_stan_program_complete(p: StanE.program): res Asm.program :=
   let p := transf_stan_program p in
-  match p with				
+  match p with
   | OK p => transf_clight_program p
   | Error s => Error s
-  end.															 
+  end.
   
 Theorem transf_stan_program_correct_complete:
   forall p tp,
