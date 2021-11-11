@@ -54,7 +54,7 @@ Definition option_mon_mmap {X Y:Type} (f: X -> mon Y) (ox: option X) : mon (opti
 Definition as_fieldp (_Struct:AST.ident) (ref:AST.ident) (var:AST.ident) (fieldTy:Ctypes.type) : CStan.expr :=
   (Efield
     (Ederef
-      (Etempvar ref (tptr (Tstruct _Struct noattr)))
+      (Evar ref (tptr (Tstruct _Struct noattr)))
       (Tstruct _Struct noattr))
     var fieldTy).
 
@@ -161,7 +161,7 @@ Definition init_params (params : CStan.reserved_params) (perturb: AST.ident * st
   let (i, t)        := struct_field in
   let (x, call)     := perturb in
   let state_field   := as_field params.(res_params_type) params.(res_params_global_state) i t in
-  Sassign state_field (Etempvar x t).
+  Sassign state_field (Evar x t).
 
 
 Definition adjust_proposal (params : CStan.reserved_params) (perturb: AST.ident * statement) (struct_field : AST.ident * Ctypes.type): statement :=
@@ -226,7 +226,9 @@ Definition cons_tail {X:Type} (x : X) (xs : list X) :=
 
 Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.ident * Ctypes.type) * list (AST.ident * Ctypes.type) * statement * type) :=
   let data := p.(prog_data_struct) in
+  let dtmp := data.(res_data_tmp) in
   let params := p.(prog_parameters_struct) in
+  let ptmp := params.(res_params_tmp) in
 
   let TParamStruct := Tstruct params.(res_params_type) noattr in
   let TParamStructp := tptr TParamStruct in
@@ -239,19 +241,20 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
 (* Inductive blocktype := BTModel | BTParameters | BTData | BTGetState | BTSetState | BTOther. *)
   match f.(fn_blocktype) with
   | BTModel =>
-    do ptmp <~ gensym TParamStructp;
     let params_map := {|
       is_member := in_list (List.map fst p.(prog_parameters_vars));
       transl := as_fieldp params.(res_params_type) ptmp;
     |} in
 
     let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
-    let body := Ssequence (Sset ptmp (CStan.Ecast parg TParamStructp)) f.(fn_body) in
+    let cast := Sassign (Evar ptmp TParamStructp) (CStan.Ecast parg TParamStructp) in
+    let body := Ssequence cast f.(fn_body) in
+
 
     do body <~ transf_statement params_map body;
     do body <~ transf_statement data_map body;
 
-    ret (cons_tail (params.(res_params_arg), tptr tvoid) f.(fn_params), f.(fn_vars), body, f.(fn_return))
+    ret (cons_tail (params.(res_params_arg), tptr tvoid) f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return))
 
   | BTParameters =>
     do init <~ init_unconstrained p;
@@ -270,7 +273,6 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTSetState =>
-    do ptmp <~ gensym TParamStructp;
     let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
     let body :=
         Ssequence
@@ -278,7 +280,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
           (Ssequence
             f.(fn_body)
             (Sassign (Evar params.(res_params_global_state) TParamStruct)
-                     (Ederef (Etempvar ptmp TParamStructp) TParamStruct)))
+                     (Ederef (Evar ptmp TParamStructp) TParamStruct)))
     in
     ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
@@ -289,7 +291,6 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
   | BTPrintState =>
-    do ptmp <~ gensym TParamStructp;
     do body <~ print_struct p ptmp params.(res_params_type) p.(prog_parameters_vars);
 
     let parg := CStan.Evar params.(res_params_arg) (tptr tvoid) in
@@ -297,15 +298,13 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTPrintData =>
-    do tmp <~ gensym TDataStructp;
-    do body <~ print_struct p tmp data.(res_data_type) p.(prog_data_vars);
+    do body <~ print_struct p dtmp data.(res_data_type) p.(prog_data_vars);
 
     let arg := CStan.Evar data.(res_data_arg) (tptr tvoid) in
-    let body := Ssequence (Sset tmp (CStan.Ecast arg TDataStructp)) body in
+    let body := Ssequence (Sset dtmp (CStan.Ecast arg TDataStructp)) body in
     ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
   | BTSetData =>
-    do ptmp <~ gensym TDataStructp;
     let parg := CStan.Evar data.(res_data_arg) (tptr tvoid) in
     let body :=
         Ssequence
@@ -313,7 +312,7 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
           (Ssequence
             f.(fn_body)
             (Sassign (Evar data.(res_data_global) TDataStruct)
-                     (Ederef (Etempvar ptmp TDataStructp) TDataStruct)))
+                     (Ederef (Evar ptmp TDataStructp) TDataStruct)))
     in
     ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), f.(fn_vars), body, f.(fn_return))
 
@@ -333,7 +332,8 @@ Definition transf_function (p:CStan.program) (f: function): res function :=
       fn_return := rtype;
 
       (* NOTE only extract gen_trail here *)
-      fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps);
+      (* fn_temps := g.(SimplExpr.gen_trail) ++ f.(fn_temps); *)
+      fn_temps := g.(SimplExpr.gen_trail);
       fn_generator := g;
 
       fn_callconv := f.(fn_callconv);
@@ -367,12 +367,14 @@ Definition transf_program(p: CStan.program): res CStan.program :=
       prog_defs := AST.prog_defs p1;
       prog_public := AST.prog_public p1;
 
+      (* FIXME: should we filter the global list to remove these variables? *)
       prog_data:=p.(prog_data);
       prog_data_vars:=p.(prog_data_vars);
       prog_data_struct:= p.(prog_data_struct);
       prog_transformed_data:=p.(prog_transformed_data);
 
       prog_constraints :=p.(prog_constraints);
+      (* FIXME: also here: should we filter the global list to remove these variables? *)
       prog_parameters:= p.(prog_parameters);
       prog_parameters_vars:= p.(prog_parameters_vars);
       prog_parameters_struct:= p.(prog_parameters_struct);

@@ -565,20 +565,24 @@ let elaborate (p: Stan.program) =
     let id_params_struct_global_state = declareGlobalStruct "state" in
     let id_params_struct_global_proposal = declareGlobalStruct "candidate" in
     let id_params_struct_arg = Camlcoq.intern_string "__p__" in
+    let id_params_struct_tmp = Camlcoq.intern_string "__pt__" in
     let params_reserved = {
       CStan.res_params_type = id_params_struct_typ;
       CStan.res_params_global_state = id_params_struct_global_state;
       CStan.res_params_global_proposal = id_params_struct_global_proposal;
-      CStan.res_params_arg  = id_params_struct_arg;
+      CStan.res_params_arg = id_params_struct_arg;
+      CStan.res_params_tmp = id_params_struct_tmp;
     } in
 
     let (id_data_struct_typ, gl_data_struct) = declareStruct "Data" data_fields in
     let id_data_struct_global = declareGlobalStruct "observation" in
     let id_data_struct_arg = Camlcoq.intern_string "__d__" in
+    let id_data_struct_tmp = Camlcoq.intern_string "__dt__" in
     let data_reserved = {
       CStan.res_data_type = id_data_struct_typ;
       CStan.res_data_global = id_data_struct_global;
       CStan.res_data_arg = id_data_struct_arg;
+      CStan.res_data_tmp = id_data_struct_tmp;
     } in
 
     let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)] in
