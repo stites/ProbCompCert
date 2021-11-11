@@ -535,13 +535,13 @@ let elaborate (p: Stan.program) =
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
-    (* IdxHashtbl.clear index_set; *)
-    (* let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in *)
-    (* let functions = (id_print, f_print) :: functions in *)
+    IdxHashtbl.clear index_set;
+    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
+    let functions = (id_print, f_print) :: functions in
 
-    (* IdxHashtbl.clear index_set; *)
-    (* let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in *)
-    (* let functions = (id_print_data, f_print_data) :: functions in *)
+    IdxHashtbl.clear index_set;
+    let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
+    let functions = (id_print_data, f_print_data) :: functions in
 
     IdxHashtbl.clear index_set;
     let (id_set_data,f_set_data) = declareFundef "set_data" [Stan.Sskip] None [] in
