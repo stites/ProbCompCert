@@ -64,8 +64,8 @@ Inductive match_cont : blocktype -> cont -> cont -> Prop :=
       bt = BTModel ->
       match_cont fn.(fn_blocktype) k tk ->
       match_cont bt (Kcall optid fn e le k)
-                        (Kseq (Sreturn (Some (Evar (prog_target prog) tdouble))) (Kcall optid tfn e le tk))
-. (* NOTE: target register is updated local environment -- assuming e and le are identical is probably wrong.*)
+                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) (Kcall optid tfn e le tk))
+. (* NOTE: target register is updated local environment -- assuming e and le are identical is wrong.*)
 
 
 Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.state -> Prop :=
@@ -96,9 +96,11 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       forall f s k e le m tf ts tk bs ta
       (TRF: transf_function (prog_target prog) f = OK tf)
       (TRS: transf_statement (prog_target prog) s = OK ts)
+      (* (TREPI: exists a, transf_etarget_expr (prog_target prog) a = OK (Etempvar (prog_target prog) tdouble)) *)
+      (* (TCAST:  Cop.sem_cast (Vfloat ta) tdouble (fn_return tf) m = Some (Vfloat ta)) *)
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
       (BS_SYNC: f.(fn_blocktype) = BTModel)
-      (TAR_MATCH: le!(prog_target prog)  = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
+      (TAR_MATCH: le!(prog_target prog) = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
       (MCONT: match_cont (get_blockstate bs) k tk),
       match_states (CStanSemanticsTarget.State f s k e le m bs)
                    (CStanSemanticsBackend.State tf ts tk e le m)
@@ -378,18 +380,18 @@ Proof.
   rewrite <- H; eauto.
 Qed.
 
-Lemma seq_both_transf_statement:
-  forall s0 s1 sfin
-  (STARGET: transf_starget_statement s0 = OK s1)
-  (ETARGET: transf_etarget_statement (prog_target prog) s1 = OK sfin)
-  , transf_statement (prog_target prog) s0 = OK sfin.
-Proof.
-  intros.
-  inv STARGET.
-  inv ETARGET.
-  simpl.
-  inv H0.
-Admitted.
+(* Lemma seq_both_transf_statement: *)
+(*   forall s0 s1 sfin *)
+(*   (STARGET: transf_starget_statement s0 = OK s1) *)
+(*   (ETARGET: transf_etarget_statement (prog_target prog) s1 = OK sfin) *)
+(*   , transf_statement (prog_target prog) s0 = OK sfin. *)
+(* Proof. *)
+(*   intros. *)
+(*   inv STARGET. *)
+(*   inv ETARGET. *)
+(*   simpl. *)
+(*   inv H0. *)
+(* Admitted. *)
 
 Lemma step_simulation:
   forall S1 t S2, CStanSemanticsTarget.stepf ge S1 t S2 ->
@@ -404,7 +406,7 @@ Proof.
       split.
       eapply plus_one.
       generalize (types_correct _ _ EQ); intro.
-      generalize (types_correct _ _ EQ0); intro.
+      generalize (types_correct _ _ EQ1); intro.
       rewrite H3 in *.
       rewrite H4 in *.
       unfold stepf.
@@ -421,7 +423,7 @@ Proof.
       split.
       eapply plus_one.
       generalize (types_correct _ _ EQ); intro.
-      generalize (types_correct _ _ EQ0); intro.
+      generalize (types_correct _ _ EQ1); intro.
       rewrite H3 in *.
       rewrite H4 in *.
       unfold stepf.
@@ -436,24 +438,22 @@ Proof.
   - (* step_set *)
     simpl; intros; inv MS; simpl in *.
     + (* other *)
-      monadInv TRS; monadInv EQ; monadInv EQ0.
+      monadInv TRS; monadInv EQ.
+      destruct (id =? (prog_target prog))%positive eqn:TEQ.
+      (* id = target is impossible *) monadInv EQ2.
+      (* otherwise *) inv EQ2. monadInv EQ0.
       econstructor.
       split. eapply plus_one.
-      destruct (id =? (prog_target prog))%positive eqn:TEQ.
-      inv EQ1.
-      monadInv EQ1.
       unfold stepf.
       econstructor.
       eapply eval_expr_correct; eauto.
       eapply match_regular_states; eauto.
-    + (* model *)
-      monadInv TRS.
-      monadInv EQ.
-      monadInv EQ0.
-      econstructor.
+    + (* other *)
+      monadInv TRS; monadInv EQ.
       destruct (id =? (prog_target prog))%positive eqn:TEQ.
-      inv EQ1.
-      monadInv EQ1.
+      (* id = target is impossible *) monadInv EQ2.
+      (* otherwise *) inv EQ2. monadInv EQ0.
+      econstructor.
       split. eapply plus_one.
       unfold stepf.
       econstructor.
@@ -469,7 +469,7 @@ Proof.
       exploit eval_exprlist_correct_simple; eauto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
       econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
-      generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+      generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
       eauto. eauto. eauto.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
@@ -479,7 +479,7 @@ Proof.
       exploit eval_exprlist_correct_simple; eauto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
       econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
-      generalize (types_correct _ _ EQ); intro TYA. rewrite<-TYA. eauto.
+      generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
       eauto. eauto. eauto.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
@@ -487,6 +487,9 @@ Proof.
 
   - (* builtin *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
+    admit.
+    admit.
+
   - (* step_seq *)
     simpl; intros; inv MS; simpl in *.
     + (* other *)
@@ -582,30 +585,30 @@ Proof.
       eapply plus_one; unfold stepf.
       econstructor.
       eapply eval_expr_correct; eauto.
-      generalize (types_correct _ _ EQ2); intro.
+      generalize (types_correct _ _ EQ1); intro.
       rewrite <- H1; eauto.
       eapply match_regular_states; eauto.
       destruct b; eauto.
       destruct EQ0; eauto.
       unfold transf_statement.
-      rewrite EQ1; simpl; eauto.
-      unfold transf_statement.
       rewrite EQ; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ2; simpl; eauto.
     + (* model*)
       econstructor.
       split.
       eapply plus_one; unfold stepf.
       econstructor.
       eapply eval_expr_correct; eauto.
-      generalize (types_correct _ _ EQ2); intro.
+      generalize (types_correct _ _ EQ1); intro.
       rewrite <- H1; eauto.
       eapply match_regular_states_model; eauto.
       destruct b; eauto.
       destruct EQ0; eauto.
       unfold transf_statement.
-      rewrite EQ1; simpl; eauto.
-      unfold transf_statement.
       rewrite EQ; simpl; eauto.
+      unfold transf_statement.
+      rewrite EQ2; simpl; eauto.
 
   - (* step_loop *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
@@ -781,7 +784,7 @@ Proof.
     (* intros; inv MS. *)
     simpl; intros; inv MS; simpl in *.
     + (* other *)
-      monadInv TRS. monadInv EQ. monadInv EQ0. monadInv EQ.
+      monadInv TRS. monadInv EQ. monadInv EQ0. monadInv EQ1.
       econstructor.
       split. eapply plus_one; unfold stepf.
       eapply step_return_1.
@@ -816,16 +819,50 @@ Proof.
       admit. (* we don't want this state to arrive because we don't want to stop the program during the model block *)
       congruence.
       econstructor.
-      split. eapply plus_left'. unfold stepf.
-      econstructor.
-      eapply plus_one. unfold stepf.
-      econstructor.
-      eapply eval_expr_correct.
-      unfold CStanCont.is_call_cont in H.
-      assert (is_call_cont tk). inv MCONT; simpl in *; auto; try congruence.
+      split.
+      * eapply plus_left'. unfold stepf.
+        econstructor.
+        eapply plus_one. unfold stepf.
+        econstructor.
+        eapply eval_Etempvar; eauto.
+        simpl in *.
+        admit.
+
+        generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
+        rewrite
+        eauto.
+        Print Cop.sem_cast.
+        Search Cop.sem_cast.
+
+        instantiate (1 := Etempvar).
+        generalize (transf_etarget_expr (prog_target prog) _ = OK (Etempvar _ _)).
+        assert (exists a, transf_etarget_expr (prog_target prog) a = OK (Etempvar (prog_target prog) tdouble)). exact TRE.
+        apply (eval_expr_correct e le m a (Vfloat ta) BTModel ta).
+  forall e le m a v bs ta
+
+        apply (eval_expr_correct a bs).
+        eapply eval_expr_correct. simpl. instantiate a. [a].
+        apply (eval_expr_correct a bs). simpl. instantiate a. [a].
+        generalize dependent ?[a].
+        exact TRE. _expr_correct.
+        eapply eval_lvalue.
+        unfold transf_etarget_expr.
+        admit.
+        admit.
+        simpl in *.
       exact H2.
-      rewrite blocks_of_env_preserved. eauto.
-      eapply match_return_state; eauto.
+        eapply eval_expr_correct.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      (* unfold CStanCont.is_call_cont in H. *)
+      (* assert (is_call_cont tk). inv MCONT; simpl in *; auto; try congruence. *)
+      (* exact H2. *)
+      (* rewrite blocks_of_env_preserved. eauto. *)
+      (* eapply match_return_state; eauto. *)
 
   - (* step_skip_break_switch *)
     intros; inv MS; simpl in *.
