@@ -985,35 +985,79 @@ Proof.
       * econstructor. split. apply plus_one. eapply step_returnstate.
         eapply match_regular_states; eauto. (* lost the fn_blocktype too early *)
         admit.
-        monadInv H6; simpl in *.
-        inv H8. admit.
+        monadInv H6.
+        inversion H8.
+        ** (* Kstop *) econstructor.
+        ** (* Kseq *) econstructor; eauto.
+           (* we don't have a link from match_cont (fn_blocktype f) to (get_blockstate Other)*)
+           (* what we need is to loosen get_blockstate to be an inductive type that introduces that bt <> BTModel, I think *)
+           admit.
+        ** (* Kloop1 *) econstructor; eauto. admit.
+        ** (* Kloop2 *) econstructor; eauto. admit.
+        ** (* Kswitch *) econstructor; eauto. admit.
+        ** (* Kcall *) econstructor; eauto.
+        ** (* Kcall to Kseq *) econstructor; eauto. (* here, I think the above solution would fix this as well *) admit.
       * discriminate.
     + (* model *)
+      simpl in *.
       inv MCONT.
       * simpl in H7. congruence.
-      simpl in *.
-      econstructor. split.
-      apply plus_one. unfold stepf.
-      eapply step_returnstate.
+      * simpl in *.
+        econstructor. split.
+        (* we are in the returnstate of the model. Kcall will continue in the outer function. *)
+        (* We want to step through the known continuation of the model's Kseq to get to the  *)
+        (* final return of the prog_target prog but we get an error of not finding the correct *)
+        eapply plus_left'. unfold stepf.
+        admit. (* We need a way to have something like a step_return_1_model otherwise we can't unify *)
+                (* stepping through the continuation here, I think. *)
+        eapply plus_one. unfold stepf.
+        eapply step_returnstate.
+        admit. (* everything gets messy here. eapply step_returnstate makes sense, but *)
+               (* gives me this ridiculous statement E0 = Eapp _ E0 ... I need to review eventing *)
+        eapply match_regular_states_model; eauto.
+        admit. (* lost the blocktype f = BTModel *)
+        (* Search set_opttemp. *)
+        admit. (* hmm... I guess the continuation doesn't add any additional context *)
+               (* about setting the ident in this goal.... *)
+        simpl in *.
+        admit. (* and, again, lost that blocktype f = BTModel *)
 
-      (* now deal with the epilouge *)
-      * inv MCONT; simpl in *.
-      ** admit.
-      ** eapply match_regular_states_model; eauto.
-      *** rewrite H6.
-        admit. (* transf_function (prog_target prog) f = OK ? *)
-      *** admit. (* transf_statement (prog_target prog) Sskip = OK ? *)
-      *** admit. (* fn_blocktype f = BTModel *)
-      *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *)
-      *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *)
+        (* (* now deal with the epilouge *) *)
+        (* * inv MCONT; simpl in *. *)
+        (* ** admit. *)
+        (* ** eapply match_regular_states_model; eauto. *)
+        (* *** rewrite H6. *)
+        (*   admit. (* transf_function (prog_target prog) f = OK ? *) *)
+        (* *** admit. (* transf_statement (prog_target prog) Sskip = OK ? *) *)
+        (* *** admit. (* fn_blocktype f = BTModel *) *)
+        (* *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *) *)
+        (* *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *) *)
   - (* step_target *)
     intros; inv MS; monadInv TRS; monadInv EQ; monadInv EQ0; simpl in *.
     + (* other *) discriminate.
     + (* model *)
-      econstructor. split. apply plus_one. unfold stepf.
+      econstructor. split. eapply plus_left'. unfold stepf.
+      eapply step_set.
+      eapply eval_expr_correct.
+      simpl in *.
+      (* need to review the workshop sequences module... *)
 
-      * (* step the expression *)
-        monadInv EQ.
+
+
+
+      econstructor. split. eapply plus_one. unfold stepf.
+      eapply step_set.
+      eapply eval_expr_correct.
+      admit. (*not sure how to do this one*)
+      admit.
+
+
+
+
+
+      inv H.
+      (* step the expression *)
+      monadInv EQ.
         eapply step_assign; eauto.
         eapply eval_lvalue_correct; eauto.
         (* assert (eval_lvalue tge e le (Evar (prog_target prog) tdouble )). *)
