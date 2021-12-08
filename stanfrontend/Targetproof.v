@@ -649,7 +649,7 @@ Proof.
       econstructor; split.
       eapply plus_one; unfold stepf.
       eapply step_skip_or_continue_loop1.
-      admit.
+      monadInv TRF; monadInv EQ; monadInv EQ0; eauto.
       eapply match_regular_states; eauto.
       unfold transf_statement.
       rewrite EQ3; simpl; eauto.
@@ -662,7 +662,7 @@ Proof.
       econstructor; split.
       eapply plus_one; unfold stepf.
       eapply step_skip_or_continue_loop1.
-      admit.
+      monadInv TRF; monadInv EQ; monadInv EQ0; eauto.
       eapply match_regular_states; eauto.
       unfold transf_statement.
       rewrite EQ3; simpl; eauto.
@@ -678,7 +678,7 @@ Proof.
       econstructor; split.
       eapply plus_one; unfold stepf.
       eapply step_skip_or_continue_loop1.
-      admit.
+      monadInv TRF; monadInv EQ; monadInv EQ0; eauto.
       eapply match_regular_states_model; eauto.
       unfold transf_statement.
       rewrite EQ3; simpl; eauto.
@@ -691,7 +691,7 @@ Proof.
       econstructor; split.
       eapply plus_one; unfold stepf.
       eapply step_skip_or_continue_loop1.
-      admit.
+      monadInv TRF; monadInv EQ; monadInv EQ0; eauto.
       eapply match_regular_states_model; eauto.
       unfold transf_statement.
       rewrite EQ3; simpl; eauto.
@@ -820,90 +820,94 @@ Proof.
       congruence.
       econstructor.
       split.
-      * eapply plus_left'. unfold stepf.
+      * eapply plus_left'; unfold stepf.
         econstructor.
-        eapply plus_one. unfold stepf.
+        eapply plus_one; unfold stepf.
         econstructor.
         eapply eval_Etempvar; eauto.
         simpl in *.
-        admit.
-
-        generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
-        rewrite
-        eauto.
-        Print Cop.sem_cast.
-        Search Cop.sem_cast.
-
-        instantiate (1 := Etempvar).
-        generalize (transf_etarget_expr (prog_target prog) _ = OK (Etempvar _ _)).
-        assert (exists a, transf_etarget_expr (prog_target prog) a = OK (Etempvar (prog_target prog) tdouble)). exact TRE.
-        apply (eval_expr_correct e le m a (Vfloat ta) BTModel ta).
-  forall e le m a v bs ta
-
-        apply (eval_expr_correct a bs).
-        eapply eval_expr_correct. simpl. instantiate a. [a].
-        apply (eval_expr_correct a bs). simpl. instantiate a. [a].
-        generalize dependent ?[a].
-        exact TRE. _expr_correct.
-        eapply eval_lvalue.
-        unfold transf_etarget_expr.
-        admit.
-        admit.
+        admit. (*I think I need to strengthen this argument*)
+        rewrite blocks_of_env_preserved; eauto.
+        simpl; congruence.
+      * (* eapply match_regular_states_model. *) (* need to pop off this continuation before getting to the match_return_state_model but not sure how *)
+        eapply match_return_state_model.
+        admit. (* now, I think because I didn't pop off the kcall, we have a funny state here that doesn't make sense *)
         simpl in *.
-      exact H2.
-        eapply eval_expr_correct.
-      admit.
-      admit.
-      admit.
-      admit.
-      admit.
-      admit.
-      (* unfold CStanCont.is_call_cont in H. *)
-      (* assert (is_call_cont tk). inv MCONT; simpl in *; auto; try congruence. *)
-      (* exact H2. *)
-      (* rewrite blocks_of_env_preserved. eauto. *)
-      (* eapply match_return_state; eauto. *)
-
+        eapply match_Kcall; auto.
+        congruence.
   - (* step_skip_break_switch *)
-    intros; inv MS; simpl in *.
+    simpl; intros; inv MS; simpl in *; monadInv TRS.
     + (* other *)
-      econstructor.
-      split. eapply plus_one; unfold stepf.
-    (*   monadInv TRF; monadInv TRS; monadInv EQ; monadInv EQ0. *)
-    (*   econstructor. *)
-    (* destruct H; simpl in *. *)
-    (* monadInv TRF; monadInv TRS; eauto. *)
-    (* monadInv TRF; monadInv TRS; eauto. *)
-    (* eapply match_regular_states; eauto. *)
-      admit.
-      admit.
-    + admit.
+       destruct H as [Hskip | Hbreak] eqn:Hboth.
+       * (* skip *)
+         rewrite Hskip in EQ.
+         inversion EQ. rewrite <- H1 in EQ0.
+         inversion EQ0.
+         inversion MCONT.
+         exists (State tf Sskip tk0 e le m).
+         split.
+         eapply plus_one. unfold stepf.
+         eapply step_skip_break_switch.
+         auto.
+         eapply match_regular_states; simpl in *; eauto.
 
+       * (* break -- how to fold this into a repeat? *)
+         rewrite Hbreak in EQ.
+         inversion EQ. rewrite <- H1 in EQ0.
+         inversion EQ0.
+         inversion MCONT.
+         exists (State tf Sskip tk0 e le m).
+         split.
+         eapply plus_one. unfold stepf.
+         eapply step_skip_break_switch.
+         auto.
+         eapply match_regular_states; simpl in *; eauto.
+    + (* model *)
+       destruct H as [Hskip | Hbreak] eqn:Hboth.
+       * (* skip *)
+         rewrite Hskip in EQ.
+         inversion EQ. rewrite <- H1 in EQ0.
+         inversion EQ0.
+         inversion MCONT.
+         exists (State tf Sskip tk0 e le m).
+         split.
+         eapply plus_one. unfold stepf.
+         eapply step_skip_break_switch.
+         auto.
+         eapply match_regular_states_model; simpl in *; eauto.
+
+       * (* break -- how to fold this into a repeat? *)
+         rewrite Hbreak in EQ.
+         inversion EQ. rewrite <- H1 in EQ0.
+         inversion EQ0.
+         inversion MCONT.
+         exists (State tf Sskip tk0 e le m).
+         split.
+         eapply plus_one. unfold stepf.
+         eapply step_skip_break_switch.
+         auto.
+         eapply match_regular_states_model; simpl in *; eauto.
   - (* step_continue_switch *)
     intros; simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0.
-    + (*other???*)
+    + (* other *)
       inv MCONT.
-      econstructor.
+      exists (State tf Scontinue tk0 e le m).
       split. eapply plus_one; unfold stepf.
       econstructor.
-      (* eapply match_regular_states; eauto. *)
-      admit.
-      admit.
-    + (*other???*)
+      eapply match_regular_states; eauto.
+    + (* model *)
       inv MCONT.
-      econstructor.
+      exists (State tf Scontinue tk0 e le m).
       split. eapply plus_one; unfold stepf.
-      econstructor; eauto.
-      (* absurd. *)
-      (* eapply match_regular_states_model; eauto. *)
-      admit.
-      admit.
+      econstructor.
+      eapply match_regular_states_model; eauto.
 
   - (* step_internal_function *)
     (* other-only *)
     intros; simpl; intros; inv MS; simpl in *.
     monadInv TRFD.
-    econstructor.
+    exists (State x (fn_body x) tk e (create_undef_temps (fn_temps x)) m1).
+    (* econstructor. *)
     split. eapply plus_one; unfold stepf.
     eapply step_internal_function.
     inversion H.
@@ -914,10 +918,22 @@ Proof.
     econstructor; try (rewrite H7); try (rewrite H8); monadInv EQ; eauto.
     eapply alloc_variables_preserved; eauto.
     eapply bind_parameters_preserved; eauto.
-    (* lost information about (le = create_undef_temps (fn_temps x)) *)
-    (* Search create_undef_temps. *)
-    (* eapply match_regular_states; eauto. *)
+    assert (create_undef_temps (fn_temps x) = le). {
+      (* lost information about (le = create_undef_temps (fn_temps x)) *)
+      Search create_undef_temps.
+      admit.
+    }.
     admit.
+    (* rewrite H1. *)
+    (* induction (get_blockstate ta). *)
+    (* apply get_blockstate in ta. *)
+    (* eapply match_regular_states; eauto. *)
+    (* admit. (* transf_statement *) *)
+
+    (* admit. (* transf_statement *) *)
+    (* (* Search create_undef_temps. *) *)
+    (* (* eapply match_regular_states; eauto. *) *)
+    (* admit. *)
 
   - (* step_internal_function_model *)
     (* model-only *)
@@ -940,21 +956,37 @@ Proof.
     admit.
 
   - (* step_external_function *)
-    intros. inv MS.
-    monadInv TRFD.
-    exists (Returnstate vres tk m').
-    split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
-    (* eapply match_return_state; eauto. *)
-    admit.
-    admit.
+    intros.
+    destruct ta.
+    * (* model *)
+      inv MS.
+      monadInv TRFD.
+      exists (Returnstate vres tk m').
+      split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+      unfold transf_external in EQ.
+      induction ef; monadInv EQ; eauto.
+      eapply match_return_state_model; eauto.
+      simpl.
+      auto.
+      admit. (* needed to do inversion, maybe on MCONT, much earlier to propagate the block_state *)
+    * (* model *)
+      inv MS.
+      monadInv TRFD.
+      exists (Returnstate vres tk m').
+      split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+      unfold transf_external in EQ.
+      induction ef; monadInv EQ; eauto.
+      eapply match_return_state; eauto.
 
   - (* step_returnstate *)
     intros. inv MS.
     + (* other *)
       inv MCONT.
       * econstructor. split. apply plus_one. eapply step_returnstate.
-        eapply match_regular_states; eauto. simpl in *. admit.
-        simpl in *. (* need (fn_blocktype f) *) admit.
+        eapply match_regular_states; eauto. (* lost the fn_blocktype too early *)
+        admit.
+        monadInv H6; simpl in *.
+        inv H8. admit.
       * discriminate.
     + (* model *)
       inv MCONT.
