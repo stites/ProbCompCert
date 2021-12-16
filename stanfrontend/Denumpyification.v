@@ -462,6 +462,7 @@ Definition transf_program(p: StanE.program): res CStan.program :=
       CStan.prog_defs := all_defs;
       CStan.prog_public:=p.(StanE.pr_public);
       CStan.prog_model:=p.(StanE.pr_model);
+      CStan.prog_target:=p.(StanE.pr_target);
       CStan.prog_data:=p.(StanE.pr_data);
       CStan.prog_data_vars:=data_vars;
       CStan.prog_data_struct:= p.(StanE.pr_data_struct);

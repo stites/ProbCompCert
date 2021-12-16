@@ -69,15 +69,15 @@ void print_int_array(int len, int *arr) {
 void * observation;
 void initialize_data_from_cli(void * obs, int argc, char* argv[])
 {
-    int* tmp = (int*) observation;
+    int* tmp = (int*) obs;
     for (int i = 2; i < argc; i++)
     {
         int len = read_one_csv_row_len(argv[i]);
         printf("Argument %d (length: %i): %s\n", i, len, argv[i]);
 
         // int * arr = (int *) malloc(sizeof(int) * len);
-        read_one_csv_row_int(argv[i], ((int*) observation));
-        print_int_array(len, (int*) ((int*) observation));
+        read_one_csv_row_int(argv[i], ((int*) obs));
+        print_int_array(len, (int*) ((int*) obs));
         tmp++;
     }
 }
