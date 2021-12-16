@@ -202,26 +202,37 @@ Proof.
   (* Inductive-hypotheses *)
 
   - (* Ederef expressions *)
-    inv H. (* invert with CStan.eval_lvalue... *)
-    inv H0. (* but look! we can only load variables. *)
+    inv H.
+    inv H0.
+    eapply eval_Elvalue.
+    eapply eval_Ederef; eauto.
+    simpl in *.
+    destruct H1.
+    eapply deref_loc_value; eauto.
+    eapply deref_loc_reference; eauto.
+    eapply deref_loc_copy; eauto.
 
   - (* cast *)
     inv H.
     econstructor; eauto.
-    admit.
+    rewrite (transf_types_eq a x) in H4; eauto.
     inv H0.
 
   - (* field struct *)
     inv H.
-    admit.
     inv H0.
-    (* inv H0. *)
-    (* rewrite <- comp_env_preserved in *. *)
-    (* exploit eval_simpl_expr; eauto. intros [tv [A B]]. *)
-    (* inversion B. subst. *)
-    (* econstructor; econstructor; split. *)
-    (* eapply eval_Efield_struct; eauto. rewrite typeof_simpl_expr; eauto. *)
-    (* econstructor; eauto. repeat rewrite Ptrofs.add_assoc. decEq. apply Ptrofs.add_commut. *)
+    simpl in *.
+    eapply eval_Elvalue.
+    eapply eval_Efield_struct; eauto.
+    rewrite (transf_types_eq a x) in H5; eauto.
+    assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
+    rewrite comp_env_preserved in *; eauto.
+    assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
+    rewrite comp_env_preserved in *; eauto.
+    destruct H1.
+    eapply deref_loc_value; eauto.
+    eapply deref_loc_reference; eauto.
+    eapply deref_loc_copy; eauto.
 
   - (* addrof *)
     inv H.
@@ -261,7 +272,7 @@ Proof.
     rewrite alignof_equiv.
     apply Clight.eval_Ealignof.
     inv H0.
-Admitted.
+Qed.
 
 Lemma eval_lvalue_correct:
   forall e le m a b ofs ta
@@ -270,10 +281,14 @@ Lemma eval_lvalue_correct:
 Proof.
   intros e le m a.
   induction a; intros; monadInv TRE; try (inv H).
-  - econstructor. eauto.
+  - eapply eval_Evar_local; eauto.
   - eapply eval_Evar_global; eauto.
-    rewrite symbols_preserved. auto.
-Qed.
+    rewrite symbols_preserved; auto.
+  - eapply eval_Ederef.
+    admit.
+  - eapply eval_Efield_struct.
+    admit.
+Admitted.
 
 Lemma types_correct:
   forall e x, transf_expression e = OK x -> CStan.typeof e = Clight.typeof x.
