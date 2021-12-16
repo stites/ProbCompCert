@@ -1,5 +1,6 @@
 #+TITLE: Development notes for ProbCompCert
-#+latex_header: \usepackage[margin=1.0in]{geometry}
+#+STARTUP: hideblocks
+#+LATEX_HEADER: \usepackage[margin=1.0in]{geometry}
 
 The aim of this document aims to provide a roadmap to the current ProbCompCert
 codebase (revision 0f5530f6 on the feature/targetproof branch). It is a review
@@ -212,40 +213,34 @@ ls ../stanfrontend | grep 'v$' | grep -Ev "(Stan|CStan|Scompil|Denum|Sampl|Const
 
 #+RESULTS:
 | Runtime.v    |
-| scratch.v    |
 | Sops.v       |
 | Sparser.v    |
 | Ssemantics.v |
-| Stemplate.v  |
 | Stypes.v     |
 | Sutils.v     |
 | System.v     |
 
+- Runtime.v :: compcert-compiled Coq file of ~Runtime.c~.
 - Sops.v :: Stan operators
-- Stypes.v  :: Stan types
 - Sparser.v :: The output parser from ~Sparser.vy~
+- Stypes.v  :: Stan types
+- Ssemantics.v :: A placeholder for the final semantics of a StanE program
 - Sutils.v :: An attempt to share utility functions across modules
 - System.v :: initial attempt to state the desired final theorem of ProbCompCert
-
-- FIXME Files that can be deleted:
-  + Runtime.v
-  + scratch.v
-  + Ssemantics.v
-  + Stemplate.v
 
 * Development Workflow
 I had two development workflows when working on this project. For context, this
 project was developed on a NixOS box using flakes, but because of some version
 mismatches, opam was used to provide the development environment.
 ** Opam information
-Opam outputs an unreadable end-of-file character for emacs, here I supres the
-terminal output and c/p them
+Opam outputs an unreadable end-of-file character for emacs, here I supress the
+terminal output and paste it in a comment (see [[file:stan-development.org][stan-development.org]]).
 
 #+begin_src bash
 opam list --dev --normalise --color=never --readonly --columns=name,version
 #+end_src
 
-#+begin_example
+#+begin_comment
 # Packages matching: installed
 # Name                  # Version
 astring                 0.8.5
@@ -375,7 +370,7 @@ variantslib             v0.14.0
 yojson                  1.7.0
 zarith_stubs_js         v0.14.0
 zed                     3.1.0
-#+end_example
+#+end_comment
 
 #+begin_src bash
 opam list --dev --normalise --color=never --readonly --columns=name,version --pin
@@ -407,7 +402,7 @@ utop                    2.7.0
 :ID:       c4a1d2d3-7ccf-4b21-94af-1a659f3fa204
 :END:
 If you drop into a ~nix develop~ shell, you can access my helper scripts by
-invoking ~menu~.
+invoking ~menu~. I have this loaded with direnv via a ~use flake~ .envrc file.
 
 *** Compiling ccompstan
 To compile a program, you can use the ~ccompstan~ script found in flake.nix:
@@ -474,6 +469,10 @@ I encountered two hiccups with ProofGeneral in doom emacs:
   #+end_src
 
 * Debugging Tips
+- If something goes terribly wrong and you need to ~make clean~ I usually comment out
+  lines 44-47 (the coq-proba files) before running clean. This is largely safe
+  to do.
+- never ~make~, always ~make -j~
 - Don't be afraid to hard code a lot of values and mess with Runtime.c
 - If you do this, you will need to initialize a lot of types in ~driver/Sparse.ml~
 
@@ -484,7 +483,9 @@ C files (what I expected this output to be).
 In retrospect, learning about the ~dclight~ and ~dcminor~ flags would have saved
 me a lot of time. The output of ~clightgen~ is not sufficient and is not as good
 of a representation as the true ~*.light.c~ files from the compilers. To invoke
-this on the ~simple.stan~ program you would use: ~ccomp -dclight -dcminor -c stanfrontend/tests/simple/simple.stan~
+this on the ~simple.stan~ program you would use: ~ccomp -dclight -dcminor -c
+stanfrontend/tests/simple/simple.stan~. This is instrumental in understanding
+where your errors come during compilation.
 
 Prior to finding this out, I also resorted to adjusting the extracted ocaml (in
 ~extraction/~) to debugging programs. This can be quite painful since Coq
@@ -511,6 +512,10 @@ solutions and redid these a couple of times.
 (Aside, if you are using nixos, John Wiegley has a working nix-shell that needs
 to be pinned to any "pre coq-8.6" commit on nixpkgs[fn:2]: https://github.com/jwiegley/dsss17
 
+** CompCert resources
+The CompCert conference paper is too high-level to be useful in understanding
+the proof. You can give it a skim, but it will not assist in understanding how
+CompCert works. Instead, the Journal of Automated Reasoning article should be used.
 ** CompCert tactics
 - monadInv :: do this to apply inversion to any Result monad. sometimes, when it
   does not work, you will need to manually push terms through the monad and
@@ -524,8 +529,11 @@ To this end, I recommend writing out the goal and premises on paper. CompCert is
 a little too large, from my perspective, to do real pen-and-paper proofs -- but
 the act of physically writing down a judgement tree really helped in this
 process.
+
+In addition, a lot of effort needs to be
 * Current status
 ** Expected next steps
+Targetproof.
 
 * Footnotes
 

@@ -133,10 +133,10 @@ PARSER=Cabs.v Parser.v
 
 STANFRONTEND=Sops.v Stypes.v Stan.v StanE.v Ssemantics.v Sparser.v \
   CStan.v \
+  CStanCont.v \
   CStanSemanticsBackend.v \
   CStanSemanticsTarget.v \
-  CStanSemanticsVariableAllocation.v \
-  Scompiler.v Runtime.v System.v Stemplate.v \
+  Scompiler.v Runtime.v System.v \
   Denumpyification.v  \
   Sampling.v \
   Constraints.v \

@@ -4,7 +4,6 @@ Require Import Compiler.
 Require Import Asm.
 Require Import Compiler.
 Require Import StanE.
-Require Import Ssemantics.
 Require Import Linking.
 Require Import Scompiler.
 Require Import Errors.

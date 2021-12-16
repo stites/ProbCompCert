@@ -1,5 +1,4 @@
 Require Import CStan.
-Require Import Ssemantics.
 Require Import Clight.
 Require Import Errors.
 Require Import Smallstep.

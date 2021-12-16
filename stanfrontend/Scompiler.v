@@ -4,7 +4,6 @@ Require Import Clight.
 Require Import Errors.
 Require Import Smallstep.
 Require Import Asm. 
-Require Import Stemplate.
 Require Import String.
 
 Require Import Compiler.
