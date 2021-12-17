@@ -25,29 +25,75 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
-      - run: opam repo add coq-released https://coq.inria.fr/opam/released
+      - run: opam repo -y add coq-released https://coq.inria.fr/opam/released
 
       # dependencies for coq-proba
       # FIXME: really need to figure out how to fix `opam lock`
       - run: |
-          opam pin  add                    coq 8.12.0
-          opam pin  add                    num 1.3
-          opam pin  add              coq-stdpp 1.4.0
-          opam pin  add coq-mathcomp-ssreflect 1.11.0
-          opam pin  add              coq-flocq 3.3.1
-          opam pin  add         coq-coquelicot 3.1.0
-          opam pin  add           coq-interval 4.0.0
-          opam install coq-bignums
+          opam pin -y add                    num 1.3
+          opam pin -y add                    coq 8.12.0
+          opam pin -y add              coq-stdpp 1.4.0
+          opam pin -y add coq-mathcomp-ssreflect 1.11.0
+          opam pin -y add              coq-flocq 3.3.1
+          opam pin -y add         coq-coquelicot 3.1.0
+          opam pin -y add           coq-interval 4.0.0
+          opam install -y coq-bignums
 
       # dependencies for compcert
       - run: |
-          opam pin add menhir 20210419
-          opam install coq-coq2html
+          opam pin -y add menhir 20210419
+          opam install -y coq-coq2html
 
       - run: |
           eval $(opam env);
-          ./configure -prefix ./out -clightgen x86_64-linux
+          #./configure -prefix ./out -clightgen x86_64-linux
+          ./configure -clightgen x86_64-linux
           make -j
+
+      # Simplified way to build a binary without .bin/ccompstan
+      - run: |
+          eval $(opam env);
+
+          # install bin and lib outputs to ./out
+          #make -j install
+          sudo make -j install
+          #export LIBCCOMP_INSTALL=$PWD/out/lib
+
+          cd stanfrontend
+          #echo "LIBCCOMP_INSTALL = $LIBCCOMP_INSTALL"
+
+          # ccomp doesn't compile down to object files, just asm
+          #export CCOMP="../out/bin/ccomp -L$LIBCCOMP_INSTALL"
+          export CCOMP="ccomp -L. -I."
+
+          $CCOMP -c stanlib.c
+          #ld -L$LIBCCOMP_INSTALL -shared stanlib.o -o libstan.so --verbose
+          ld -shared stanlib.o -o libstan.so
+          echo [DONE] libstan.so
+
+          $CCOMP -c tests/simple/simple.stan && $CCOMP -c simple.s
+          echo [DONE] simple.o
+
+          $CCOMP -c Runtime.c
+          echo [DONE] Runtime.o
+
+          $CCOMP -Wl,-rpath=. simple.o Runtime.o -lstan -lm -o runit
+          # tell the user what to do next
+          echo [DONE] compiled! run: ./stanfrontend/runit INT
+
+          export RUNIT_OUTPUT=\"$(./runit)\"
+
+          if [[ -z "$(echo "$(./runit)" | grep error)" ]]; then
+            echo [SUCCESS] ./runit runs with output:
+            echo $RUNIT_OUTPUT
+          else
+            echo [ERROR] ./runit fails at runtime with message:
+            echo $RUNIT_OUTPUT
+            exit 1
+          fi
+
+
+
 
   #check-stan-admits:
   #  runs-on: ubuntu-latest
