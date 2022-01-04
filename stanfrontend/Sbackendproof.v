@@ -285,10 +285,13 @@ Proof.
   - eapply eval_Evar_global; eauto.
     rewrite symbols_preserved; auto.
   - eapply eval_Ederef.
-    admit.
+    eapply eval_expr_correct; eauto.
   - eapply eval_Efield_struct.
-    admit.
-Admitted.
+    eapply eval_expr_correct; eauto.
+    rewrite (transf_types_eq a x) in *; eauto.
+    rewrite comp_env_preserved in *; eauto.
+    rewrite comp_env_preserved in *; eauto.
+Qed.
 
 Lemma types_correct:
   forall e x, transf_expression e = OK x -> CStan.typeof e = Clight.typeof x.
