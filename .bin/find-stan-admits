@@ -3,7 +3,7 @@
 root_dir=$(git rev-parse --show-toplevel)
 cd $root_dir
 
-rg --type coq '(admit|Admitted)\.' stanfrontend/*proof.v
+rg '(admit|Admitted)\.' --color never stanfrontend/*proof.v
 
 if (( $? == 1 )); then
     exit 0
