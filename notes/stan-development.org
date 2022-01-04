@@ -405,10 +405,19 @@ If you drop into a ~nix develop~ shell, you can access my helper scripts by
 invoking ~menu~. I have this loaded with direnv via a ~use flake~ .envrc file.
 
 *** Compiling ccompstan
-To compile a program, you can use the ~ccompstan~ script found in flake.nix:
+To compile a program, you can use the ~ccompstan~ script found in flake.nix.
+This has also been moved to ~.bin/ccompstan~. This should work out-of-the-box,
+however I noticed a difference due to link order from the underlying gcc
+(AFAICT). If this script doesn't work, you examine how CI builds a binary:
+https://github.com/jtristan/ProbCompCert/blob/pcp/.github/workflows/simple.yaml
+
+# #+begin_src sh
+# cat ../.bin/ccompstan
+# #+end_src
 
 #+begin_example sh
 #!/usr/bin/env bash
+set -euo pipefail
 
 # store some directory variables.
 current_dir=$PWD
@@ -425,21 +434,20 @@ cd $root_dir
 cd stanfrontend
 
 # ccomp doesn't compile down to object files, just asm
-ccomp -g3 -O0 -c $current_dir/$1 && ccomp -c ${name}.s
+ccomp -g3 -c $parent_dir/$name.stan && ccomp -c ${name}.s || exit 1
 
 # build libstan.so
-ccomp -O0 -g3 -c stanlib.c
-ccomp -O0 -g3 -c staninput.c
-ld -shared stanlib.o staninput.o -o libstan.so
+ccomp -g3 -c stanlib.c
+ld -shared stanlib.o -o libstan.so
 
 # runtime is dependent on libstan, temporarily.
-ccomp -g3 -O0 -I${stan_dir} -c Runtime.c
+ccomp -g3 -I${stan_dir} -c Runtime.c
 
 # compile the final binary
-ccomp -g3 -O0 -L${stan_dir} -Wl,-rpath=${stan_dir} -L../out/lib/compcert -lm -lstan ${name}.o Runtime.o -o runit
+ccomp -g3 -L${stan_dir} -Wl,-rpath=${stan_dir} -L../out/lib/compcert -lm -lstan ${name}.o Runtime.o -o runit
 
 # tell the user what to do next
-echo "compiled! ./stanfrontend/runit INT [DATA_FIELD...]"
+echo "compiled! ./stanfrontend/runit INT"
 #+end_example
 
 *** Working on non-proof code
@@ -467,6 +475,12 @@ I encountered two hiccups with ProofGeneral in doom emacs:
     (if (equal major-mode 'coq-mode) 2 nil))
   (advice-add 'smie-config-guess :before-until #'my-smie-config-guess)
   #+end_src
+** scripts in ~.bin/~
+- ~ccompstan~: build a runnable stan executable
+- ~configure64~: configure an x86_64 linux machine with an install prefix of ~./out~
+- ~fast-clean~: comment out coq-proba from the Makefile, run make clean, then comment coq-proba back in
+- ~find-stan-admits~: search ~*proof.v~ coq files in the ~stanfrontend~ directory for admit statements.
+- ~watch-dev~: run ~ccompstan $1~ on file change of any C/Coq/Stan file, using ~watchexec~
 
 * Debugging Tips
 - If something goes terribly wrong and you need to ~make clean~ I usually comment out

@@ -131,19 +131,19 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_expr (Esizeof ty1 ty) (Vptrofs (Ptrofs.repr (sizeof ge ty1)))
   | eval_Ealignof: forall ty1 ty,
       eval_expr (Ealignof ty1 ty) (Vptrofs (Ptrofs.repr (alignof ge ty1)))
-  | eval_Ecast: forall a ty v,
-      eval_expr a v ->
+  | eval_Ecast:   forall a ty v1 v,
+      eval_expr a v1 ->
+      sem_cast v1 (typeof a) ty m = Some v ->
       eval_expr (Ecast a ty) v
-  | eval_Efield: forall a id ty v,
-      eval_expr a v ->
-      le!id = Some v ->
-      eval_expr (Efield a id ty) v
+  (* | eval_Efield: forall a id ty v, *)
+  (*     eval_expr a v -> *)
+  (*     le!id = Some v -> *)
+  (*     eval_expr (Efield a id ty) v *)
   | eval_Elvalue: forall a loc ofs v,
       eval_lvalue a loc ofs ->
       deref_loc (typeof a) m loc ofs v ->
       eval_expr a v
-  (* | eval_Etarget: forall ty, *)
-  (*     eval_expr (Etarget ty) (Vfloat ta) *)
+
 with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
@@ -151,7 +151,23 @@ with eval_lvalue: expr -> block -> ptrofs -> Prop :=
   | eval_Evar_global: forall id l ty,
       e!id = None ->
       Genv.find_symbol ge id = Some l ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero.
+      eval_lvalue (Evar id ty) l Ptrofs.zero
+  | eval_Ederef: forall a ty l ofs,
+      eval_expr a (Vptr l ofs) ->
+      eval_lvalue (Ederef a ty) l ofs
+  | eval_Efield_struct:   forall a i ty l ofs id co att delta,
+      eval_expr a (Vptr l ofs) ->
+      typeof a = Tstruct id att ->
+      ge.(genv_cenv)!id = Some co ->
+      field_offset ge i (co_members co) = OK delta ->
+      eval_lvalue (Efield a i ty) l (Ptrofs.add ofs (Ptrofs.repr delta)).
+
+Definition Ederef' (a: expr) (t: type) : expr :=
+  match a with
+  | Eaddrof a' t' => if type_eq t (typeof a') then a' else Ederef a t
+  | _ => Ederef a t
+  end.
+
 
 Scheme eval_expr_ind2 := Minimality for eval_expr Sort Prop
   with eval_lvalue_ind2 := Minimality for eval_lvalue Sort Prop.

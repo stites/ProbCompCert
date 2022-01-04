@@ -2,10 +2,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stanlib.h>
-#include <staninput.h>
-
-// see staninput.c
-void initialize_data_from_cli(void *, int, char* []);
 
 void* observation;
 void print_data(void *);
@@ -27,14 +23,12 @@ void* propose();
 
 int main(int argc, char* argv[]) {
   if (argc == 1) {
-    printf("At least one argument required: number of iterations\n");
-    printf("Optionally, add data fields as *.csv files in order of appearance\n");
+    printf("One argument required: number of iterations\n");
     exit(1);
   }
   int n = atoi(argv[1]);
 
   data();
-  initialize_data_from_cli(&observation, argc, argv);
   transformed_data();
   print_data(&observation);
 
@@ -68,6 +62,7 @@ int main(int argc, char* argv[]) {
 
   printf("\t...completed execution!\n\nSummary:\n\t");
   print_state(&state);
+  printf("\n");
   return 0;
   
 }

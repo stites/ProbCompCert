@@ -107,12 +107,12 @@ let id_init_unconstrained = Camlcoq.intern_string st_init_unconstrained
 let ty_init_unconstrained = StanE.Bfunction (StanE.Bnil, Some bdouble)
 let gl_init_unconstrained = mk_global_math_func st_init_unconstrained []
 
-(* temporary printing support *)
-let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_fn AST.Tvoid [AST.Tfloat] "print_double"
-let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_fn AST.Tvoid [AST.Tint] "print_int"
-let (st_print_array_int, id_print_array_int, gl_print_array_int, cprint_array_int) = mk_fn AST.Tvoid [AST.Tint; AST.Tany64] "print_array_int"
-let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_fn AST.Tvoid [] "print_start"
-let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_fn AST.Tvoid [] "print_end"
+(* (\* temporary printing support *\) *)
+(* let (st_print_double, id_print_double, gl_print_double, cprint_double) = mk_fn AST.Tvoid [AST.Tfloat] "print_double" *)
+(* let (st_print_int, id_print_int, gl_print_int, cprint_int) = mk_fn AST.Tvoid [AST.Tint] "print_int" *)
+(* (\* let (st_print_array_int, id_print_array_int, gl_print_array_int, cprint_array_int) = mk_fn AST.Tvoid [AST.Tint; AST.Tany64] "print_array_int" *\) *)
+(* let (st_print_start, id_print_start, gl_print_start, cprint_start) = mk_fn AST.Tvoid [] "print_start" *)
+(* let (st_print_end, id_print_end, gl_print_end, cprint_end) = mk_fn AST.Tvoid [] "print_end" *)
 
 let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFLogit, id_logit, gl_logit, clogit);
@@ -120,11 +120,11 @@ let __math_functions = [ (CStan.MFLog, id_log, gl_log, clog);
                          (CStan.MFExpit, id_expit, gl_expit, cexpit);
                          (CStan.MFInitUnconstrained, id_init_unconstrained, gl_init_unconstrained, mk_cfunc []);
 
-                         (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start);
-                         (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double);
-                         (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int);
-                         (CStan.MFPrintArrayInt, id_print_array_int, gl_print_array_int, cprint_array_int);
-                         (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end);
+                         (* (CStan.MFPrintStart, id_print_start, gl_print_start, cprint_start); *)
+                         (* (CStan.MFPrintDouble, id_print_double, gl_print_double, cprint_double); *)
+                         (* (CStan.MFPrintInt, id_print_int, gl_print_int, cprint_int); *)
+                         (* (\* (CStan.MFPrintArrayInt, id_print_array_int, gl_print_array_int, cprint_array_int); *\) *)
+                         (* (CStan.MFPrintEnd, id_print_end, gl_print_end, cprint_end); *)
                         ]
 
 let _as_prog_math_functions (e, i, g, c) = ((e, i), c)
@@ -396,7 +396,7 @@ let mkVariableFromLocal (v, id, basic) =
 let mkVariable v = mkVariableFromLocal (mkLocal v)
 let declareVariable = mkVariable
 
-let mkFunction name body rt params extraVars =
+let mkFunction name body rt params extraVars extraTemps =
   let id = Camlcoq.intern_string name in
   Hashtbl.add C2C.decl_atom id {
     a_storage = C.Storage_default;
@@ -430,12 +430,12 @@ let mkFunction name body rt params extraVars =
     StanE.fn_params = params;
     StanE.fn_blocktype = blocktypeFundef name;
     StanE.fn_vars = List.concat [extraVars; (IdxHashtbl.fold (fun k v acc -> (k,StanE.Bint)::acc) index_set [])];
-    StanE.fn_temps = [];
+    StanE.fn_temps = extraTemps;
     StanE.fn_body = body} in
   (id,  AST.Gfun(Ctypes.Internal fd))
 
 let declareFundef name body rt params =
-  mkFunction name body rt params []
+  mkFunction name body rt params [] []
 
 let mapMaybe fn mval =
   match mval with
@@ -513,8 +513,9 @@ let elaborate (p: Stan.program) =
     IdxHashtbl.clear index_set;
     (* let target_arg = ((Stypes.Aauto_diffable, StanE.Breal), "target") in
      * let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [target_arg] [] in *)
-    let target_var = (Camlcoq.intern_string "target", StanE.Breal) in
-    let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [target_var] in
+    let (id_target, ty_target) = (Camlcoq.intern_string "target", StanE.Breal) in
+    let target_var = (id_target, ty_target) in
+    let (id_model,f_model) = mkFunction "model" (get_code m) (Some StanE.Breal) [] [] [target_var] in
 
     let functions = (id_model,f_model) :: functions in
 
@@ -564,20 +565,24 @@ let elaborate (p: Stan.program) =
     let id_params_struct_global_state = declareGlobalStruct "state" in
     let id_params_struct_global_proposal = declareGlobalStruct "candidate" in
     let id_params_struct_arg = Camlcoq.intern_string "__p__" in
+    let id_params_struct_tmp = Camlcoq.intern_string "__pt__" in
     let params_reserved = {
       CStan.res_params_type = id_params_struct_typ;
       CStan.res_params_global_state = id_params_struct_global_state;
       CStan.res_params_global_proposal = id_params_struct_global_proposal;
-      CStan.res_params_arg  = id_params_struct_arg;
+      CStan.res_params_arg = id_params_struct_arg;
+      CStan.res_params_tmp = id_params_struct_tmp;
     } in
 
     let (id_data_struct_typ, gl_data_struct) = declareStruct "Data" data_fields in
     let id_data_struct_global = declareGlobalStruct "observation" in
     let id_data_struct_arg = Camlcoq.intern_string "__d__" in
+    let id_data_struct_tmp = Camlcoq.intern_string "__dt__" in
     let data_reserved = {
       CStan.res_data_type = id_data_struct_typ;
       CStan.res_data_global = id_data_struct_global;
       CStan.res_data_arg = id_data_struct_arg;
+      CStan.res_data_tmp = id_data_struct_tmp;
     } in
 
     let structs = [(id_params_struct_global_state, gl_params_struct); (id_params_struct_global_proposal, gl_params_struct); (id_data_struct_global, gl_data_struct)] in
@@ -597,6 +602,7 @@ let elaborate (p: Stan.program) =
       StanE.pr_parameters_struct=params_reserved;
       StanE.pr_transformed_parameters=id_tr_params;
       StanE.pr_model=id_model;
+      StanE.pr_target=id_target;
       StanE.pr_generated=id_gen_quant;
       StanE.pr_main=id_main;
       StanE.pr_math_functions=pr_math_functions;
