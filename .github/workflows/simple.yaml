@@ -1,6 +1,14 @@
 name: ocaml-ubuntu
 
-on: [push, pull_request]
+on:
+  # Trigger the workflow on push or pull request, but only for the pcp branch
+  # (ie: don't blow up everyone's email when someone is on their own branch)
+  push:
+    branches:
+      - pcp
+  pull_request:
+    branches:
+      - pcp
 
 jobs:
   build-simple:
