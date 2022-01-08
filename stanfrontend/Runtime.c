@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-#include <stanlib.h>
+#include "stanlib.h"
 
 void* observation;
 void print_data(void *);
