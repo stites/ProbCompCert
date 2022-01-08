@@ -105,6 +105,7 @@ Section EXPR.
 Variable e: env.
 Variable le: temp_env.
 Variable m: mem.
+Locate deref_loc.
 
 Inductive eval_expr: expr -> val -> Prop :=
   | eval_Econst_int:   forall i ty,
@@ -139,28 +140,28 @@ Inductive eval_expr: expr -> val -> Prop :=
   (*     eval_expr a v -> *)
   (*     le!id = Some v -> *)
   (*     eval_expr (Efield a id ty) v *)
-  | eval_Elvalue: forall a loc ofs v,
-      eval_lvalue a loc ofs ->
-      deref_loc (typeof a) m loc ofs v ->
+  | eval_Elvalue: forall a loc ofs bf v,
+      eval_lvalue a loc ofs bf ->
+      deref_loc (typeof a) m loc ofs bf v ->
       eval_expr a v
 
-with eval_lvalue: expr -> block -> ptrofs -> Prop :=
+with eval_lvalue: expr -> block -> ptrofs -> bitfield -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero
+      eval_lvalue (Evar id ty) l Ptrofs.zero Full
   | eval_Evar_global: forall id l ty,
       e!id = None ->
       Genv.find_symbol ge id = Some l ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero
+      eval_lvalue (Evar id ty) l Ptrofs.zero Full
   | eval_Ederef: forall a ty l ofs,
       eval_expr a (Vptr l ofs) ->
-      eval_lvalue (Ederef a ty) l ofs
-  | eval_Efield_struct:   forall a i ty l ofs id co att delta,
+      eval_lvalue (Ederef a ty) l ofs Full
+  | eval_Efield_struct:   forall a i ty l ofs id co att delta bf,
       eval_expr a (Vptr l ofs) ->
       typeof a = Tstruct id att ->
       ge.(genv_cenv)!id = Some co ->
-      field_offset ge i (co_members co) = OK delta ->
-      eval_lvalue (Efield a i ty) l (Ptrofs.add ofs (Ptrofs.repr delta)).
+      field_offset ge i (co_members co) = OK (delta, bf) ->
+      eval_lvalue (Efield a i ty) l (Ptrofs.add ofs (Ptrofs.repr delta)) bf.
 
 Definition Ederef' (a: expr) (t: type) : expr :=
   match a with
@@ -255,8 +256,8 @@ with find_label_ls (lbl: label) (sl: labeled_statements) (k: cont)
 Variable function_entry: function -> list val -> mem -> env -> temp_env -> mem -> Prop.
 
 Inductive step: state -> trace -> state -> Prop :=
-  | step_assign:   forall f a1 a2 k e le m loc ofs v2 v m',
-      eval_lvalue e le m a1 loc ofs ->
+  | step_assign:   forall f a1 a2 k e le m loc ofs bf v2 v m',
+      eval_lvalue e le m a1 loc ofs bf ->
       eval_expr e le m a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
       assign_loc ge (typeof a1) m loc ofs v m' ->

@@ -397,11 +397,13 @@ Fixpoint catMaybes {X : Type} (xs : list (option X)) : list X :=
   | None::xs => catMaybes xs
   end.
 
-Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef type)) (vars : list AST.ident) : list (AST.ident*type) :=
+Definition filter_globvars (all_defs : list (AST.ident*AST.globdef CStan.fundef type)) (vars : list AST.ident) :
+  members :=
   let maybe_member := fun tpl => option_map (fun ty => (fst tpl, ty)) (globdef_to_type (snd tpl)) in
   let all_members := catMaybes (List.map maybe_member all_defs) in
   let stan_members := List.filter (fun tpl => ident_list_member vars (fst tpl)) all_members in
-  stan_members.
+  let plain_members := List.map (fun tpl => Member_plain (fst tpl) (snd tpl)) stan_members in
+  plain_members.
 
 Definition eglobdef_to_constr : AST.globdef CStan.fundef (type * CStan.constraint * option CStan.expr * bool) -> option CStan.constraint :=
   map_globdef (fun x => match x with | (_, c, _, _) => c end).
@@ -447,11 +449,13 @@ Definition transf_program(p: StanE.program): res CStan.program :=
   (* (* Error (MSG "list of params: " :: (List.map CTX p.(StanE.pr_parameters_vars))). *) *)
 
   do parameter_vars <- list_mmap (fun ib => do b <- transf_type (snd ib); OK (fst ib, b)) p.(StanE.pr_parameters_vars);
-  let params_struct := Composite params_struct_id Ctypes.Struct parameter_vars Ctypes.noattr in
+  let parameter_members := List.map (fun tlp => Member_plain (fst tlp) (snd tlp)) parameter_vars in
+  let params_struct := Composite params_struct_id Ctypes.Struct parameter_members Ctypes.noattr in
 
   let data_struct_id := CStan.res_data_type (StanE.pr_data_struct p) in
   do data_vars <- list_mmap (fun ib => do b <- transf_type (snd ib); OK (fst ib, b)) p.(StanE.pr_data_vars);
-  let data_struct := Composite data_struct_id Ctypes.Struct data_vars Ctypes.noattr in
+  let data_members := List.map (fun tlp => Member_plain (fst tlp) (snd tlp)) data_vars in
+  let data_struct := Composite data_struct_id Ctypes.Struct data_members Ctypes.noattr in
 
   let composite_types := data_struct :: params_struct :: nil in
 

@@ -1,22 +1,26 @@
 From Coq Require Import String List ZArith.
 From compcert Require Import Coqlib Integers Floats AST Ctypes Cop Clight Clightdefs.
+Import Clightdefs.ClightNotations.
 Local Open Scope Z_scope.
 Local Open Scope string_scope.
+Local Open Scope clight_scope.
 
 Module Info.
-  Definition version := "3.8".
+  Definition version := "3.10".
   Definition build_number := "".
   Definition build_tag := "".
   Definition build_branch := "".
   Definition arch := "x86".
   Definition model := "64".
-  Definition abi := "macosx".
+  Definition abi := "standard".
   Definition bitsize := 64.
   Definition big_endian := false.
   Definition source_file := "Runtime.c".
   Definition normalized := false.
 End Info.
 
+Definition _Params : ident := $"Params".
+Definition ___builtin_ais_annot : ident := $"__builtin_ais_annot".
 Definition ___builtin_annot : ident := $"__builtin_annot".
 Definition ___builtin_annot_intval : ident := $"__builtin_annot_intval".
 Definition ___builtin_bswap : ident := $"__builtin_bswap".
@@ -30,6 +34,7 @@ Definition ___builtin_ctz : ident := $"__builtin_ctz".
 Definition ___builtin_ctzl : ident := $"__builtin_ctzl".
 Definition ___builtin_ctzll : ident := $"__builtin_ctzll".
 Definition ___builtin_debug : ident := $"__builtin_debug".
+Definition ___builtin_expect : ident := $"__builtin_expect".
 Definition ___builtin_fabs : ident := $"__builtin_fabs".
 Definition ___builtin_fabsf : ident := $"__builtin_fabsf".
 Definition ___builtin_fmadd : ident := $"__builtin_fmadd".
@@ -45,6 +50,7 @@ Definition ___builtin_read16_reversed : ident := $"__builtin_read16_reversed".
 Definition ___builtin_read32_reversed : ident := $"__builtin_read32_reversed".
 Definition ___builtin_sel : ident := $"__builtin_sel".
 Definition ___builtin_sqrt : ident := $"__builtin_sqrt".
+Definition ___builtin_unreachable : ident := $"__builtin_unreachable".
 Definition ___builtin_va_arg : ident := $"__builtin_va_arg".
 Definition ___builtin_va_copy : ident := $"__builtin_va_copy".
 Definition ___builtin_va_end : ident := $"__builtin_va_end".
@@ -71,10 +77,13 @@ Definition ___compcert_va_float64 : ident := $"__compcert_va_float64".
 Definition ___compcert_va_int32 : ident := $"__compcert_va_int32".
 Definition ___compcert_va_int64 : ident := $"__compcert_va_int64".
 Definition ___stringlit_1 : ident := $"__stringlit_1".
+Definition ___stringlit_2 : ident := $"__stringlit_2".
+Definition ___stringlit_3 : ident := $"__stringlit_3".
+Definition ___stringlit_4 : ident := $"__stringlit_4".
 Definition _argc : ident := $"argc".
 Definition _argv : ident := $"argv".
 Definition _atoi : ident := $"atoi".
-Definition _candidate : ident := $"candidate".
+Definition _ca : ident := $"ca".
 Definition _data : ident := $"data".
 Definition _exit : ident := $"exit".
 Definition _generated_quantities : ident := $"generated_quantities".
@@ -85,12 +94,17 @@ Definition _lp_parameters : ident := $"lp_parameters".
 Definition _main : ident := $"main".
 Definition _model : ident := $"model".
 Definition _n : ident := $"n".
+Definition _newpi : ident := $"newpi".
+Definition _observation : ident := $"observation".
 Definition _parameters : ident := $"parameters".
-Definition _parameters__1 : ident := $"parameters__1".
+Definition _pi : ident := $"pi".
+Definition _print_data : ident := $"print_data".
+Definition _print_state : ident := $"print_state".
 Definition _printf : ident := $"printf".
 Definition _propose : ident := $"propose".
 Definition _rand : ident := $"rand".
 Definition _set_state : ident := $"set_state".
+Definition _state : ident := $"state".
 Definition _transformed_data : ident := $"transformed_data".
 Definition _transformed_parameters : ident := $"transformed_parameters".
 Definition _u : ident := $"u".
@@ -130,25 +144,94 @@ Definition v___stringlit_1 := {|
   gvar_volatile := false
 |}.
 
+Definition v___stringlit_3 := {|
+  gvar_info := (tarray tschar 37);
+  gvar_init := (Init_int8 (Int.repr 9) :: Init_int8 (Int.repr 46) ::
+                Init_int8 (Int.repr 46) :: Init_int8 (Int.repr 46) ::
+                Init_int8 (Int.repr 99) :: Init_int8 (Int.repr 111) ::
+                Init_int8 (Int.repr 109) :: Init_int8 (Int.repr 112) ::
+                Init_int8 (Int.repr 108) :: Init_int8 (Int.repr 101) ::
+                Init_int8 (Int.repr 116) :: Init_int8 (Int.repr 101) ::
+                Init_int8 (Int.repr 100) :: Init_int8 (Int.repr 32) ::
+                Init_int8 (Int.repr 101) :: Init_int8 (Int.repr 120) ::
+                Init_int8 (Int.repr 101) :: Init_int8 (Int.repr 99) ::
+                Init_int8 (Int.repr 117) :: Init_int8 (Int.repr 116) ::
+                Init_int8 (Int.repr 105) :: Init_int8 (Int.repr 111) ::
+                Init_int8 (Int.repr 110) :: Init_int8 (Int.repr 33) ::
+                Init_int8 (Int.repr 10) :: Init_int8 (Int.repr 10) ::
+                Init_int8 (Int.repr 83) :: Init_int8 (Int.repr 117) ::
+                Init_int8 (Int.repr 109) :: Init_int8 (Int.repr 109) ::
+                Init_int8 (Int.repr 97) :: Init_int8 (Int.repr 114) ::
+                Init_int8 (Int.repr 121) :: Init_int8 (Int.repr 58) ::
+                Init_int8 (Int.repr 10) :: Init_int8 (Int.repr 9) ::
+                Init_int8 (Int.repr 0) :: nil);
+  gvar_readonly := true;
+  gvar_volatile := false
+|}.
+
+Definition v___stringlit_2 := {|
+  gvar_info := (tarray tschar 32);
+  gvar_init := (Init_int8 (Int.repr 115) :: Init_int8 (Int.repr 101) ::
+                Init_int8 (Int.repr 116) :: Init_int8 (Int.repr 116) ::
+                Init_int8 (Int.repr 105) :: Init_int8 (Int.repr 110) ::
+                Init_int8 (Int.repr 103) :: Init_int8 (Int.repr 32) ::
+                Init_int8 (Int.repr 115) :: Init_int8 (Int.repr 116) ::
+                Init_int8 (Int.repr 97) :: Init_int8 (Int.repr 116) ::
+                Init_int8 (Int.repr 101) :: Init_int8 (Int.repr 32) ::
+                Init_int8 (Int.repr 105) :: Init_int8 (Int.repr 110) ::
+                Init_int8 (Int.repr 32) :: Init_int8 (Int.repr 105) ::
+                Init_int8 (Int.repr 116) :: Init_int8 (Int.repr 101) ::
+                Init_int8 (Int.repr 114) :: Init_int8 (Int.repr 97) ::
+                Init_int8 (Int.repr 116) :: Init_int8 (Int.repr 105) ::
+                Init_int8 (Int.repr 111) :: Init_int8 (Int.repr 110) ::
+                Init_int8 (Int.repr 32) :: Init_int8 (Int.repr 37) ::
+                Init_int8 (Int.repr 100) :: Init_int8 (Int.repr 58) ::
+                Init_int8 (Int.repr 32) :: Init_int8 (Int.repr 0) :: nil);
+  gvar_readonly := true;
+  gvar_volatile := false
+|}.
+
+Definition v___stringlit_4 := {|
+  gvar_info := (tarray tschar 2);
+  gvar_init := (Init_int8 (Int.repr 10) :: Init_int8 (Int.repr 0) :: nil);
+  gvar_readonly := true;
+  gvar_volatile := false
+|}.
+
+Definition v_observation := {|
+  gvar_info := (tptr tvoid);
+  gvar_init := (Init_space 8 :: nil);
+  gvar_readonly := false;
+  gvar_volatile := false
+|}.
+
+Definition v_state := {|
+  gvar_info := (tptr tvoid);
+  gvar_init := (Init_space 8 :: nil);
+  gvar_readonly := false;
+  gvar_volatile := false
+|}.
+
 Definition f_main := {|
   fn_return := tint;
   fn_callconv := cc_default;
   fn_params := ((_argc, tint) :: (_argv, (tptr (tptr tschar))) :: nil);
   fn_vars := nil;
-  fn_temps := ((_n, tint) :: (_i, tint) :: (_parameters__1, (tptr tvoid)) ::
-               (_lp_parameters, tdouble) :: (_candidate, (tptr tvoid)) ::
+  fn_temps := ((_n, tint) :: (_i, tint) :: (_pi, (tptr tvoid)) ::
+               (_lp_parameters, tdouble) :: (_newpi, (tptr tvoid)) ::
+               (_ca, (tptr (Tstruct _Params noattr))) ::
                (_lp_candidate, tdouble) :: (_u, tdouble) :: (_t'6, tint) ::
                (_t'5, tdouble) :: (_t'4, (tptr tvoid)) :: (_t'3, tdouble) ::
                (_t'2, (tptr tvoid)) :: (_t'1, tint) :: nil);
   fn_body :=
 (Ssequence
   (Ssequence
-    (Sifthenelse (Ebinop One (Etempvar _argc tint)
-                   (Econst_int (Int.repr 2) tint) tint)
+    (Sifthenelse (Ebinop Oeq (Etempvar _argc tint)
+                   (Econst_int (Int.repr 1) tint) tint)
       (Ssequence
         (Scall None
           (Evar _printf (Tfunction (Tcons (tptr tschar) Tnil) tint
-                          {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
+                          {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
           ((Evar ___stringlit_1 (tarray tschar 45)) :: nil))
         (Scall None
           (Evar _exit (Tfunction (Tcons tint Tnil) tvoid cc_default))
@@ -166,110 +249,173 @@ Definition f_main := {|
       (Ssequence
         (Scall None
           (Evar _data (Tfunction Tnil tvoid
-                        {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                        {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
           nil)
         (Ssequence
           (Scall None
             (Evar _transformed_data (Tfunction Tnil tvoid
-                                      {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                                      {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
             nil)
           (Ssequence
             (Scall None
-              (Evar _parameters (Tfunction Tnil tvoid
-                                  {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-              nil)
+              (Evar _print_data (Tfunction (Tcons (tptr tvoid) Tnil) tvoid
+                                  cc_default))
+              ((Eaddrof (Evar _observation (tptr tvoid)) (tptr (tptr tvoid))) ::
+               nil))
             (Ssequence
+              (Scall None
+                (Evar _parameters (Tfunction Tnil tvoid
+                                    {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+                nil)
               (Ssequence
-                (Sset _i (Econst_int (Int.repr 0) tint))
-                (Sloop
+                (Scall None
+                  (Evar _print_state (Tfunction (Tcons (tptr tvoid) Tnil)
+                                       tvoid cc_default))
+                  ((Eaddrof (Evar _state (tptr tvoid)) (tptr (tptr tvoid))) ::
+                   nil))
+                (Ssequence
                   (Ssequence
-                    (Sifthenelse (Ebinop Olt (Etempvar _i tint)
-                                   (Etempvar _n tint) tint)
-                      Sskip
-                      Sbreak)
-                    (Ssequence
+                    (Sset _i (Econst_int (Int.repr 0) tint))
+                    (Sloop
                       (Ssequence
-                        (Scall (Some _t'2)
-                          (Evar _get_state (Tfunction Tnil (tptr tvoid)
-                                             {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-                          nil)
-                        (Sset _parameters__1 (Etempvar _t'2 (tptr tvoid))))
-                      (Ssequence
-                        (Scall None
-                          (Evar _transformed_parameters (Tfunction
-                                                          (Tcons (tptr tvoid)
-                                                            Tnil) tvoid
-                                                          cc_default))
-                          ((Etempvar _parameters__1 (tptr tvoid)) :: nil))
+                        (Sifthenelse (Ebinop Olt (Etempvar _i tint)
+                                       (Etempvar _n tint) tint)
+                          Sskip
+                          Sbreak)
                         (Ssequence
                           (Ssequence
-                            (Scall (Some _t'3)
-                              (Evar _model (Tfunction
-                                             (Tcons (tptr tvoid) Tnil)
-                                             tdouble cc_default))
-                              ((Etempvar _parameters__1 (tptr tvoid)) :: nil))
-                            (Sset _lp_parameters (Etempvar _t'3 tdouble)))
+                            (Scall (Some _t'2)
+                              (Evar _get_state (Tfunction Tnil (tptr tvoid)
+                                                 {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+                              nil)
+                            (Sset _pi (Etempvar _t'2 (tptr tvoid))))
                           (Ssequence
+                            (Scall None
+                              (Evar _transformed_parameters (Tfunction
+                                                              (Tcons
+                                                                (tptr tvoid)
+                                                                Tnil) tvoid
+                                                              cc_default))
+                              ((Etempvar _pi (tptr tvoid)) :: nil))
                             (Ssequence
-                              (Scall (Some _t'4)
-                                (Evar _propose (Tfunction Tnil (tptr tvoid)
-                                                 {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-                                nil)
-                              (Sset _candidate (Etempvar _t'4 (tptr tvoid))))
-                            (Ssequence
-                              (Scall None
-                                (Evar _transformed_parameters (Tfunction
-                                                                (Tcons
-                                                                  (tptr tvoid)
-                                                                  Tnil) tvoid
-                                                                cc_default))
-                                ((Etempvar _candidate (tptr tvoid)) :: nil))
+                              (Ssequence
+                                (Scall (Some _t'3)
+                                  (Evar _model (Tfunction
+                                                 (Tcons (tptr tvoid) Tnil)
+                                                 tdouble cc_default))
+                                  ((Etempvar _pi (tptr tvoid)) :: nil))
+                                (Sset _lp_parameters (Etempvar _t'3 tdouble)))
                               (Ssequence
                                 (Ssequence
-                                  (Scall (Some _t'5)
-                                    (Evar _model (Tfunction
-                                                   (Tcons (tptr tvoid) Tnil)
-                                                   tdouble cc_default))
-                                    ((Etempvar _candidate (tptr tvoid)) ::
-                                     nil))
-                                  (Sset _lp_candidate
-                                    (Etempvar _t'5 tdouble)))
+                                  (Scall (Some _t'4)
+                                    (Evar _propose (Tfunction Tnil
+                                                     (tptr tvoid)
+                                                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+                                    nil)
+                                  (Sset _newpi (Etempvar _t'4 (tptr tvoid))))
                                 (Ssequence
+                                  (Sset _ca
+                                    (Ecast (Etempvar _newpi (tptr tvoid))
+                                      (tptr (Tstruct _Params noattr))))
                                   (Ssequence
-                                    (Scall (Some _t'6)
-                                      (Evar _rand (Tfunction Tnil tint
-                                                    cc_default)) nil)
-                                    (Sset _u
-                                      (Ebinop Odiv
-                                        (Ecast (Etempvar _t'6 tint) tdouble)
-                                        (Econst_int (Int.repr 2147483647) tint)
-                                        tdouble)))
-                                  (Ssequence
-                                    (Sifthenelse (Ebinop Ole
-                                                   (Etempvar _u tdouble)
-                                                   (Ebinop Osub
-                                                     (Etempvar _lp_candidate tdouble)
-                                                     (Etempvar _lp_parameters tdouble)
-                                                     tdouble) tint)
-                                      (Scall None
-                                        (Evar _set_state (Tfunction
-                                                           (Tcons
-                                                             (tptr tvoid)
-                                                             Tnil) tvoid
-                                                           cc_default))
-                                        ((Etempvar _candidate (tptr tvoid)) ::
-                                         nil))
-                                      Sskip)
                                     (Scall None
-                                      (Evar _generated_quantities (Tfunction
-                                                                    Tnil
+                                      (Evar _transformed_parameters (Tfunction
+                                                                    (Tcons
+                                                                    (tptr tvoid)
+                                                                    Tnil)
                                                                     tvoid
-                                                                    {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-                                      nil))))))))))
-                  (Sset _i
-                    (Ebinop Oadd (Etempvar _i tint)
-                      (Econst_int (Int.repr 1) tint) tint))))
-              (Sreturn (Some (Econst_int (Int.repr 0) tint)))))))))
+                                                                    cc_default))
+                                      ((Etempvar _newpi (tptr tvoid)) :: nil))
+                                    (Ssequence
+                                      (Ssequence
+                                        (Scall (Some _t'5)
+                                          (Evar _model (Tfunction
+                                                         (Tcons (tptr tvoid)
+                                                           Tnil) tdouble
+                                                         cc_default))
+                                          ((Etempvar _newpi (tptr tvoid)) ::
+                                           nil))
+                                        (Sset _lp_candidate
+                                          (Etempvar _t'5 tdouble)))
+                                      (Ssequence
+                                        (Ssequence
+                                          (Scall (Some _t'6)
+                                            (Evar _rand (Tfunction Tnil tint
+                                                          cc_default)) nil)
+                                          (Sset _u
+                                            (Ebinop Odiv
+                                              (Ecast (Etempvar _t'6 tint)
+                                                tdouble)
+                                              (Econst_int (Int.repr 2147483647) tint)
+                                              tdouble)))
+                                        (Ssequence
+                                          (Sifthenelse (Ebinop Ole
+                                                         (Etempvar _u tdouble)
+                                                         (Ebinop Osub
+                                                           (Etempvar _lp_candidate tdouble)
+                                                           (Etempvar _lp_parameters tdouble)
+                                                           tdouble) tint)
+                                            (Ssequence
+                                              (Scall None
+                                                (Evar _set_state (Tfunction
+                                                                   (Tcons
+                                                                    (tptr tvoid)
+                                                                    Tnil)
+                                                                   tvoid
+                                                                   cc_default))
+                                                ((Etempvar _newpi (tptr tvoid)) ::
+                                                 nil))
+                                              (Ssequence
+                                                (Scall None
+                                                  (Evar _printf (Tfunction
+                                                                  (Tcons
+                                                                    (tptr tschar)
+                                                                    Tnil)
+                                                                  tint
+                                                                  {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+                                                  ((Evar ___stringlit_2 (tarray tschar 32)) ::
+                                                   (Ebinop Oadd
+                                                     (Etempvar _i tint)
+                                                     (Econst_int (Int.repr 1) tint)
+                                                     tint) :: nil))
+                                                (Scall None
+                                                  (Evar _print_state 
+                                                  (Tfunction
+                                                    (Tcons (tptr tvoid) Tnil)
+                                                    tvoid cc_default))
+                                                  ((Eaddrof
+                                                     (Evar _state (tptr tvoid))
+                                                     (tptr (tptr tvoid))) ::
+                                                   nil))))
+                                            Sskip)
+                                          (Scall None
+                                            (Evar _generated_quantities 
+                                            (Tfunction Tnil tvoid
+                                              {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+                                            nil)))))))))))
+                      (Sset _i
+                        (Ebinop Oadd (Etempvar _i tint)
+                          (Econst_int (Int.repr 1) tint) tint))))
+                  (Ssequence
+                    (Scall None
+                      (Evar _printf (Tfunction (Tcons (tptr tschar) Tnil)
+                                      tint
+                                      {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+                      ((Evar ___stringlit_3 (tarray tschar 37)) :: nil))
+                    (Ssequence
+                      (Scall None
+                        (Evar _print_state (Tfunction
+                                             (Tcons (tptr tvoid) Tnil) tvoid
+                                             cc_default))
+                        ((Eaddrof (Evar _state (tptr tvoid))
+                           (tptr (tptr tvoid))) :: nil))
+                      (Ssequence
+                        (Scall None
+                          (Evar _printf (Tfunction (Tcons (tptr tschar) Tnil)
+                                          tint
+                                          {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+                          ((Evar ___stringlit_4 (tarray tschar 2)) :: nil))
+                        (Sreturn (Some (Econst_int (Int.repr 0) tint))))))))))))))
   (Sreturn (Some (Econst_int (Int.repr 0) tint))))
 |}.
 
@@ -277,124 +423,20 @@ Definition composites : list composite_definition :=
 nil.
 
 Definition global_definitions : list (ident * globdef fundef type) :=
-((___stringlit_1, Gvar v___stringlit_1) ::
- (___builtin_bswap64,
-   Gfun(External (EF_builtin "__builtin_bswap64"
-                   (mksignature (AST.Tlong :: nil) AST.Tlong cc_default))
-     (Tcons tulong Tnil) tulong cc_default)) ::
- (___builtin_bswap,
-   Gfun(External (EF_builtin "__builtin_bswap"
-                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
-     (Tcons tuint Tnil) tuint cc_default)) ::
- (___builtin_bswap32,
-   Gfun(External (EF_builtin "__builtin_bswap32"
-                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
-     (Tcons tuint Tnil) tuint cc_default)) ::
- (___builtin_bswap16,
-   Gfun(External (EF_builtin "__builtin_bswap16"
-                   (mksignature (AST.Tint :: nil) AST.Tint16unsigned
-                     cc_default)) (Tcons tushort Tnil) tushort cc_default)) ::
- (___builtin_clz,
-   Gfun(External (EF_builtin "__builtin_clz"
-                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
-     (Tcons tuint Tnil) tint cc_default)) ::
- (___builtin_clzl,
-   Gfun(External (EF_builtin "__builtin_clzl"
-                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
-     (Tcons tulong Tnil) tint cc_default)) ::
- (___builtin_clzll,
-   Gfun(External (EF_builtin "__builtin_clzll"
-                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
-     (Tcons tulong Tnil) tint cc_default)) ::
- (___builtin_ctz,
-   Gfun(External (EF_builtin "__builtin_ctz"
-                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
-     (Tcons tuint Tnil) tint cc_default)) ::
- (___builtin_ctzl,
-   Gfun(External (EF_builtin "__builtin_ctzl"
-                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
-     (Tcons tulong Tnil) tint cc_default)) ::
- (___builtin_ctzll,
-   Gfun(External (EF_builtin "__builtin_ctzll"
-                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
-     (Tcons tulong Tnil) tint cc_default)) ::
- (___builtin_fabs,
-   Gfun(External (EF_builtin "__builtin_fabs"
-                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
-     (Tcons tdouble Tnil) tdouble cc_default)) ::
- (___builtin_fabsf,
-   Gfun(External (EF_builtin "__builtin_fabsf"
-                   (mksignature (AST.Tsingle :: nil) AST.Tsingle cc_default))
-     (Tcons tfloat Tnil) tfloat cc_default)) ::
- (___builtin_fsqrt,
-   Gfun(External (EF_builtin "__builtin_fsqrt"
-                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
-     (Tcons tdouble Tnil) tdouble cc_default)) ::
- (___builtin_sqrt,
-   Gfun(External (EF_builtin "__builtin_sqrt"
-                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
-     (Tcons tdouble Tnil) tdouble cc_default)) ::
- (___builtin_memcpy_aligned,
-   Gfun(External (EF_builtin "__builtin_memcpy_aligned"
-                   (mksignature
-                     (AST.Tlong :: AST.Tlong :: AST.Tlong :: AST.Tlong ::
-                      nil) AST.Tvoid cc_default))
-     (Tcons (tptr tvoid)
-       (Tcons (tptr tvoid) (Tcons tulong (Tcons tulong Tnil)))) tvoid
-     cc_default)) ::
- (___builtin_sel,
-   Gfun(External (EF_builtin "__builtin_sel"
-                   (mksignature (AST.Tint :: nil) AST.Tvoid
-                     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
-     (Tcons tbool Tnil) tvoid
-     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
- (___builtin_annot,
-   Gfun(External (EF_builtin "__builtin_annot"
-                   (mksignature (AST.Tlong :: nil) AST.Tvoid
-                     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
-     (Tcons (tptr tschar) Tnil) tvoid
-     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
- (___builtin_annot_intval,
-   Gfun(External (EF_builtin "__builtin_annot_intval"
-                   (mksignature (AST.Tlong :: AST.Tint :: nil) AST.Tint
-                     cc_default)) (Tcons (tptr tschar) (Tcons tint Tnil))
-     tint cc_default)) ::
- (___builtin_membar,
-   Gfun(External (EF_builtin "__builtin_membar"
-                   (mksignature nil AST.Tvoid cc_default)) Tnil tvoid
-     cc_default)) ::
- (___builtin_va_start,
-   Gfun(External (EF_builtin "__builtin_va_start"
-                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
-     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
- (___builtin_va_arg,
-   Gfun(External (EF_builtin "__builtin_va_arg"
-                   (mksignature (AST.Tlong :: AST.Tint :: nil) AST.Tvoid
-                     cc_default)) (Tcons (tptr tvoid) (Tcons tuint Tnil))
-     tvoid cc_default)) ::
- (___builtin_va_copy,
-   Gfun(External (EF_builtin "__builtin_va_copy"
-                   (mksignature (AST.Tlong :: AST.Tlong :: nil) AST.Tvoid
-                     cc_default))
-     (Tcons (tptr tvoid) (Tcons (tptr tvoid) Tnil)) tvoid cc_default)) ::
- (___builtin_va_end,
-   Gfun(External (EF_builtin "__builtin_va_end"
-                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
-     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
- (___compcert_va_int32,
-   Gfun(External (EF_external "__compcert_va_int32"
+((___compcert_va_int32,
+   Gfun(External (EF_runtime "__compcert_va_int32"
                    (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
      (Tcons (tptr tvoid) Tnil) tuint cc_default)) ::
  (___compcert_va_int64,
-   Gfun(External (EF_external "__compcert_va_int64"
+   Gfun(External (EF_runtime "__compcert_va_int64"
                    (mksignature (AST.Tlong :: nil) AST.Tlong cc_default))
      (Tcons (tptr tvoid) Tnil) tulong cc_default)) ::
  (___compcert_va_float64,
-   Gfun(External (EF_external "__compcert_va_float64"
+   Gfun(External (EF_runtime "__compcert_va_float64"
                    (mksignature (AST.Tlong :: nil) AST.Tfloat cc_default))
      (Tcons (tptr tvoid) Tnil) tdouble cc_default)) ::
  (___compcert_va_composite,
-   Gfun(External (EF_external "__compcert_va_composite"
+   Gfun(External (EF_runtime "__compcert_va_composite"
                    (mksignature (AST.Tlong :: AST.Tlong :: nil) AST.Tlong
                      cc_default)) (Tcons (tptr tvoid) (Tcons tulong Tnil))
      (tptr tvoid) cc_default)) ::
@@ -466,6 +508,127 @@ Definition global_definitions : list (ident * globdef fundef type) :=
    Gfun(External (EF_runtime "__compcert_i64_umulh"
                    (mksignature (AST.Tlong :: AST.Tlong :: nil) AST.Tlong
                      cc_default)) (Tcons tulong (Tcons tulong Tnil)) tulong
+     cc_default)) :: (___stringlit_1, Gvar v___stringlit_1) ::
+ (___stringlit_3, Gvar v___stringlit_3) ::
+ (___stringlit_2, Gvar v___stringlit_2) ::
+ (___stringlit_4, Gvar v___stringlit_4) ::
+ (___builtin_ais_annot,
+   Gfun(External (EF_builtin "__builtin_ais_annot"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid
+                     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+     (Tcons (tptr tschar) Tnil) tvoid
+     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|})) ::
+ (___builtin_bswap64,
+   Gfun(External (EF_builtin "__builtin_bswap64"
+                   (mksignature (AST.Tlong :: nil) AST.Tlong cc_default))
+     (Tcons tulong Tnil) tulong cc_default)) ::
+ (___builtin_bswap,
+   Gfun(External (EF_builtin "__builtin_bswap"
+                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
+     (Tcons tuint Tnil) tuint cc_default)) ::
+ (___builtin_bswap32,
+   Gfun(External (EF_builtin "__builtin_bswap32"
+                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
+     (Tcons tuint Tnil) tuint cc_default)) ::
+ (___builtin_bswap16,
+   Gfun(External (EF_builtin "__builtin_bswap16"
+                   (mksignature (AST.Tint :: nil) AST.Tint16unsigned
+                     cc_default)) (Tcons tushort Tnil) tushort cc_default)) ::
+ (___builtin_clz,
+   Gfun(External (EF_builtin "__builtin_clz"
+                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
+     (Tcons tuint Tnil) tint cc_default)) ::
+ (___builtin_clzl,
+   Gfun(External (EF_builtin "__builtin_clzl"
+                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
+     (Tcons tulong Tnil) tint cc_default)) ::
+ (___builtin_clzll,
+   Gfun(External (EF_builtin "__builtin_clzll"
+                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
+     (Tcons tulong Tnil) tint cc_default)) ::
+ (___builtin_ctz,
+   Gfun(External (EF_builtin "__builtin_ctz"
+                   (mksignature (AST.Tint :: nil) AST.Tint cc_default))
+     (Tcons tuint Tnil) tint cc_default)) ::
+ (___builtin_ctzl,
+   Gfun(External (EF_builtin "__builtin_ctzl"
+                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
+     (Tcons tulong Tnil) tint cc_default)) ::
+ (___builtin_ctzll,
+   Gfun(External (EF_builtin "__builtin_ctzll"
+                   (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
+     (Tcons tulong Tnil) tint cc_default)) ::
+ (___builtin_fabs,
+   Gfun(External (EF_builtin "__builtin_fabs"
+                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
+     (Tcons tdouble Tnil) tdouble cc_default)) ::
+ (___builtin_fabsf,
+   Gfun(External (EF_builtin "__builtin_fabsf"
+                   (mksignature (AST.Tsingle :: nil) AST.Tsingle cc_default))
+     (Tcons tfloat Tnil) tfloat cc_default)) ::
+ (___builtin_fsqrt,
+   Gfun(External (EF_builtin "__builtin_fsqrt"
+                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
+     (Tcons tdouble Tnil) tdouble cc_default)) ::
+ (___builtin_sqrt,
+   Gfun(External (EF_builtin "__builtin_sqrt"
+                   (mksignature (AST.Tfloat :: nil) AST.Tfloat cc_default))
+     (Tcons tdouble Tnil) tdouble cc_default)) ::
+ (___builtin_memcpy_aligned,
+   Gfun(External (EF_builtin "__builtin_memcpy_aligned"
+                   (mksignature
+                     (AST.Tlong :: AST.Tlong :: AST.Tlong :: AST.Tlong ::
+                      nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid)
+       (Tcons (tptr tvoid) (Tcons tulong (Tcons tulong Tnil)))) tvoid
+     cc_default)) ::
+ (___builtin_sel,
+   Gfun(External (EF_builtin "__builtin_sel"
+                   (mksignature (AST.Tint :: nil) AST.Tvoid
+                     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+     (Tcons tbool Tnil) tvoid
+     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|})) ::
+ (___builtin_annot,
+   Gfun(External (EF_builtin "__builtin_annot"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid
+                     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
+     (Tcons (tptr tschar) Tnil) tvoid
+     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|})) ::
+ (___builtin_annot_intval,
+   Gfun(External (EF_builtin "__builtin_annot_intval"
+                   (mksignature (AST.Tlong :: AST.Tint :: nil) AST.Tint
+                     cc_default)) (Tcons (tptr tschar) (Tcons tint Tnil))
+     tint cc_default)) ::
+ (___builtin_membar,
+   Gfun(External (EF_builtin "__builtin_membar"
+                   (mksignature nil AST.Tvoid cc_default)) Tnil tvoid
+     cc_default)) ::
+ (___builtin_va_start,
+   Gfun(External (EF_builtin "__builtin_va_start"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
+ (___builtin_va_arg,
+   Gfun(External (EF_builtin "__builtin_va_arg"
+                   (mksignature (AST.Tlong :: AST.Tint :: nil) AST.Tvoid
+                     cc_default)) (Tcons (tptr tvoid) (Tcons tuint Tnil))
+     tvoid cc_default)) ::
+ (___builtin_va_copy,
+   Gfun(External (EF_builtin "__builtin_va_copy"
+                   (mksignature (AST.Tlong :: AST.Tlong :: nil) AST.Tvoid
+                     cc_default))
+     (Tcons (tptr tvoid) (Tcons (tptr tvoid) Tnil)) tvoid cc_default)) ::
+ (___builtin_va_end,
+   Gfun(External (EF_builtin "__builtin_va_end"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
+ (___builtin_unreachable,
+   Gfun(External (EF_builtin "__builtin_unreachable"
+                   (mksignature nil AST.Tvoid cc_default)) Tnil tvoid
+     cc_default)) ::
+ (___builtin_expect,
+   Gfun(External (EF_builtin "__builtin_expect"
+                   (mksignature (AST.Tlong :: AST.Tlong :: nil) AST.Tlong
+                     cc_default)) (Tcons tlong (Tcons tlong Tnil)) tlong
      cc_default)) ::
  (___builtin_fmax,
    Gfun(External (EF_builtin "__builtin_fmax"
@@ -527,32 +690,42 @@ Definition global_definitions : list (ident * globdef fundef type) :=
  (___builtin_debug,
    Gfun(External (EF_external "__builtin_debug"
                    (mksignature (AST.Tint :: nil) AST.Tvoid
-                     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
+                     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
      (Tcons tint Tnil) tvoid
-     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
+     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|})) ::
  (_atoi,
    Gfun(External (EF_external "atoi"
                    (mksignature (AST.Tlong :: nil) AST.Tint cc_default))
      (Tcons (tptr tschar) Tnil) tint cc_default)) ::
+ (_rand,
+   Gfun(External (EF_external "rand" (mksignature nil AST.Tint cc_default))
+     Tnil tint cc_default)) ::
  (_exit,
    Gfun(External (EF_external "exit"
                    (mksignature (AST.Tint :: nil) AST.Tvoid cc_default))
      (Tcons tint Tnil) tvoid cc_default)) ::
- (_rand,
-   Gfun(External (EF_external "rand" (mksignature nil AST.Tint cc_default))
-     Tnil tint cc_default)) ::
  (_printf,
    Gfun(External (EF_external "printf"
                    (mksignature (AST.Tlong :: nil) AST.Tint
-                     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|}))
+                     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|}))
      (Tcons (tptr tschar) Tnil) tint
-     {|cc_vararg:=true; cc_unproto:=false; cc_structret:=false|})) ::
+     {|cc_vararg:=(Some 1); cc_unproto:=false; cc_structret:=false|})) ::
+ (_observation, Gvar v_observation) ::
+ (_print_data,
+   Gfun(External (EF_external "print_data"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
+ (_state, Gvar v_state) ::
+ (_print_state,
+   Gfun(External (EF_external "print_state"
+                   (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
+     (Tcons (tptr tvoid) Tnil) tvoid cc_default)) ::
  (_get_state,
    Gfun(External (EF_external "get_state"
                    (mksignature nil AST.Tlong
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
      Tnil (tptr tvoid)
-     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_set_state,
    Gfun(External (EF_external "set_state"
                    (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
@@ -560,18 +733,18 @@ Definition global_definitions : list (ident * globdef fundef type) :=
  (_data,
    Gfun(External (EF_external "data"
                    (mksignature nil AST.Tvoid
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_transformed_data,
    Gfun(External (EF_external "transformed_data"
                    (mksignature nil AST.Tvoid
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_parameters,
    Gfun(External (EF_external "parameters"
                    (mksignature nil AST.Tvoid
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_transformed_parameters,
    Gfun(External (EF_external "transformed_parameters"
                    (mksignature (AST.Tlong :: nil) AST.Tvoid cc_default))
@@ -583,39 +756,41 @@ Definition global_definitions : list (ident * globdef fundef type) :=
  (_generated_quantities,
    Gfun(External (EF_external "generated_quantities"
                    (mksignature nil AST.Tvoid
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
-     Tnil tvoid {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
+     Tnil tvoid {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_propose,
    Gfun(External (EF_external "propose"
                    (mksignature nil AST.Tlong
-                     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|}))
+                     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|}))
      Tnil (tptr tvoid)
-     {|cc_vararg:=false; cc_unproto:=true; cc_structret:=false|})) ::
+     {|cc_vararg:=None; cc_unproto:=true; cc_structret:=false|})) ::
  (_main, Gfun(Internal f_main)) :: nil).
 
 Definition public_idents : list ident :=
 (_main :: _propose :: _generated_quantities :: _model ::
  _transformed_parameters :: _parameters :: _transformed_data :: _data ::
- _set_state :: _get_state :: _printf :: _rand :: _exit :: _atoi ::
- ___builtin_debug :: ___builtin_write32_reversed ::
- ___builtin_write16_reversed :: ___builtin_read32_reversed ::
- ___builtin_read16_reversed :: ___builtin_fnmsub :: ___builtin_fnmadd ::
- ___builtin_fmsub :: ___builtin_fmadd :: ___builtin_fmin ::
- ___builtin_fmax :: ___compcert_i64_umulh :: ___compcert_i64_smulh ::
+ _set_state :: _get_state :: _print_state :: _state :: _print_data ::
+ _observation :: _printf :: _exit :: _rand :: _atoi :: ___builtin_debug ::
+ ___builtin_write32_reversed :: ___builtin_write16_reversed ::
+ ___builtin_read32_reversed :: ___builtin_read16_reversed ::
+ ___builtin_fnmsub :: ___builtin_fnmadd :: ___builtin_fmsub ::
+ ___builtin_fmadd :: ___builtin_fmin :: ___builtin_fmax ::
+ ___builtin_expect :: ___builtin_unreachable :: ___builtin_va_end ::
+ ___builtin_va_copy :: ___builtin_va_arg :: ___builtin_va_start ::
+ ___builtin_membar :: ___builtin_annot_intval :: ___builtin_annot ::
+ ___builtin_sel :: ___builtin_memcpy_aligned :: ___builtin_sqrt ::
+ ___builtin_fsqrt :: ___builtin_fabsf :: ___builtin_fabs ::
+ ___builtin_ctzll :: ___builtin_ctzl :: ___builtin_ctz :: ___builtin_clzll ::
+ ___builtin_clzl :: ___builtin_clz :: ___builtin_bswap16 ::
+ ___builtin_bswap32 :: ___builtin_bswap :: ___builtin_bswap64 ::
+ ___builtin_ais_annot :: ___compcert_i64_umulh :: ___compcert_i64_smulh ::
  ___compcert_i64_sar :: ___compcert_i64_shr :: ___compcert_i64_shl ::
  ___compcert_i64_umod :: ___compcert_i64_smod :: ___compcert_i64_udiv ::
  ___compcert_i64_sdiv :: ___compcert_i64_utof :: ___compcert_i64_stof ::
  ___compcert_i64_utod :: ___compcert_i64_stod :: ___compcert_i64_dtou ::
  ___compcert_i64_dtos :: ___compcert_va_composite ::
  ___compcert_va_float64 :: ___compcert_va_int64 :: ___compcert_va_int32 ::
- ___builtin_va_end :: ___builtin_va_copy :: ___builtin_va_arg ::
- ___builtin_va_start :: ___builtin_membar :: ___builtin_annot_intval ::
- ___builtin_annot :: ___builtin_sel :: ___builtin_memcpy_aligned ::
- ___builtin_sqrt :: ___builtin_fsqrt :: ___builtin_fabsf ::
- ___builtin_fabs :: ___builtin_ctzll :: ___builtin_ctzl :: ___builtin_ctz ::
- ___builtin_clzll :: ___builtin_clzl :: ___builtin_clz ::
- ___builtin_bswap16 :: ___builtin_bswap32 :: ___builtin_bswap ::
- ___builtin_bswap64 :: nil).
+ nil).
 
 Definition prog : Clight.program := 
   mkprogram composites global_definitions public_idents _main Logic.I.

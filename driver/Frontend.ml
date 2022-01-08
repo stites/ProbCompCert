@@ -80,7 +80,6 @@ let parse_c_file sourcename ifile =
   let simplifs =
     "b" (* blocks: mandatory *)
   ^ (if !option_fstruct_passing then "s" else "")
-  ^ (if !option_fbitfields then "f" else "")
   ^ (if !option_fpacked_structs then "p" else "")
   in
   (* Parsing and production of a simplified C AST *)
@@ -109,15 +108,17 @@ let init () =
     | "x86"     -> if Configuration.model = "64" then
                      Machine.x86_64
                    else
-                     if Configuration.abi = "macosx"
-                     then Machine.x86_32_macosx
+                     if Configuration.abi = "macos"
+                     then Machine.x86_32_macos
                      else if Configuration.system = "bsd"
                      then Machine.x86_32_bsd
                      else Machine.x86_32
     | "riscV"   -> if Configuration.model = "64"
                    then Machine.rv64
                    else Machine.rv32
-    | "aarch64" -> Machine.aarch64
+    | "aarch64" -> if Configuration.abi = "apple"
+                   then Machine.aarch64_apple
+                   else Machine.aarch64
     | _         -> assert false
   end;
   Env.set_builtins C2C.builtins;

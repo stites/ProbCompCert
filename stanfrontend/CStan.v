@@ -228,17 +228,28 @@ Definition empty_env: env := (PTree.empty (block * Ctypes.type)).
 
 Definition temp_env := PTree.t val.
 
-Inductive deref_loc (ty: Ctypes.type) (m: mem) (b: block) (ofs: ptrofs) : val -> Prop :=
+(** [deref_loc ty m b ofs bf v] computes the value of a datum
+  of type [ty] residing in memory [m] at block [b], offset [ofs],
+  and bitfield designation [bf].
+  If the type [ty] indicates an access by value, the corresponding
+  memory load is performed.  If the type [ty] indicates an access by
+  reference or by copy, the pointer [Vptr b ofs] is returned. *)
+
+Inductive deref_loc (ty: type) (m: mem) (b: block) (ofs: ptrofs) :
+                                             bitfield -> val -> Prop :=
   | deref_loc_value: forall chunk v,
       access_mode ty = By_value chunk ->
       Mem.loadv chunk m (Vptr b ofs) = Some v ->
-      deref_loc ty m b ofs v
+      deref_loc ty m b ofs Full v
   | deref_loc_reference:
       access_mode ty = By_reference ->
-      deref_loc ty m b ofs (Vptr b ofs)
+      deref_loc ty m b ofs Full (Vptr b ofs)
   | deref_loc_copy:
       access_mode ty = By_copy ->
-      deref_loc ty m b ofs (Vptr b ofs).
+      deref_loc ty m b ofs Full (Vptr b ofs)
+  | deref_loc_bitfield: forall sz sg pos width v,
+      load_bitfield ty sz sg pos width m (Vptr b ofs) v ->
+      deref_loc ty m b ofs (Bits sz sg pos width) v.
 
 Inductive assign_loc (ce: composite_env) (ty: Ctypes.type) (m: mem) (b: block) (ofs: ptrofs):
                                             val -> mem -> Prop :=

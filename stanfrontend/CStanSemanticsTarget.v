@@ -68,21 +68,21 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_expr a v ->
       le!id = Some v ->
       eval_expr (Efield a id ty) v
-  | eval_Elvalue: forall a loc ofs v,
-      eval_lvalue a loc ofs ->
-      deref_loc (typeof a) m loc ofs v ->
+  | eval_Elvalue: forall a loc ofs bf v,
+      eval_lvalue a loc ofs bf ->
+      deref_loc (typeof a) m loc ofs bf v ->
       eval_expr a v
   | eval_Etarget: forall ty ta,
       bs = Model ta ->
       eval_expr (Etarget ty) (Vfloat ta)
-with eval_lvalue: expr -> block -> ptrofs -> Prop :=
+with eval_lvalue: expr -> block -> ptrofs -> bitfield -> Prop :=
   | eval_Evar_local:   forall id l ty,
       e!id = Some(l, ty) ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero
+      eval_lvalue (Evar id ty) l Ptrofs.zero Full
   | eval_Evar_global: forall id l ty,
       e!id = None ->
       Genv.find_symbol ge id = Some l ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero.
+      eval_lvalue (Evar id ty) l Ptrofs.zero Full.
 
 Scheme eval_expr_ind2 := Minimality for eval_expr Sort Prop
   with eval_lvalue_ind2 := Minimality for eval_lvalue Sort Prop.
@@ -145,8 +145,8 @@ Inductive state: Type :=
 Variable function_entry: function -> list val -> mem -> env -> temp_env -> mem -> Prop.
 
 Inductive step: state -> trace -> state -> Prop :=
-  | step_assign:   forall f a1 a2 k e le m ta loc ofs v2 v m',
-      eval_lvalue e le m ta a1 loc ofs ->
+  | step_assign:   forall f a1 a2 k e le m ta loc ofs bf v2 v m',
+      eval_lvalue e le m ta a1 loc ofs bf ->
       eval_expr e le m ta a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
       assign_loc ge (typeof a1) m loc ofs v m' ->

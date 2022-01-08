@@ -27,7 +27,7 @@ Class Decidable (P : Prop) := decide : {P} + {~P}.
 Arguments decide _ {_}.
 
 (** A [Comparable] type has decidable equality. *)
-Instance comparable_decidable_eq T `{ComparableLeibnizEq T} (x y : T) :
+Global Instance comparable_decidable_eq T `{ComparableLeibnizEq T} (x y : T) :
   Decidable (x = y).
 Proof.
   unfold Decidable.
@@ -35,7 +35,7 @@ Proof.
     right; intros ->; by rewrite compare_refl in EQ.
 Defined.
 
-Instance list_decidable_eq T :
+Global Instance list_decidable_eq T :
   (forall x y : T, Decidable (x = y)) ->
   (forall l1 l2 : list T, Decidable (l1 = l2)).
 Proof. unfold Decidable. decide equality. Defined.
@@ -83,6 +83,9 @@ Proof. by rewrite /cast -Eqdep_dec.eq_rect_eq_dec. Qed.
 CoInductive buffer : Type :=
   Buf_cons { buf_head : token; buf_tail : buffer }.
 
+(* Note: Coq 8.12.0 wants a Declare Scope command,
+   but this breaks compatibility with Coq < 8.10.
+   Declare Scope buffer_scope. *)
 Delimit Scope buffer_scope with buf.
 Bind Scope buffer_scope with buffer.
 
@@ -278,6 +281,7 @@ Inductive step_result :=
   | Accept_sr: symbol_semantic_type (NT (start_nt init)) -> buffer -> step_result
   | Progress_sr: stack -> buffer -> step_result.
 
+
 (** [reduce_step] does a reduce action :
    - pops some elements from the stack
    - execute the action of the production
@@ -367,8 +371,7 @@ Definition step stk buffer (Hi : thunkP (stack_invariant stk)): step_result :=
       | Reduce_act prod => fun Hv =>
         reduce_step stk prod buffer Hv Hi
       | Fail_act => fun _ =>
-        let st := (state_of_stack stk) in
-        Fail_sr_full st tok
+        Fail_sr_full (state_of_stack stk) tok
       end (fun _ => Hv I (token_term tok))
     end
   end (fun _ => reduce_ok _).
@@ -426,7 +429,7 @@ Fixpoint parse_fix stk buffer (log_n_steps : nat) (Hi : thunkP (stack_invariant 
     result type, so that this inductive is extracted without the use
     of Obj.t in OCaml.  **)
 Inductive parse_result {A : Type} :=
-  | Fail_pr_full: state -> token -> parse_result 
+  | Fail_pr_full: state -> token -> parse_result
   | Timeout_pr: parse_result
   | Parsed_pr: A -> buffer -> parse_result.
 Global Arguments parse_result _ : clear implicits.
@@ -434,7 +437,7 @@ Global Arguments parse_result _ : clear implicits.
 Definition parse (buffer : buffer) (log_n_steps : nat):
   parse_result (symbol_semantic_type (NT (start_nt init))).
 refine (match proj1_sig (parse_fix [] buffer log_n_steps _) with
-        | Fail_sr_full st tk => Fail_pr_full st tk
+        | Fail_sr_full st tok => Fail_pr_full st tok
         | Accept_sr sem buffer' => Parsed_pr sem buffer'
         | Progress_sr _ _ => Timeout_pr
         end).
