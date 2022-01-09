@@ -126,4 +126,4 @@ jobs:
       - name: Run compiled binary
         run: |
           echo $PWD
-          ./runit 100
+          ./stanfrontend/runit 100
