@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        # - macos-latest # requires changing x86_64-linux, below, to x86_64-macosx
+          - macos-latest # requires changing x86_64-linux, below, to x86_64-macosx
           - ubuntu-latest
         ocaml-compiler:
           - 4.10.2
@@ -69,8 +69,16 @@ jobs:
 
       - run: |
           eval $(opam env);
-          #./configure -prefix ./out -clightgen x86_64-linux
-          ./configure -clightgen x86_64-linux
+
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+              echo "configuring for x86_64-macosx"
+              ./configure -clightgen x86_64-macosx
+          else
+              echo "configuring for x86_64-linux"
+              ./configure -clightgen x86_64-linux
+              # ./configure -prefix ./out -clightgen x86_64-linux
+          fi
+
           make -j
 
       # Simplified way to build a binary without .bin/ccompstan
