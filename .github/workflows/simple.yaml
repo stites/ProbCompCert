@@ -115,12 +115,8 @@ jobs:
           export RUNIT_OUTPUT=\"$(./runit)\"
 
           if [[ -z "$(echo "$(./runit)" | grep error)" ]]; then
-              echo [DONE] ./runit compiled with output:
+              echo [SUCCESS] ./runit compiled with output:
               echo $RUNIT_OUTPUT
-
-              # we make have to change this as the CLI changes
-              echo 'Running: ./runit 100'
-              ./runit 100
           else
             echo [ERROR] ./runit fails at runtime with message:
             echo $RUNIT_OUTPUT
@@ -128,3 +124,7 @@ jobs:
           fi
 
 
+      # attempt to run!
+      - run: |
+          echo $PWD
+          ./runit 100
