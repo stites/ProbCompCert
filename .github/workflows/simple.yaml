@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - pcp
+      - feature/polish-runit
   pull_request:
     branches:
       - pcp
@@ -90,8 +91,8 @@ jobs:
 
           $CCOMP -c stanlib.c
           #ld -L$LIBCCOMP_INSTALL -shared stanlib.o -o libstan.so --verbose
-          ld -shared stanlib.o -o libstan.so
-          echo [DONE] libstan.so
+          #ld -shared stanlib.o -o libstan.so
+          echo [DONE] stanlib.o
 
           $CCOMP -c tests/simple/simple.stan && $CCOMP -c simple.s
           echo [DONE] simple.o
@@ -99,15 +100,19 @@ jobs:
           $CCOMP -c Runtime.c
           echo [DONE] Runtime.o
 
-          $CCOMP -Wl,-rpath=. simple.o Runtime.o -lstan -lm -o runit
+          $CCOMP stanlib.o simple.o Runtime.o -lm -o runit
           # tell the user what to do next
           echo [DONE] compiled! run: ./stanfrontend/runit INT
 
           export RUNIT_OUTPUT=\"$(./runit)\"
 
           if [[ -z "$(echo "$(./runit)" | grep error)" ]]; then
-            echo [SUCCESS] ./runit runs with output:
-            echo $RUNIT_OUTPUT
+              echo [DONE] ./runit compiled with output:
+              echo $RUNIT_OUTPUT
+
+              # we make have to change this as the CLI changes
+              echo 'Running: ./runit 100'
+              ./runit 100
           else
             echo [ERROR] ./runit fails at runtime with message:
             echo $RUNIT_OUTPUT
