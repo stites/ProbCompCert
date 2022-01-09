@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - pcp
-      - feature/polish-runit
   pull_request:
     branches:
       - pcp
@@ -31,8 +30,10 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest # requires changing x86_64-linux, below, to x86_64-macosx
           - ubuntu-latest
+          # - macos-latest
+          # FIXME: errors when compiling stanlib.c. See:
+          # https://github.com/stites/ProbCompCert/runs/4754816523?check_suite_focus=true#step:8:75
         ocaml-compiler:
           - 4.10.2
 
