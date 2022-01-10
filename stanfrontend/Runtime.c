@@ -53,15 +53,17 @@ int main(int argc, char* argv[]) {
 
     if (u <= lp_candidate - lp_parameters) {
       set_state(newpi);
-      printf("setting state in iteration %d: ", i+1); // 1-index iterations
-      print_state(&state);
+      printf("setting state in iteration %d. target log_prob: %f\n", i+1, lp_candidate); // 1-index iterations
+      // printf("setting state in iteration %d: ", i+1); // 1-index iterations
+      // print_state(&state);
     }
 
     generated_quantities();
   }
 
-  printf("\t...completed execution!\n\nSummary:\n\t");
-  print_state(&state);
+  printf("\n...completed execution!");
+  // printf("\n\nSummary:\n\t");
+  // print_state(&state);
   printf("\n");
   return 0;
   
