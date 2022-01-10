@@ -307,7 +307,11 @@ let el_b b dims =
   | (Stan.Breal, []) -> StanE.Breal
   | (Stan.Bint,  [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
   | (Stan.Breal, [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
-  | _ -> raise (NIY_elab "type conversion not yet implemented")
+  | (Stan.Bvector (Stan.Econst_int i), []) -> StanE.Bvector (coqZ_of_string i)
+  | (Stan.Brow e, _) -> raise (NIY_elab "type conversion not yet implemented: row")
+  | (Stan.Bmatrix (e1, e2), _) -> raise (NIY_elab "type conversion not yet implemented: matrix")
+  | _ -> raise (NIY_elab "type conversion not yet implemented: other")
+(*| _ -> *)
   (* | Stan.Bvector e -> StanE.Bvector (el_e e)
    * | Stan.Brow e -> StanE.Brow (el_e e)
    * | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2) *)

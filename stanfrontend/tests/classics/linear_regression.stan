@@ -1,7 +1,6 @@
 data {
-  int<lower=0> N;
-  vector[N] x;
-  vector[N] y;
+  vector[100] x;
+  vector[100] y;
 }
 parameters {
   real alpha;
