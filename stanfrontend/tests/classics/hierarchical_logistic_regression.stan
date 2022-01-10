@@ -2,14 +2,14 @@ data {
   int<lower=1> D;
   int<lower=0> N;
   int<lower=1> L;
-  array[N] int<lower=0, upper=1> y;
-  array[N] int<lower=1, upper=L> ll;
-  array[N] row_vector[D] x;
+  int<lower=0, upper=1> y[N];
+  int<lower=1, upper=L> ll[N];
+  row_vector[D] x[N];
 }
 parameters {
-  array[D] real mu;
-  array[D] real<lower=0> sigma;
-  array[L] vector[D] beta;
+  real mu[D];
+  real<lower=0> sigma[D];
+  vector[D] beta[L];
 }
 model {
   for (d in 1:D) {
