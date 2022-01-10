@@ -75,6 +75,11 @@ let id_uniform_lpdf = Camlcoq.intern_string st_uniform_lpdf
 let ty_uniform_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
 let gl_uniform_lpdf = mk_global_math_func st_uniform_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]
 
+let st_normal_lpdf = "normal_lpdf"
+let id_normal_lpdf = Camlcoq.intern_string st_normal_lpdf
+let ty_normal_lpdf = StanE.Bfunction (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, (StanE.Bcons (bdouble, StanE.Bnil))))), Some bdouble)
+let gl_normal_lpdf = mk_global_math_func st_normal_lpdf [AST.Tfloat; AST.Tfloat; AST.Tfloat]                    
+
 let st_bernoulli_lpmf = "bernoulli_lpmf"
 let id_bernoulli_lpmf = Camlcoq.intern_string st_bernoulli_lpmf
 let ty_bernoulli_lpmf = StanE.Bfunction (StanE.Bcons (bint, (StanE.Bcons (bdouble, StanE.Bnil))), Some StanE.Breal)
@@ -82,10 +87,12 @@ let gl_bernoulli_lpmf = mk_global_math_func st_bernoulli_lpmf [AST.Tint; AST.Tfl
 
 let transf_dist_idents = Hashtbl.create 3;;
 Hashtbl.add transf_dist_idents "uniform" (id_uniform_lpdf, ty_uniform_lpdf);
-Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf)
+Hashtbl.add transf_dist_idents "bernoulli" (id_bernoulli_lpmf, ty_bernoulli_lpmf);
+Hashtbl.add transf_dist_idents "normal" (id_normal_lpdf, ty_normal_lpdf)
 let stanlib_functions = [
     (id_uniform_lpdf,   gl_uniform_lpdf);
-    (id_bernoulli_lpmf, gl_bernoulli_lpmf)
+    (id_bernoulli_lpmf, gl_bernoulli_lpmf);
+    (id_normal_lpdf, gl_normal_lpdf)
   ]
 let pr_dist_functions = [(CStan.DBernPMF, id_bernoulli_lpmf);(CStan.DUnifPDF, id_uniform_lpdf)]
 
@@ -307,14 +314,8 @@ let el_b b dims =
   | (Stan.Breal, []) -> StanE.Breal
   | (Stan.Bint,  [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
   | (Stan.Breal, [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
-  | (Stan.Bvector (Stan.Econst_int i), []) -> StanE.Bvector (coqZ_of_string i)
-  | (Stan.Brow e, _) -> raise (NIY_elab "type conversion not yet implemented: row")
-  | (Stan.Bmatrix (e1, e2), _) -> raise (NIY_elab "type conversion not yet implemented: matrix")
-  | _ -> raise (NIY_elab "type conversion not yet implemented: other")
-(*| _ -> *)
-  (* | Stan.Bvector e -> StanE.Bvector (el_e e)
-   * | Stan.Brow e -> StanE.Brow (el_e e)
-   * | Stan.Bmatrix (e1,e2) -> StanE.Bmatrix (el_e e1, el_e e2) *)
+  | _ -> raise (NIY_elab "Use of unsupported type, please do not use matlab like expressions or types")
+
 
 let elab elab_fun ol =
   match ol with
