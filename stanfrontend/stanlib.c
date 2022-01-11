@@ -43,6 +43,10 @@ double uniform_lpmf(int x, double a, double b)
     return (k < a || k > b) ? INFINITY : (-log(b - a));
 }
 
+double normal_lpdf(double x, double mean, double variance)
+{
+  return 1 / (sqrt(variance * 2 * M_PI)) * exp(- pow((x-mean),2) / (2 * variance)); 
+}
 
 double bernoulli_lpmf(int x, double p)
 {
