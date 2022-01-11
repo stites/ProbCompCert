@@ -299,11 +299,13 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
     let body := Ssequence body (return_var_pointer params.(res_params_global_proposal) TParamStructp) in
     ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
 
-  | BTPrintState => 
+(*  
+| BTPrintState => 
     do body <~ print_struct p ptmp params.(res_params_type) p.(prog_parameters_vars); 
     let body := Ssequence (cast parg ptmp TParamStructp) body in 
     ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return)) 
-  (*| BTPrintState => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return)) *)
+*)
+  | BTPrintState => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return)) 
 
   (* | BTPrintData => *)
   (*   do body <~ print_struct p dtmp data.(res_data_type) p.(prog_data_vars); *)
