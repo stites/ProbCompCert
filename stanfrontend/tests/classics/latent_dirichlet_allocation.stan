@@ -1,27 +1,23 @@
 data {
-  int<lower=2> K;               // num topics
-  int<lower=2> V;               // num words
-  int<lower=1> M;               // num docs
-  int<lower=1> N;               // total word instances
-  int<lower=1, upper=V> w[N];    // word n
-  int<lower=1, upper=M> doc[N];  // doc ID for word n
-  vector<lower=0>[K] alpha;     // topic prior
-  vector<lower=0>[V] beta;      // word prior
+  int<lower=1, upper=100> w[100];    // word n
+  int<lower=1, upper=100> doc[100];  // doc ID for word n
+  real<lower=0> alpha;     // topic prior
+  real<lower=0> beta;      // word prior
 }
 parameters {
-  simplex[K] theta[M];    // topic dist for doc m
-  simplex[V] phi[K];      // word dist for topic k
+  simplex[100] theta[100];    // topic dist for doc m
+  simplex[100] phi[100];      // word dist for topic k
 }
 model {
-  for (m in 1:M) {
+  for (m in 1:100) {
     theta[m] ~ dirichlet(alpha);  // prior
   }
-  for (k in 1:K) {
+  for (k in 1:100) {
     phi[k] ~ dirichlet(beta);     // prior
   }
-  for (n in 1:N) {
-    real gamma[K];
-    for (k in 1:K) {
+  for (n in 1:100) {
+    real gamma[100];
+    for (k in 1:100) {
       gamma[k] = log(theta[doc[n], k]) + log(phi[k, w[n]]);
     }
     target += log_sum_exp(gamma);  // likelihood;

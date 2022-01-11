@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
   }
   int n = atoi(argv[1]);
 
-  data();
+  //data();
   transformed_data();
   print_data(&observation);
 

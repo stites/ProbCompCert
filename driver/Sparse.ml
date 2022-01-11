@@ -314,6 +314,7 @@ let el_b b dims =
   | (Stan.Breal, []) -> StanE.Breal
   | (Stan.Bint,  [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
   | (Stan.Breal, [Stan.Econst_int i]) -> StanE.Bvector (coqZ_of_string i) (* FIXME we don't have the ability to add int vectors? *)
+  | (Stan.Bvector _, _) -> raise (NIY_elab "Use of unsupported type: vector")                                     
   | _ -> raise (NIY_elab "Use of unsupported type, please do not use matlab like expressions or types")
 
 
