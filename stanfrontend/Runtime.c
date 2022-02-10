@@ -7,7 +7,7 @@ void* observation;
 void print_data(void *);
 
 void* state;
-void print_state(void*);
+void print_params(void*);
 
 void* get_state();
 void set_state(void*);
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 
   parameters();
 
-  print_state(&state);
+  print_params(&state);
   for (int i = 0; i < n; ++i) {
 
     void* pi = get_state();
@@ -54,16 +54,15 @@ int main(int argc, char* argv[]) {
     if (u <= lp_candidate - lp_parameters) {
       set_state(newpi);
       printf("setting state in iteration %d. target log_prob: %f\n", i+1, lp_candidate); // 1-index iterations
-      // printf("setting state in iteration %d: ", i+1); // 1-index iterations
-      // print_state(&state);
+      print_params(&state);
     }
 
     generated_quantities();
   }
 
   printf("\n...completed execution!");
-  // printf("\n\nSummary:\n\t");
-  // print_state(&state);
+  printf("\n\nSummary:\n\t");
+  print_params(&state);
   printf("\n");
   return 0;
   

@@ -12,20 +12,30 @@ name=${prog%.*}
 parent_dir="$(dirname -- "$(readlink -f -- "$1")")"
 cd $root_dir
 
+function echo_and_run {
+    echo $@
+    $@
+}
+
 # working directory is stan dir
 cd stanfrontend
 
 # ccomp doesn't compile down to object files, just asm
-ccomp -g3 -c $parent_dir/$name.stan && ccomp -c ${name}.s || exit 1
+echo_and_run ccomp -g3 -c $parent_dir/$name.stan && ccomp -c ${name}.s || exit 1
+
+# compile generated printing functions
+echo_and_run ccomp -g3 -I${stan_dir} -c print_functions.c
+rm print_functions.c # NOTE: cleaning this up quickly
 
 # build stanlib.o
-ccomp -g3 -c stanlib.c
+# FIXME: getting an undefined symbol with ccomp -- not sure what happened all of a sudden
+echo_and_run gcc -g3 -c stanlib.c -lm
 
 # runtime is dependent on libstan, temporarily.
-ccomp -g3 -I${stan_dir} -c Runtime.c
+echo_and_run ccomp -g3 -I${stan_dir}  -c Runtime.c
 
 # compile the final binary
-ccomp -g3 -L${stan_dir} -L../out/lib/compcert -lm stanlib.o ${name}.o Runtime.o -o runit
+echo_and_run ccomp -g3 -L${stan_dir} -L../out/lib/compcert -lm stanlib.o print_functions.o ${name}.o Runtime.o -o runit
 
 # tell the user what to do next
 echo "compiled! ./stanfrontend/runit INT"

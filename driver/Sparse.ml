@@ -523,7 +523,7 @@ let printPrintStruct name vs =
   let printField (var, p, t) =
     let v = Camlcoq.extern_atom p in
     match (t, var.Stan.vd_dims) with
-    | (t, [])                 -> ("  " ^ printer (v ^" = "^typeTmpl t^"\\n") v)
+    | (t, [])                   -> ("  " ^ printer (v ^" = "^typeTmpl t^"\\n") v)
     | (t, [Stan.Econst_int sz]) -> ("  " ^ loopPrinter1 v t (int_of_string sz))
     | _ -> raise (NIY_elab "printing incomplete for this type")
   in
@@ -535,8 +535,8 @@ let printPrintStruct name vs =
   ])
 
 let printDbgFile file data_basics param_basics =
-  (* let oc = open_out file in *)
-  let oc = stdout in
+  let oc = open_out file in
+  (* let oc = stdout in *)
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
     "#include <stdio.h>\n";
@@ -569,7 +569,7 @@ let elaborate (p: Stan.program) =
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
-    printDbgFile "test.c" data_basics param_basics;
+    printDbgFile "print_functions.c" data_basics param_basics;
 
     let functions = [] in
 
@@ -614,13 +614,13 @@ let elaborate (p: Stan.program) =
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
-    IdxHashtbl.clear index_set;
-    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
-    let functions = (id_print, f_print) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print, f_print) :: functions in *)
 
-    IdxHashtbl.clear index_set;
-    let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
-    let functions = (id_print_data, f_print_data) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print_data, f_print_data) :: functions in *)
 
     IdxHashtbl.clear index_set;
     let (id_set_data,f_set_data) = declareFundef "set_data" [Stan.Sskip] None [] in
