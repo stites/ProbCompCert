@@ -477,22 +477,21 @@ let initOneVariable var =
       end
     end
 
-let printStruct name vs =
-  let basicToCString v btype dims =
-    match (btype, dims) with
-    | (StanE.Bint, []) -> "int " ^ v
-    | (StanE.Bint, [Stan.Econst_int sz]) -> "int " ^ v ^ "["^ sz ^"]"
-    | (StanE.Bint, [Stan.Econst_int r;Stan.Econst_int c]) -> "int " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
-    | (StanE.Breal, [Stan.Econst_int sz]) -> "double " ^ v ^ "["^ sz ^"]"
-    | (StanE.Breal, [Stan.Econst_int r;Stan.Econst_int c]) -> "double " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
-    | (StanE.Breal, []) -> "double " ^ v
-    (* default type for vectors, rows, and arrays are all double *)
-    | (StanE.Bvector sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
-    | (StanE.Brow sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
-    | (StanE.Bmatrix (r, c), _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string r) ^ "][" ^ (Camlcoq.Z.to_string c) ^ "]"
-    | _ -> raise (NIY_elab "type translation not valid when declaring a struct")
-  in
+let basicToCString v btype dims =
+  match (btype, dims) with
+  | (StanE.Bint, []) -> "int " ^ v
+  | (StanE.Bint, [Stan.Econst_int sz]) -> "int " ^ v ^ "["^ sz ^"]"
+  | (StanE.Bint, [Stan.Econst_int r;Stan.Econst_int c]) -> "int " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+  | (StanE.Breal, [Stan.Econst_int sz]) -> "double " ^ v ^ "["^ sz ^"]"
+  | (StanE.Breal, [Stan.Econst_int r;Stan.Econst_int c]) -> "double " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+  | (StanE.Breal, []) -> "double " ^ v
+  (* default type for vectors, rows, and arrays are all double *)
+  | (StanE.Bvector sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+  | (StanE.Brow sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+  | (StanE.Bmatrix (r, c), _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string r) ^ "][" ^ (Camlcoq.Z.to_string c) ^ "]"
+  | _ -> raise (NIY_elab "type translation not valid when declaring a struct")
 
+let printStruct name vs =
   let printField (v, p, t) = "  " ^ basicToCString (Camlcoq.extern_atom p) t v.Stan.vd_dims ^ ";" in
 
   String.concat "\n" ([
@@ -534,9 +533,56 @@ let printPrintStruct name vs =
     "}\n"
   ])
 
-let printDbgFile file data_basics param_basics =
-  let oc = open_out file in
-  (* let oc = stdout in *)
+let printDataLoaderFunctions vs =
+  let parseType t =
+     match t with
+    | StanE.Bint -> "atof"
+    | StanE.Breal -> "atoll"
+    | StanE.Bvector _ -> "atoll"
+    | StanE.Brow _ -> "atoll"
+    | StanE.Bmatrix _ -> "atoll"
+    | _ -> raise (NIY_elab "invalid type")
+  in
+
+  let loadField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims) with
+    | (t, [Stan.Econst_int sz]) ->
+      String.concat "\n" [
+        "  char line[1024];";
+        "  int num = 0;";
+        "  while (fgets(line, 1024, stream))";
+        "  {";
+        "    char* tmp = strdup(line);";
+        (* here is where we parse the row *)
+        "    const char* tok;";
+	      "    for (tok = strtok(line, \",\");";
+			  "      tok && *tok;";
+			  "      tok = strtok(NULL, \",\\n\"))";
+        "    {";
+        "        " ^ "d->" ^v ^ "[num] = " ^ parseType t ^ "(tok);";
+        "        " ^ "num++;";
+        "    }";
+        (* here is where we return from the previous function *)
+        "    free(tmp);";
+        "  }";
+      ]
+    | _ -> raise (NIY_elab "data loading incomplete for this type")
+  in
+
+  let printLoader (var, p, t) = let v = Camlcoq.extern_atom p in
+    String.concat "\n" [
+    "void load_" ^ v ^ " (void* opaque, char* f) {";
+    "  struct Data* d = (struct Data*) opaque;";
+    "  FILE* stream = fopen(f, \"r\");";
+    loadField (var, p, t);
+    "}";
+  ] in
+  String.concat "\n" (List.map printLoader vs)
+
+let printPreludeFile file data_basics param_basics =
+  (* let oc = open_out file in *)
+  let oc = stdout in
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
     "#include <stdio.h>\n";
@@ -544,6 +590,7 @@ let printDbgFile file data_basics param_basics =
     printPrintStruct "Data" data_basics;
     printStruct "Params" param_basics;
     printPrintStruct "Params" param_basics;
+    printDataLoaderFunctions data_basics;
   ]);
   close_out oc
 
@@ -569,7 +616,7 @@ let elaborate (p: Stan.program) =
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
-    printDbgFile "print_functions.c" data_basics param_basics;
+    printPreludeFile "prelude.c" data_basics param_basics;
 
     let functions = [] in
 
