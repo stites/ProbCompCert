@@ -477,6 +477,77 @@ let initOneVariable var =
       end
     end
 
+let printStruct name vs =
+  let basicToCString v btype dims =
+    match (btype, dims) with
+    | (StanE.Bint, []) -> "int " ^ v
+    | (StanE.Bint, [Stan.Econst_int sz]) -> "int " ^ v ^ "["^ sz ^"]"
+    | (StanE.Bint, [Stan.Econst_int r;Stan.Econst_int c]) -> "int " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+    | (StanE.Breal, [Stan.Econst_int sz]) -> "double " ^ v ^ "["^ sz ^"]"
+    | (StanE.Breal, [Stan.Econst_int r;Stan.Econst_int c]) -> "double " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+    | (StanE.Breal, []) -> "double " ^ v
+    (* default type for vectors, rows, and arrays are all double *)
+    | (StanE.Bvector sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+    | (StanE.Brow sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+    | (StanE.Bmatrix (r, c), _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string r) ^ "][" ^ (Camlcoq.Z.to_string c) ^ "]"
+    | _ -> raise (NIY_elab "type translation not valid when declaring a struct")
+  in
+
+  let printField (v, p, t) = "  " ^ basicToCString (Camlcoq.extern_atom p) t v.Stan.vd_dims ^ ";" in
+
+  String.concat "\n" ([
+    "struct " ^ name ^ " {"
+  ] @ (List.map printField vs) @ [
+    "};\n"
+  ])
+
+let printPrintStruct name vs =
+  let field var = "s->" ^ var in
+  let index1 v ix = field v ^ "["^ string_of_int ix ^"]" in
+
+  let printer str var = "printf(\"" ^ str ^ "\", " ^ field var ^ ");" in
+  let typeTmpl t =
+     match t with
+    | StanE.Bint -> "%z"
+    | StanE.Breal -> "%f"
+    | StanE.Bvector _ -> "%f"
+    | StanE.Brow _ -> "%f"
+    | StanE.Bmatrix _ -> "%f"
+    | _ -> raise (NIY_elab "invalid type")
+  in
+  let range n = List.map (fun x -> x - 1) (List.init n Int.succ) in
+  let loopTmpl1 t size = "[" ^ (String.concat ", " (List.map (fun _ -> typeTmpl t) (range size))) ^ "]\\n" in
+  let loopVars1 v size = (String.concat ", " (List.map (fun i -> index1 v i) (range size))) in
+  let loopPrinter1 v t size = "printf(\"" ^ v ^ " = " ^ loopTmpl1 t size ^ "\", " ^ loopVars1 v size ^ ");" in
+
+  let printField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims) with
+    | (t, [])                 -> ("  " ^ printer (v ^" = "^typeTmpl t^"\\n") v)
+    | (t, [Stan.Econst_int sz]) -> ("  " ^ loopPrinter1 v t (int_of_string sz))
+    | _ -> raise (NIY_elab "printing incomplete for this type")
+  in
+  String.concat "\n" ([
+    ("void print_" ^ String.lowercase_ascii name ^ " (void* opaque) {");
+    ("  struct " ^ name ^ "* s = (struct " ^ name ^ "*) opaque;");
+  ] @ (List.map printField vs) @ [
+    "}\n"
+  ])
+
+let printDbgFile file data_basics param_basics =
+  (* let oc = open_out file in *)
+  let oc = stdout in
+  Printf.fprintf oc "%s\n" (String.concat "\n" [
+    "#include <stdlib.h>";
+    "#include <stdio.h>\n";
+    printStruct "Data" data_basics;
+    printPrintStruct "Data" data_basics;
+    printStruct "Params" param_basics;
+    printPrintStruct "Params" param_basics;
+  ]);
+  close_out oc
+
+
 let elaborate (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
@@ -497,6 +568,8 @@ let elaborate (p: Stan.program) =
     let param_basics = List.map mkLocal (unop p) in
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
+
+    printDbgFile "test.c" data_basics param_basics;
 
     let functions = [] in
 
