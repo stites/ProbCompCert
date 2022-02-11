@@ -549,23 +549,26 @@ let printDataLoaderFunctions vs =
     match (t, var.Stan.vd_dims) with
     | (t, [Stan.Econst_int sz]) ->
       String.concat "\n" [
-        "  char line[1024];";
-        "  int num = 0;";
-        "  while (fgets(line, 1024, stream))";
+        "  if (0 == access(f, 0))";
         "  {";
-        "    char* tmp = strdup(line);";
-        (* here is where we parse the row *)
-        "    const char* tok;";
-	      "    for (tok = strtok(line, \",\");";
-			  "      tok && *tok;";
-			  "      tok = strtok(NULL, \",\\n\"))";
-        "    {";
-        "        " ^ "d->" ^v ^ "[num] = " ^ parseType t ^ "(tok);";
-        "        " ^ "num++;";
-        "    }";
-        (* here is where we return from the previous function *)
-        "    free(tmp);";
-        "  }";
+        "      FILE *fp = fopen(f, \"r\" );";
+        "      char line[1024];";
+        "      int num = 0;";
+        "      while (fgets(line, 1024, fp))";
+        "      {";
+        "        char* tmp = strdup(line);";
+        "        const char* tok;";
+        "        for (tok = strtok(line, \",\");";
+        "          tok && *tok;";
+        "          tok = strtok(NULL, \",\\n\"))";
+        "        {";
+        "            " ^ "d->" ^v ^ "[num] = " ^ parseType t ^ "(tok);";
+        "            num++;";
+        "        }";
+        "        free(tmp);";
+        "      }";
+        "      fclose(fp);";
+        "  } else { printf(\"file not found!\");}";
       ]
     | _ -> raise (NIY_elab "data loading incomplete for this type")
   in
@@ -574,23 +577,40 @@ let printDataLoaderFunctions vs =
     String.concat "\n" [
     "void load_" ^ v ^ " (void* opaque, char* f) {";
     "  struct Data* d = (struct Data*) opaque;";
-    "  FILE* stream = fopen(f, \"r\");";
     loadField (var, p, t);
     "}";
   ] in
   String.concat "\n" (List.map printLoader vs)
+
+let printCLILoader vs =
+  let runLoader ix (var, p, t) =
+    "  load_" ^ Camlcoq.extern_atom p ^ "(opaque, files[" ^ string_of_int (ix) ^ "]);"
+  in
+
+
+
+  String.concat "\n" ([
+    ("void load_from_cli (void* opaque, char *files[]) {");
+  ] @ (List.mapi runLoader vs) @ [
+    "}\n"
+  ])
+
 
 let printPreludeFile file data_basics param_basics =
   (* let oc = open_out file in *)
   let oc = stdout in
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
-    "#include <stdio.h>\n";
+    "#include <stdio.h>";
+    "#include <unistd.h>";
+    "#include <string.h>";
+    "";
     printStruct "Data" data_basics;
     printPrintStruct "Data" data_basics;
     printStruct "Params" param_basics;
     printPrintStruct "Params" param_basics;
     printDataLoaderFunctions data_basics;
+    printCLILoader data_basics;
   ]);
   close_out oc
 

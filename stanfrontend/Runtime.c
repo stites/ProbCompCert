@@ -12,6 +12,7 @@ void print_params(void*);
 void* get_state();
 void set_state(void*);
 
+void load_from_cli(void* opaque, char *files[]);
 void data();
 void transformed_data();
 void parameters();
@@ -24,10 +25,12 @@ void* propose();
 int main(int argc, char* argv[]) {
   if (argc == 1) {
     printf("One argument required: number of iterations\n");
+    printf("optionally, csv files of data in order of declaration\n");
     exit(1);
   }
   int n = atoi(argv[1]);
 
+  load_from_cli(&observation, argv+2);
   //data();
   transformed_data();
   print_data(&observation);
