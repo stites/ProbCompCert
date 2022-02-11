@@ -568,7 +568,7 @@ let printDataLoaderFunctions vs =
         "        free(tmp);";
         "      }";
         "      fclose(fp);";
-        "  } else { printf(\"file not found!\");}";
+        "  } else { printf(\"csv file not found for data field: "^ v ^"\\n\");}";
       ]
     | _ -> raise (NIY_elab "data loading incomplete for this type")
   in
@@ -586,9 +586,6 @@ let printCLILoader vs =
   let runLoader ix (var, p, t) =
     "  load_" ^ Camlcoq.extern_atom p ^ "(opaque, files[" ^ string_of_int (ix) ^ "]);"
   in
-
-
-
   String.concat "\n" ([
     ("void load_from_cli (void* opaque, char *files[]) {");
   ] @ (List.mapi runLoader vs) @ [
@@ -597,8 +594,8 @@ let printCLILoader vs =
 
 
 let printPreludeFile file data_basics param_basics =
-  (* let oc = open_out file in *)
-  let oc = stdout in
+  let oc = open_out file in
+  (* let oc = stdout in *)
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
     "#include <stdio.h>";
