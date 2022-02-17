@@ -593,9 +593,15 @@ let printCLILoader vs =
   ])
 
 
-let printPreludeFile file data_basics param_basics =
+let printPreludeFile sourcefile data_basics param_basics =
+  let sourceDir = Filename.dirname sourcefile in
+  let sourceName = Filename.basename sourcefile in
+  let preludeName = Filename.chop_extension sourceName in
+  let file = sourceDir ^ "/" ^ preludeName ^ "_prelude.c" in
   let oc = open_out file in
-  (* let oc = stdout in *)
+  let so = stdout in
+  Printf.fprintf so "Generating: %s\n" file;
+
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
     "#include <stdio.h>";
@@ -612,7 +618,7 @@ let printPreludeFile file data_basics param_basics =
   close_out oc
 
 
-let elaborate (p: Stan.program) =
+let elaborate (sourcefile : string) (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
       Stan.pr_data=d;
@@ -633,7 +639,7 @@ let elaborate (p: Stan.program) =
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
-    printPreludeFile "prelude.c" data_basics param_basics;
+    printPreludeFile sourcefile data_basics param_basics;
 
     let functions = [] in
 
@@ -803,5 +809,5 @@ let parse_stan_file sourcefile ifile =
   let p = match Sparser.program log_fuel (tokens_stream text) with
     | Sparser.MenhirLibParser.Inter.Fail_pr_full (state, token) -> handle_syntax_error sourcefile state token
     | Sparser.MenhirLibParser.Inter.Timeout_pr -> assert false
-    | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate ast in
+    | Sparser.MenhirLibParser.Inter.Parsed_pr (ast, _ ) -> elaborate sourcefile ast in
   p
