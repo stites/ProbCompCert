@@ -255,54 +255,54 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
 
     ret (cons_tail (params.(res_params_arg), tptr tvoid) f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return))
 
-  | BTParameters =>
-    do init <~ init_unconstrained p;
-    let body := over_fields (init_params params init) f.(fn_body) p.(prog_parameters_vars) in
-    ret (f.(fn_params), (params.(res_params_global_state), TParamStruct)::f.(fn_vars), body, f.(fn_return))
+  (* | BTParameters => *)
+  (*   do init <~ init_unconstrained p; *)
+  (*   let body := over_fields (init_params params init) f.(fn_body) p.(prog_parameters_vars) in *)
+  (*   ret (f.(fn_params), (params.(res_params_global_state), TParamStruct)::f.(fn_vars), body, f.(fn_return)) *)
 
-  | BTData =>
-    do body <~ transf_statement data_map f.(fn_body);
-    ret (f.(fn_params), f.(fn_vars), body, f.(fn_return))
+  (* | BTData => *)
+  (*   do body <~ transf_statement data_map f.(fn_body); *)
+  (*   ret (f.(fn_params), f.(fn_vars), body, f.(fn_return)) *)
 
-  | BTGetState =>
-    let body :=
-          Ssequence
-            f.(fn_body)
-            (return_var_pointer params.(res_params_global_state) TParamStructp) in
-    ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
+  (* | BTGetState => *)
+  (*   let body := *)
+  (*         Ssequence *)
+  (*           f.(fn_body) *)
+  (*           (return_var_pointer params.(res_params_global_state) TParamStructp) in *)
+  (*   ret (f.(fn_params), f.(fn_vars), body, tptr tvoid) *)
 
-  | BTSetState =>
-    let body :=
-        Ssequence
-          (cast parg ptmp TParamStructp)
-          (Ssequence
-            f.(fn_body)
-            (Sassign (Evar params.(res_params_global_state) TParamStruct)
-                     (Ederef (Evar ptmp TParamStructp) TParamStruct)))
-    in
-    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return))
+  (* | BTSetState => *)
+  (*   let body := *)
+  (*       Ssequence *)
+  (*         (cast parg ptmp TParamStructp) *)
+  (*         (Ssequence *)
+  (*           f.(fn_body) *)
+  (*           (Sassign (Evar params.(res_params_global_state) TParamStruct) *)
+  (*                    (Ederef (Evar ptmp TParamStructp) TParamStruct))) *)
+  (*   in *)
+  (*   ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return)) *)
 
-  | BTSetData =>
-    let body :=
-        Ssequence
-          (cast darg dtmp TDataStructp)
-          (Ssequence
-            f.(fn_body)
-            (Sassign (Evar data.(res_data_global) TDataStruct)
-                     (Ederef (Evar dtmp TDataStructp) TDataStruct)))
-    in
-    ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), (dtmp, TDataStructp)::f.(fn_vars), body, f.(fn_return))
+  (* | BTSetData => *)
+  (*   let body := *)
+  (*       Ssequence *)
+  (*         (cast darg dtmp TDataStructp) *)
+  (*         (Ssequence *)
+  (*           f.(fn_body) *)
+  (*           (Sassign (Evar data.(res_data_global) TDataStruct) *)
+  (*                    (Ederef (Evar dtmp TDataStructp) TDataStruct))) *)
+  (*   in *)
+  (*   ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), (dtmp, TDataStructp)::f.(fn_vars), body, f.(fn_return)) *)
 
-  | BTPropose =>
-    do init <~ init_unconstrained p;
-    let body := over_fields (adjust_proposal params init) f.(fn_body) p.(prog_parameters_vars) in
-    let body := Ssequence body (return_var_pointer params.(res_params_global_proposal) TParamStructp) in
-    ret (f.(fn_params), f.(fn_vars), body, tptr tvoid)
+  (* | BTPropose => *)
+  (*   do init <~ init_unconstrained p; *)
+  (*   let body := over_fields (adjust_proposal params init) f.(fn_body) p.(prog_parameters_vars) in *)
+  (*   let body := Ssequence body (return_var_pointer params.(res_params_global_proposal) TParamStructp) in *)
+  (*   ret (f.(fn_params), f.(fn_vars), body, tptr tvoid) *)
 
-  | BTPrintState => 
-    do body <~ print_struct p ptmp params.(res_params_type) p.(prog_parameters_vars); 
-    let body := Ssequence (cast parg ptmp TParamStructp) body in 
-    ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return)) 
+  (* | BTPrintState =>  *)
+  (*   do body <~ print_struct p ptmp params.(res_params_type) p.(prog_parameters_vars);  *)
+  (*   let body := Ssequence (cast parg ptmp TParamStructp) body in  *)
+  (*   ret ((params.(res_params_arg), tptr tvoid)::f.(fn_params), (ptmp, TParamStructp)::f.(fn_vars), body, f.(fn_return))  *)
   (*| BTPrintState => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return)) *)
 
   (* | BTPrintData => *)
@@ -310,9 +310,9 @@ Definition transf_statement_toplevel (p: program) (f: function): mon (list (AST.
 
   (*   let body := Ssequence (cast darg dtmp TDataStructp) body in *)
   (*   ret ((data.(res_data_arg), tptr tvoid)::f.(fn_params), (dtmp, TDataStructp)::f.(fn_vars), body, f.(fn_return)) *)
-  | BTPrintData => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
+  (* | BTPrintData => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return)) *)
 
-  | BTOther => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
+  | _ => ret (f.(fn_params), f.(fn_vars), f.(fn_body), f.(fn_return))
 
   end.
 

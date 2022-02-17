@@ -45,7 +45,7 @@ let ast_to_ctype x =
   match x with
   | AST.Tfloat -> ctdouble
   | AST.Tint -> ctint
-  | _ -> raise (NIY_elab "impossible")
+  | _ -> raise (NIY_elab "ast_to_ctype: incomplete for this type")
 
 let mk_ctypelist xs =
   List.fold_left (fun tail h -> Ctypes.Tcons (h, tail)) Ctypes.Tnil xs
@@ -348,13 +348,13 @@ let transf_v_type v dims =
   | (Stan.Bint,  [Stan.Econst_int l]) -> ctarray (ctint, str_to_coqint l)
   | (Stan.Breal, [Stan.Econst_int l]) -> ctarray (ctdouble, str_to_coqint l)
   (* | (ty,  []) -> ty *)
-  | _ -> raise (NIY_elab "type conversion not yet implemented")
+  | _ -> raise (NIY_elab "transf_v_type: type conversion not yet implemented")
 
 let stype2basic s =
   match s with
   | Stypes.Tint -> StanE.Bint
   | Stypes.Treal -> StanE.Breal
-  | _ -> raise (NIY_elab "do not call stype2basic on complex data representations")
+  | _ -> raise (NIY_elab "stype2basic: do not call stype2basic on complex data representations")
 
 let el_c c =
   match c with
@@ -489,18 +489,18 @@ let basicToCString v btype dims =
   | (StanE.Bvector sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
   | (StanE.Brow sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
   | (StanE.Bmatrix (r, c), _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string r) ^ "][" ^ (Camlcoq.Z.to_string c) ^ "]"
-  | _ -> raise (NIY_elab "type translation not valid when declaring a struct")
+  | _ -> raise (NIY_elab "basicToCString: type translation not valid when declaring a struct")
 
-let printStruct name vs =
-  let printField (v, p, t) = "  " ^ basicToCString (Camlcoq.extern_atom p) t v.Stan.vd_dims ^ ";" in
+let renderStruct name vs =
+  let renderField (v, p, t) = "  " ^ basicToCString (Camlcoq.extern_atom p) t v.Stan.vd_dims ^ ";" in
 
   String.concat "\n" ([
     "struct " ^ name ^ " {"
-  ] @ (List.map printField vs) @ [
+  ] @ (List.map renderField vs) @ [
     "};\n"
   ])
 
-let printPrintStruct name vs =
+let renderPrintStruct name vs =
   let field var = "s->" ^ var in
   let index1 v ix = field v ^ "["^ string_of_int ix ^"]" in
 
@@ -512,7 +512,7 @@ let printPrintStruct name vs =
     | StanE.Bvector _ -> "%f"
     | StanE.Brow _ -> "%f"
     | StanE.Bmatrix _ -> "%f"
-    | _ -> raise (NIY_elab "invalid type")
+    | _ -> raise (NIY_elab "renderPrintStruct.typeTmpl: invalid type")
   in
   let range n = List.map (fun x -> x - 1) (List.init n Int.succ) in
   let loopTmpl1 t size = "[" ^ (String.concat ", " (List.map (fun _ -> typeTmpl t) (range size))) ^ "]\\n" in
@@ -524,7 +524,7 @@ let printPrintStruct name vs =
     match (t, var.Stan.vd_dims) with
     | (t, [])                   -> ("  " ^ printer (v ^" = "^typeTmpl t^"\\n") v)
     | (t, [Stan.Econst_int sz]) -> ("  " ^ loopPrinter1 v t (int_of_string sz))
-    | _ -> raise (NIY_elab "printing incomplete for this type")
+    | _ -> raise (NIY_elab "renderPrintStruct.printField: printing incomplete for this type")
   in
   String.concat "\n" ([
     ("void print_" ^ String.lowercase_ascii name ^ " (void* opaque) {");
@@ -533,7 +533,95 @@ let printPrintStruct name vs =
     "}\n"
   ])
 
-let printDataLoaderFunctions vs =
+
+let renderGetAndSet global_name struct_type =
+  String.concat "\n" ([
+    ("struct " ^ struct_type ^ " "^ global_name ^";");
+    "";
+    ("void* get_" ^ global_name ^ " () {");
+    ("  return (void*) &"^ global_name ^";");
+    "}";
+    "";
+    ("void set_" ^ global_name ^ " (void* opaque) {");
+    ("  struct " ^ struct_type ^ "* s = (struct " ^ struct_type ^ "*) opaque;");
+    ("  " ^ global_name ^ " = *s;");
+    "}";
+    "";
+  ])
+
+(* void* propose() { *)
+
+(*   candidate.mu = state.mu + uniform_sample(0,1); *)
+(* } *)
+
+
+let renderParameters struct_type struct_vars =
+  let ret = "ret" in
+  let renderField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with
+    (* See: https://mc-stan.org/docs/2_29/reference-manual/initialization.html *)
+    (* If there are no user-supplied initial values, the default initialization strategy is to initialize the unconstrained parameters directly with values drawn uniformly from the interval (−2,2) *)
+    | (t, [], _)              -> ("  "^ret^"->" ^ v ^" = 0.5; // For debugging. uniform_sample(-2,2);")
+    | _ -> raise (NIY_elab "renderParameters.renderField: incomplete for this type")
+  in
+  String.concat "\n" ([
+    ("void* init_parameters (void* opaque) {");
+     "  struct " ^ struct_type ^ "* "^ret^" = malloc(sizeof(struct Params));";
+    (* ("  struct " ^ struct_type ^ "* o = (struct Params*\) opaque;"); *)
+    (* ("  struct " ^ struct_type ^ "* "^ret^";"); *)
+  ] @ (List.map renderField struct_vars) @ [
+    ("  return &"^ret^";");
+    "}";
+    "";
+  ])
+
+let renderPropose global_state struct_type struct_vars =
+  let proposeField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims) with
+    | (t, [])                   -> ("  double eps = my_randn(0.0,1.0);\n c->" ^ v ^" = s->" ^ v ^" + eps;\n printf(\"eps: %f\\ns->"^ v ^": %f\\n\", eps, s->" ^ v ^"); printf(\"c->"^ v ^": %f\\n\", c->" ^ v ^");")
+    | _ -> raise (NIY_elab "renderPropose.proposeField: incomplete for this type")
+  in
+  String.concat "\n" ([
+"double my_randn (double mu, double sigma)";
+"{";
+"  double U1, U2, W, mult;";
+"  static double X1, X2;";
+"  static int call = 0;";
+"";
+"  if (call == 1)";
+"    {";
+"      call = !call;";
+"      return (mu + sigma * (double) X2);";
+"    }";
+"  do";
+"    {";
+"      U1 = -1 + ((double) rand () / RAND_MAX) * 2;";
+"      U2 = -1 + ((double) rand () / RAND_MAX) * 2;";
+"      W = pow (U1, 2) + pow (U2, 2);";
+"    }";
+"  while (W >= 1 || W == 0);";
+"";
+"  mult = sqrt ((-2 * log (W)) / W);";
+"  X1 = U1 * mult;";
+"  X2 = U2 * mult;";
+"";
+"  call = !call;";
+"" ;
+"  return (mu + sigma * (double) X1);";
+"}";
+    ("void* propose (void * opaque_state) {");
+    ("  struct " ^ struct_type ^ "* s = (struct " ^ struct_type ^ "*) opaque_state;");
+    ("  struct " ^ struct_type ^ "* c = malloc(sizeof (struct " ^ struct_type ^ "));");
+  ] @ (List.map proposeField struct_vars) @ [
+    ("  return c;");
+    "}";
+    "";
+  ])
+
+
+let renderDataLoaderFunctions vs =
   let parseType t =
      match t with
     | StanE.Bint -> "atof"
@@ -573,16 +661,16 @@ let printDataLoaderFunctions vs =
     | _ -> raise (NIY_elab "data loading incomplete for this type")
   in
 
-  let printLoader (var, p, t) = let v = Camlcoq.extern_atom p in
+  let renderLoader (var, p, t) = let v = Camlcoq.extern_atom p in
     String.concat "\n" [
     "void load_" ^ v ^ " (void* opaque, char* f) {";
     "  struct Data* d = (struct Data*) opaque;";
     loadField (var, p, t);
     "}";
   ] in
-  String.concat "\n" (List.map printLoader vs)
+  String.concat "\n" (List.map renderLoader vs)
 
-let printCLILoader vs =
+let renderCLILoader vs =
   let runLoader ix (var, p, t) =
     "  load_" ^ Camlcoq.extern_atom p ^ "(opaque, files[" ^ string_of_int (ix) ^ "]);"
   in
@@ -607,15 +695,126 @@ let printPreludeFile sourcefile data_basics param_basics =
     "#include <stdio.h>";
     "#include <unistd.h>";
     "#include <string.h>";
+    "#include \"stanlib.h\"";
+    (* strdup is not standard *)
+    (* but ccomp doesn't permit for "#define _POSIX_C_SOURCE >= 200809L"; *)
+    "extern char* strdup(const char*);";
     "";
-    printStruct "Data" data_basics;
-    printPrintStruct "Data" data_basics;
-    printStruct "Params" param_basics;
-    printPrintStruct "Params" param_basics;
-    printDataLoaderFunctions data_basics;
-    printCLILoader data_basics;
+    renderStruct "Data" data_basics;
+    renderPrintStruct "Data" data_basics;
+    renderStruct "Params" param_basics;
+    renderPrintStruct "Params" param_basics;
+    renderGetAndSet "observations" "Data";
+    renderGetAndSet "state" "Params";
+    renderPropose "state" "Params" param_basics;
+    renderParameters "Params" param_basics;
+    renderDataLoaderFunctions data_basics;
+    renderCLILoader data_basics;
   ]);
   close_out oc
+
+let renderRuntimeFile data_basics param_basics =
+  String.concat "\n" [
+    "#include <stdlib.h>";
+    "#include <math.h>";
+    "#include <stdio.h>";
+    "#include \"stanlib.h\"";
+    "";
+    renderStruct "Data" data_basics;
+    renderStruct "Params" param_basics;
+    "struct Data observation;";
+    "void print_data(void *);";
+    "";
+    "struct Params state;";
+    "struct Params candidate;";
+    "void print_params(void*);";
+    "";
+    "void* get_state();";
+    "void set_state(void*);";
+    "";
+    "void load_from_cli(void* opaque, char *files[]);";
+    "void data();";
+    "void transformed_data();";
+    "void parameters();";
+    "void* init_parameters(void* p);";
+    "void transformed_parameters(void* p);";
+    "double model(void* p);";
+    "void generated_quantities();";
+    "";
+    "struct Params propose(void * state);";
+    "";
+    "int main(int argc, char* argv[]) {";
+    "  if (argc == 1) {";
+    "    printf(\"One argument required: number of iterations\n\");";
+    "    printf(\"optionally, csv files of data in order of declaration\n\");";
+    "    exit(1);";
+    "  }";
+    "  int n = atoi(argv[1]);";
+    "";
+    "  //data();";
+    "  load_from_cli(observation, argv+2);";
+    "  transformed_data();";
+    "  print_data(observation);";
+    "";
+    "  // parameters();";
+    "  init_parameters(state);";
+    "";
+    "  for (int i = 0; i < n; ++i) {";
+    "";
+    "    void* pi = &state; // get_state();";
+    "    printf(\"get pi\n\");";
+    "    print_params(pi);";
+    "";
+    "    transformed_parameters(pi);";
+    "    printf(\"transformed\n\");";
+    "    print_params(pi);";
+    "    double lp_parameters = model(pi);";
+    "";
+    "    structParams _newpi = propose(pi);";
+    "    void* newpi = &_newpi;";
+    "    printf(\"proposed, newpi is:\n\");";
+    "    print_params(newpi);";
+    "";
+    "";
+    "    // struct Params* ca = (struct Params*) newpi;";
+    "";
+    "    // transformed_parameters(newpi);";
+    "    // printf(\"transformed_parameters, newpi is:\n\");";
+    "    print_params(newpi);";
+    "    double lp_candidate = model(newpi);";
+    "    printf(\"finished model, newpi is:\n\");";
+    "    print_params(newpi);";
+    "    double u = ((double) rand() / RAND_MAX);";
+    "";
+    "    if (u <= lp_candidate - lp_parameters) {";
+    "      printf(\"setting state... newpi is:\n\");";
+    "      print_params(newpi);";
+    "      set_state(newpi);";
+    "      printf(\"setting state in iteration %d. target log_prob: %f\n\", i+1, lp_candidate); // 1-index iterations";
+    "      print_params(&state);";
+    "    }";
+    "";
+    "    generated_quantities();";
+    "  }";
+    "";
+    "  printf(\"\n...completed execution!\");";
+    "  printf(\"\n\nSummary:\n\t\");";
+    "  print_params(&state);";
+    "  printf(\"\n\");";
+    "  return 0;";
+    ""  ;
+    "}";
+  ]
+
+let printRuntimeFile sourcefile data_basics param_basics =
+  let sourceDir = Filename.dirname sourcefile in
+  let sourceName = Filename.basename sourcefile in
+  let preludeName = Filename.chop_extension sourceName in
+  let file = sourceDir ^ "/" ^ preludeName ^ "_runtime.c" in
+  let oc = open_out file in
+  let so = stdout in
+  Printf.fprintf so "Generating: %s\n" file;
+  Printf.fprintf oc "%s\n" (renderRuntimeFile data_basics param_basics)
 
 
 let elaborate (sourcefile : string) (p: Stan.program) =
@@ -672,17 +871,17 @@ let elaborate (sourcefile : string) (p: Stan.program) =
     let (id_gen_quant,f_gen_quant) = declareFundef "generated_quantities" (get_code g) None [] in
     let functions = (id_gen_quant,f_gen_quant) :: functions in
 
-    IdxHashtbl.clear index_set;
-    let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in
-    let functions = (id_propose,f_propose) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_propose,f_propose) = declareFundef "propose" [Stan.Sskip] None [] in *)
+    (* let functions = (id_propose,f_propose) :: functions in *)
 
-    IdxHashtbl.clear index_set;
-    let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in
-    let functions = (id_get,f_get) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_get,f_get) = declareFundef "get_state" [Stan.Sskip] None [] in *)
+    (* let functions = (id_get,f_get) :: functions in *)
 
-    IdxHashtbl.clear index_set;
-    let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
-    let functions = (id_set,f_set) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in *)
+    (* let functions = (id_set,f_set) :: functions in *)
 
     (* IdxHashtbl.clear index_set; *)
     (* let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in *)
