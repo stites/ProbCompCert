@@ -61,14 +61,14 @@ Inductive match_cont : blocktype -> cont -> cont -> Prop :=
       bt <> BTModel ->
       match_cont fn.(fn_blocktype) k tk ->
       match_cont bt (Kcall optid fn e le k)
-                        (Kcall optid tfn e le tk)
+                        (Kcall optid tfn e tle tk)
   | match_Kcall_model: forall optid fn e le k tfn tle tk bt,
       transf_function (prog_target prog) fn = OK tfn ->
       match_temps (prog_target prog) le tle ->
       bt = BTModel ->
       match_cont fn.(fn_blocktype) k tk ->
       match_cont bt (Kcall optid fn e le k)
-                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) (Kcall optid tfn e le tk))
+                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) (Kcall optid tfn e tle tk))
 .
 
 Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.state -> Prop :=
@@ -104,7 +104,7 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       (* (TCAST:  Cop.sem_cast (Vfloat ta) tdouble (fn_return tf) m = Some (Vfloat ta)) *)
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
       (BS_SYNC: f.(fn_blocktype) = BTModel)
-      (TAR_MATCH: le!(prog_target prog) = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
+      (TAR_MATCH: tle!(prog_target prog) = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
       (MTMP: match_temps (prog_target prog) le tle)
       (MCONT: match_cont (get_blockstate bs) k tk),
       match_states (CStanSemanticsTarget.State f s k e le m bs)
@@ -151,6 +151,15 @@ Lemma match_temps_assign:
 Proof.
   intros tgt le te id v Hmatch.
   red; intros. rewrite PTree.gsspec in *. destruct (peq i id); auto.
+Qed.
+
+Lemma match_temps_set_opttemp:
+  forall tgt le te ot v,
+  match_temps tgt le te ->
+  match_temps tgt (set_opttemp ot v le) (set_opttemp ot v te).
+Proof.
+  intros tgt le te id v Hmatch.
+  destruct id; simpl; auto using match_temps_assign.
 Qed.
 
 Variable TRANSL: match_prog prog tprog.
@@ -342,11 +351,16 @@ Proof.
 Qed.
 
 Lemma eval_lvalue_correct:
-  forall e le m a b ofs bf target ta
+  forall e le tle m a b ofs bf bs ta
+   (TAR: match bs with
+         | CStanSemanticsTarget.Other => True
+         | CStanSemanticsTarget.Model tv => tle!(prog_target prog) = Some (Vfloat tv)
+         end)
+  (MTMP: match_temps (prog_target prog) le tle)
   (TRE: transf_etarget_expr (prog_target prog) a = OK ta),
-  CStanSemanticsTarget.eval_lvalue ge e le m target a b ofs bf -> CStanSemanticsBackend.eval_lvalue tge e le m ta b ofs bf.
+  CStanSemanticsTarget.eval_lvalue ge e le m bs a b ofs bf -> CStanSemanticsBackend.eval_lvalue tge e tle m ta b ofs bf.
 Proof.
-  intros e le m a.
+  intros e le tle m a.
   induction a; intros; try monadInv TRE; try (inv H).
   - eapply eval_Evar_local; eauto.
   - eapply eval_Evar_global; eauto.
@@ -363,8 +377,9 @@ Qed.
 Lemma types_correct:
   forall e x , transf_etarget_expr (prog_target prog)  e = OK x -> typeof e = typeof x.
 Proof.
-  intro e.
-  induction e; intros; simpl in *; monadInv H; simpl; trivial.
+  intros e x.
+  induction e; intros; simpl in *; try monadInv H; simpl; trivial.
+  destruct (Pos.eqb _ _); try monadInv H; eauto.
 Qed.
 
 Lemma functions_translated:
@@ -426,12 +441,17 @@ Proof.
 Qed.
 
 Lemma eval_exprlist_correct_simple:
-  forall env le es tes tys m vs ta
+  forall env le tle es tes tys m vs bs
+   (TAR: match bs with
+         | CStanSemanticsTarget.Other => True
+         | CStanSemanticsTarget.Model tv => tle!(prog_target prog) = Some (Vfloat tv)
+         end)
+  (MTMP: match_temps (prog_target prog) le tle)
   (TREL: res_mmap (transf_etarget_expr (prog_target prog)) es = OK tes)
-  (EVEL: CStanSemanticsTarget.eval_exprlist ge env le m ta es tys vs),
-  eval_exprlist tge env le m tes tys vs.
+  (EVEL: CStanSemanticsTarget.eval_exprlist ge env le m bs es tys vs),
+  eval_exprlist tge env tle m tes tys vs.
 Proof.
-  intros env le es.
+  intros env le tle es.
   induction es; intros.
   monadInv TREL.
   inv EVEL; eauto.
@@ -459,14 +479,15 @@ Qed.
 
 Lemma step_simulation:
   forall S1 t S2, CStanSemanticsTarget.stepf ge S1 t S2 ->
-  forall S1' (MS: match_states S1 S1'), exists S2', plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states S2 S2'.
+  forall S1' (MS: match_states S1 S1'), exists S2',
+      plus CStanSemanticsBackend.stepf tge S1' t S2' /\ match_states S2 S2'.
 Proof.
   induction 1.
 
   - (* step_assign *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
     + (* other *)
-      exists (State tf Sskip tk e le m').
+      exists (State tf Sskip tk e tle m').
       split.
       eapply plus_one.
       generalize (types_correct _ _ EQ); intro.
@@ -475,15 +496,17 @@ Proof.
       rewrite H4 in *.
       unfold stepf.
       eapply step_assign; eauto.
-      eapply eval_lvalue_correct; eauto.
+      eapply eval_lvalue_correct; eauto. simpl; auto.
       eapply eval_expr_correct; eauto.
+      simpl; auto.
       inv H2.
       eapply assign_loc_value; eauto.
       eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto.
+      eapply assign_loc_bitfield; try (rewrite comp_env_preserved); eauto.
       eapply match_regular_states; eauto.
 
     + (* model *)
-      exists (State tf Sskip tk e le m').
+      exists (State tf Sskip tk e tle m').
       split.
       eapply plus_one.
       generalize (types_correct _ _ EQ); intro.
@@ -492,11 +515,13 @@ Proof.
       rewrite H4 in *.
       unfold stepf.
       eapply step_assign; eauto.
-      eapply eval_lvalue_correct; eauto.
+      eapply eval_lvalue_correct; eauto. simpl; auto.
       eapply eval_expr_correct; eauto.
+      { simpl. eauto. }
       inv H2.
       eapply assign_loc_value; eauto.
       eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto.
+      eapply assign_loc_bitfield; try (rewrite comp_env_preserved); eauto.
       eapply match_regular_states_model; eauto.
 
   - (* step_set *)
@@ -511,7 +536,9 @@ Proof.
       unfold stepf.
       econstructor.
       eapply eval_expr_correct; eauto.
+      { simpl. eauto. }
       eapply match_regular_states; eauto.
+      apply match_temps_assign; auto.
     + (* other *)
       monadInv TRS; monadInv EQ.
       destruct (id =? (prog_target prog))%positive eqn:TEQ.
@@ -522,25 +549,28 @@ Proof.
       unfold stepf.
       econstructor.
       eapply eval_expr_correct; eauto.
+      { simpl. eauto. }
       eapply match_regular_states_model; eauto.
       apply Pos.eqb_neq in TEQ.
       rewrite PTree.gso; auto.
+      apply match_temps_assign; auto.
 
   - (* call *)
     simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
     + (* other *)
-      exploit eval_expr_correct; eauto; intro.
-      exploit eval_exprlist_correct_simple; eauto. intro tvargs.
+      exploit eval_expr_correct; eauto; simpl; auto; intro.
+      exploit eval_exprlist_correct_simple; eauto; simpl; auto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
       econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
       generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
       eauto. eauto. eauto.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
+
       econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
     + (* model *)
-      exploit eval_expr_correct; eauto; intro.
-      exploit eval_exprlist_correct_simple; eauto. intro tvargs.
+      exploit eval_expr_correct; eauto; simpl; auto; intro.
+      exploit eval_exprlist_correct_simple; eauto; simpl; auto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
       econstructor. split. eapply plus_one. eapply step_call with (fd := tfd).
       generalize (types_correct _ _ EQ1); intro TYA. rewrite<-TYA. eauto.
@@ -648,7 +678,7 @@ Proof.
       split.
       eapply plus_one; unfold stepf.
       econstructor.
-      eapply eval_expr_correct; eauto.
+      eapply eval_expr_correct; eauto; simpl; auto.
       generalize (types_correct _ _ EQ1); intro.
       rewrite <- H1; eauto.
       eapply match_regular_states; eauto.
@@ -663,7 +693,7 @@ Proof.
       split.
       eapply plus_one; unfold stepf.
       econstructor.
-      eapply eval_expr_correct; eauto.
+      eapply eval_expr_correct; eauto; simpl; auto.
       generalize (types_correct _ _ EQ1); intro.
       rewrite <- H1; eauto.
       eapply match_regular_states_model; eauto.
@@ -852,7 +882,7 @@ Proof.
       econstructor.
       split. eapply plus_one; unfold stepf.
       eapply step_return_1.
-      eapply eval_expr_correct; eauto.
+      eapply eval_expr_correct; eauto; simpl; auto.
       eapply transf_sem_cast_inject; eauto.
       rewrite blocks_of_env_preserved. eauto.
       eapply match_return_state; eauto.
@@ -908,7 +938,7 @@ Proof.
          inversion EQ. rewrite <- H1 in EQ0.
          inversion EQ0.
          inversion MCONT.
-         exists (State tf Sskip tk0 e le m).
+         exists (State tf Sskip tk0 e tle m).
          split.
          eapply plus_one. unfold stepf.
          eapply step_skip_break_switch.
@@ -920,7 +950,7 @@ Proof.
          inversion EQ. rewrite <- H1 in EQ0.
          inversion EQ0.
          inversion MCONT.
-         exists (State tf Sskip tk0 e le m).
+         exists (State tf Sskip tk0 e tle m).
          split.
          eapply plus_one. unfold stepf.
          eapply step_skip_break_switch.
@@ -933,7 +963,7 @@ Proof.
          inversion EQ. rewrite <- H1 in EQ0.
          inversion EQ0.
          inversion MCONT.
-         exists (State tf Sskip tk0 e le m).
+         exists (State tf Sskip tk0 e tle m).
          split.
          eapply plus_one. unfold stepf.
          eapply step_skip_break_switch.
@@ -945,7 +975,7 @@ Proof.
          inversion EQ. rewrite <- H1 in EQ0.
          inversion EQ0.
          inversion MCONT.
-         exists (State tf Sskip tk0 e le m).
+         exists (State tf Sskip tk0 e tle m).
          split.
          eapply plus_one. unfold stepf.
          eapply step_skip_break_switch.
@@ -955,13 +985,13 @@ Proof.
     intros; simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0.
     + (* other *)
       inv MCONT.
-      exists (State tf Scontinue tk0 e le m).
+      exists (State tf Scontinue tk0 e tle m).
       split. eapply plus_one; unfold stepf.
       econstructor.
       eapply match_regular_states; eauto.
     + (* model *)
       inv MCONT.
-      exists (State tf Scontinue tk0 e le m).
+      exists (State tf Scontinue tk0 e tle m).
       split. eapply plus_one; unfold stepf.
       econstructor.
       eapply match_regular_states_model; eauto.
@@ -984,7 +1014,6 @@ Proof.
     eapply bind_parameters_preserved; eauto.
     assert (create_undef_temps (fn_temps x) = le). {
       (* lost information about (le = create_undef_temps (fn_temps x)) *)
-      Search create_undef_temps.
       admit.
     }.
     admit.
@@ -1049,8 +1078,9 @@ Proof.
       * econstructor. split. apply plus_one. eapply step_returnstate.
         eapply match_regular_states; eauto. (* lost the fn_blocktype too early *)
         admit.
+        { apply match_temps_set_opttemp; auto. }
         monadInv H6.
-        inversion H8.
+        inversion H9.
         ** (* Kstop *) econstructor.
         ** (* Kseq *) econstructor; eauto.
            (* we don't have a link from match_cont (fn_blocktype f) to (get_blockstate Other)*)
@@ -1084,6 +1114,7 @@ Proof.
         admit. (* hmm... I guess the continuation doesn't add any additional context *)
                (* about setting the ident in this goal.... *)
         simpl in *.
+        apply (match_temps_set_opttemp); eauto.
         admit. (* and, again, lost that blocktype f = BTModel *)
 
         (* (* now deal with the epilouge *) *)
@@ -1100,10 +1131,15 @@ Proof.
     intros; inv MS; monadInv TRS; monadInv EQ; monadInv EQ0; simpl in *.
     + (* other *) discriminate.
     + (* model *)
+      admit.
+      (*
       econstructor. split. eapply plus_left'. unfold stepf.
       eapply step_set.
       eapply eval_expr_correct.
+      admit.
+      eauto.
       simpl in *.
+      admit.
       (* need to review the workshop sequences module... *)
 
 
@@ -1131,27 +1167,11 @@ Proof.
       (* eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto. *)
       (* eapply match_regular_states; eauto. *)
 
-
-      * (* match the states *)
-
-Lemma eval_lvalue_correct:
-  forall e le m a b ofs target ta
-  (TRE: transf_etarget_expr (prog_target prog) a = OK ta),
-  CStanSemanticsTarget.eval_lvalue ge e le m target a b ofs -> CStanSemanticsBackend.eval_lvalue tge e le m ta b ofs.
-Proof.
-  intros e le m a.
-  induction a; intros; monadInv TRE; try (inv H).
-  - econstructor. eauto.
-  - eapply CStanSemanticsBackend.eval_Evar_global; eauto.
-    rewrite symbols_preserved; eauto.
-Qed.
-
-
-
-
+       *)
 
 Admitted.
 
+(*
 Lemma function_ptr_translated:
 (*   forall m0 *)
 (*     (b: block) (f: CStan.fundef) *)
@@ -1168,10 +1188,11 @@ Lemma function_ptr_translated:
 (* Admitted. *)
 (*   (* edestruct (Genv.find_funct_ptr_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto. *) *)
 (* (* Qed. *) *)
+*)
 
 Lemma initial_states_simulation:
   forall S, CStanSemanticsTarget.initial_state prog S ->
-  exists R, CStanSemanticsBackend.initial_state tprog R /\ match_states prog.(prog_target) S R.
+  exists R, CStanSemanticsBackend.initial_state tprog R /\ match_states S R.
 Proof.
   intros. inv H.
   (* exploit function_ptr_translated; eauto. *)
@@ -1194,8 +1215,8 @@ Admitted.
 (* Qed. *)
 
 Lemma final_states_simulation:
-  forall S R r i,
-  match_states i S R -> CStanSemanticsTarget.final_state S r -> final_state R r.
+  forall S R r ,
+  match_states S R -> CStanSemanticsTarget.final_state S r -> final_state R r.
 Proof.
   intros. inv H0. inv H; inv MCONT; constructor.
 Qed.
