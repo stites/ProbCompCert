@@ -182,13 +182,14 @@ Proof.
   - (* Evar expressions *)
     inv H. (* apply inversion on our CStan.eval_expr, this matches eval_lvalue. *)
     eapply eval_Elvalue.
-    (* redo *)
 
-    Focus 2. (* examine the new deref clauses first *)
+    2:{
     inv H1; simpl in *.
     eapply Clight.deref_loc_value; eauto.
     eapply Clight.deref_loc_reference; eauto.
     eapply Clight.deref_loc_copy; eauto.
+    eapply Clight.deref_loc_bitfield; eauto.
+    }
 
     inv H0.
     eapply eval_Evar_local. eauto.
@@ -211,6 +212,7 @@ Proof.
     eapply deref_loc_value; eauto.
     eapply deref_loc_reference; eauto.
     eapply deref_loc_copy; eauto.
+    eapply Clight.deref_loc_bitfield; eauto.
 
   - (* cast *)
     inv H.
@@ -220,19 +222,23 @@ Proof.
 
   - (* field struct *)
     inv H.
-    inv H0.
-    simpl in *.
-    eapply eval_Elvalue.
-    eapply eval_Efield_struct; eauto.
-    rewrite (transf_types_eq a x) in H5; eauto.
-    assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
-    rewrite comp_env_preserved in *; eauto.
-    assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
-    rewrite comp_env_preserved in *; eauto.
-    destruct H1.
-    eapply deref_loc_value; eauto.
-    eapply deref_loc_reference; eauto.
-    eapply deref_loc_copy; eauto.
+
+    {
+      inv H0.
+      simpl in *.
+      eapply eval_Elvalue.
+      eapply eval_Efield_struct; eauto.
+      rewrite (transf_types_eq a x) in H5; eauto.
+      assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
+      rewrite comp_env_preserved in *; eauto.
+      assert (SUB: CStan.prog_comp_env prog = ge); eauto; rewrite SUB in *.
+      rewrite comp_env_preserved in *; eauto.
+      destruct H1.
+      eapply deref_loc_value; eauto.
+      eapply deref_loc_reference; eauto.
+      eapply deref_loc_copy; eauto.
+      eapply deref_loc_bitfield; eauto.
+    }
 
   - (* addrof *)
     inv H.
@@ -275,9 +281,9 @@ Proof.
 Qed.
 
 Lemma eval_lvalue_correct:
-  forall e le m a b ofs ta
+  forall e le m a b ofs bf ta
   (TRE: transf_expression a = OK ta),
-  CStanSemanticsBackend.eval_lvalue ge e le m a b ofs -> Clight.eval_lvalue tge e le m ta b ofs.
+  CStanSemanticsBackend.eval_lvalue ge e le m a b ofs bf -> Clight.eval_lvalue tge e le m ta b ofs bf.
 Proof.
   intros e le m a.
   induction a; intros; monadInv TRE; try (inv H).
@@ -385,11 +391,11 @@ Proof.
     eapply step_assign; eauto.
     eapply eval_lvalue_correct; eauto.
     eapply eval_expr_correct; eauto.
-    inv H2.
-    eapply assign_loc_value; eauto.
-    eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto.
-    eapply match_regular_states; eauto.
-
+    * inv H2.
+      ** eapply assign_loc_value; eauto.
+      ** eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto.
+      ** eapply assign_loc_bitfield; eauto.
+    * eapply match_regular_states; eauto.
   - (* set *)
     intros; inv MS.
     econstructor.

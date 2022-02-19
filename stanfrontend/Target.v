@@ -120,12 +120,19 @@ Fixpoint transf_etarget_expr (ot : AST.ident) (e: CStan.expr) {struct e}: res CS
   | CStan.Econst_single f t => OK (CStan.Econst_single f t)
   | CStan.Econst_long i t => OK (CStan.Econst_long i t)
   | CStan.Evar i t => OK (CStan.Evar i t)
-  | CStan.Etempvar i t => OK (CStan.Etempvar i t)
+  | CStan.Etempvar i t =>
+    if Pos.eqb i ot
+    then Error (msg "cannot get the target identifier")
+    else OK (CStan.Etempvar i t)
   | CStan.Ederef e t =>
     do e <- transf_etarget_expr ot e;
     OK (CStan.Ederef e t)
-  | CStan.Ecast e t => OK (CStan.Ecast e t)
-  | CStan.Efield e i t => OK (CStan.Efield e i t)
+  | CStan.Ecast e t =>
+    do e <- transf_etarget_expr ot e;
+    OK (CStan.Ecast e t)
+  | CStan.Efield e i t =>
+    do e <- transf_etarget_expr ot e;
+    OK (CStan.Efield e i t)
   | CStan.Eunop uop e t =>
     do e <- transf_etarget_expr ot e;
     OK (CStan.Eunop uop e t)
@@ -133,7 +140,9 @@ Fixpoint transf_etarget_expr (ot : AST.ident) (e: CStan.expr) {struct e}: res CS
     do e0 <- transf_etarget_expr ot e0;
     do e1 <- transf_etarget_expr ot e1;
     OK (CStan.Ebinop bop e0 e1 t)
-  | CStan.Eaddrof e t => OK (CStan.Eaddrof e t)
+  | CStan.Eaddrof e t =>
+    do e <- transf_etarget_expr ot e;
+    OK (CStan.Eaddrof e t)
   | CStan.Esizeof t0 t1 => OK (CStan.Esizeof t0 t1)
   | CStan.Ealignof t0 t1 => OK (CStan.Ealignof t0 t1)
   | CStan.Etarget ty => OK (CStan.Etempvar ot ty)

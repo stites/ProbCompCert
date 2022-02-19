@@ -61,13 +61,10 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_expr (Esizeof ty1 ty) (Vptrofs (Ptrofs.repr (sizeof ge ty1)))
   | eval_Ealignof: forall ty1 ty,
       eval_expr (Ealignof ty1 ty) (Vptrofs (Ptrofs.repr (alignof ge ty1)))
-  | eval_Ecast: forall a ty v,
-      eval_expr a v ->
+  | eval_Ecast: forall a ty v1 v,
+      eval_expr a v1 ->
+      sem_cast v1 (typeof a) ty m = Some v ->
       eval_expr (Ecast a ty) v
-  | eval_Efield: forall a id ty v,
-      eval_expr a v ->
-      le!id = Some v ->
-      eval_expr (Efield a id ty) v
   | eval_Elvalue: forall a loc ofs bf v,
       eval_lvalue a loc ofs bf ->
       deref_loc (typeof a) m loc ofs bf v ->
@@ -82,7 +79,16 @@ with eval_lvalue: expr -> block -> ptrofs -> bitfield -> Prop :=
   | eval_Evar_global: forall id l ty,
       e!id = None ->
       Genv.find_symbol ge id = Some l ->
-      eval_lvalue (Evar id ty) l Ptrofs.zero Full.
+      eval_lvalue (Evar id ty) l Ptrofs.zero Full
+  | eval_Ederef: forall a ty l ofs,
+      eval_expr a (Vptr l ofs) ->
+      eval_lvalue (Ederef a ty) l ofs Full
+  | eval_Efield_struct:   forall a i ty l ofs id co att delta bf,
+      eval_expr a (Vptr l ofs) ->
+      typeof a = Tstruct id att ->
+      ge.(genv_cenv)!id = Some co ->
+      field_offset ge i (co_members co) = OK (delta, bf) ->
+      eval_lvalue (Efield a i ty) l (Ptrofs.add ofs (Ptrofs.repr delta)) bf.
 
 Scheme eval_expr_ind2 := Minimality for eval_expr Sort Prop
   with eval_lvalue_ind2 := Minimality for eval_lvalue Sort Prop.
@@ -149,7 +155,7 @@ Inductive step: state -> trace -> state -> Prop :=
       eval_lvalue e le m ta a1 loc ofs bf ->
       eval_expr e le m ta a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
-      assign_loc ge (typeof a1) m loc ofs v m' ->
+      assign_loc ge (typeof a1) m loc ofs bf v m' ->
       step (State f (Sassign a1 a2) k e le m ta)
                  E0 (State f Sskip k e le m' ta)
   | step_set:   forall f id a k e le m ta v,

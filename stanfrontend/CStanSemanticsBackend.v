@@ -40,7 +40,7 @@ Inductive bind_parameters (e: env):
   | bind_parameters_cons:
       forall m id ty params v1 vl b m1 m2,
       PTree.get id e = Some(b, ty) ->
-      assign_loc ge ty m b Ptrofs.zero v1 m1 ->
+      assign_loc ge ty m b Ptrofs.zero Full v1 m1 ->
       bind_parameters e m1 params vl m2 ->
       bind_parameters e m ((id, ty) :: params) (v1 :: vl) m2.
 
@@ -136,10 +136,6 @@ Inductive eval_expr: expr -> val -> Prop :=
       eval_expr a v1 ->
       sem_cast v1 (typeof a) ty m = Some v ->
       eval_expr (Ecast a ty) v
-  (* | eval_Efield: forall a id ty v, *)
-  (*     eval_expr a v -> *)
-  (*     le!id = Some v -> *)
-  (*     eval_expr (Efield a id ty) v *)
   | eval_Elvalue: forall a loc ofs bf v,
       eval_lvalue a loc ofs bf ->
       deref_loc (typeof a) m loc ofs bf v ->
@@ -260,7 +256,7 @@ Inductive step: state -> trace -> state -> Prop :=
       eval_lvalue e le m a1 loc ofs bf ->
       eval_expr e le m a2 v2 ->
       sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
-      assign_loc ge (typeof a1) m loc ofs v m' ->
+      assign_loc ge (typeof a1) m loc ofs bf v m' ->
       step (State f (Sassign a1 a2) k e le m)
         E0 (State f Sskip k e le m')
   | step_set:   forall f id a k e le m v,
