@@ -37,7 +37,12 @@ end.
 (** Matching continuations *)
 Inductive match_cont : blocktype -> cont -> cont -> Prop :=
   | match_Kstop: forall bt,
+      bt <> BTModel ->
       match_cont bt Kstop Kstop
+  | match_Kstop_model: forall bt,
+      bt = BTModel ->
+      match_cont bt Kstop
+                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) Kstop)
   | match_Kseq: forall s k ts tk bt ,
       transf_statement (prog_target prog) s = OK ts ->
       match_cont bt k tk ->
@@ -946,29 +951,46 @@ Proof.
       simpl in *; congruence.
   - (* step_skip_call_model *)
     simpl; intros; inv MS; simpl in *; monadInv TRS; monadInv EQ; monadInv EQ0.
-    + (* other *)
-      simpl in *; congruence.
+    + (* other *) simpl in *; congruence.
     + (* model *)
-      inv MCONT; simpl in H; destruct H.
-      admit. (* we don't want this state to arrive because we don't want to stop the program during the model block *)
-      congruence.
-      econstructor.
-      split.
-      * eapply plus_left'; unfold stepf.
+      (* TODO: either we need to say that a Model block type fn_return must be double,
+         or we can force it during translation? Or we can enforce it in semantics *)
+      assert (fn_return tf = tdouble) as Hdouble.
+      { admit. }
+      inv MCONT; simpl in H; destruct H; try congruence.
+      { econstructor.
+         split.
+         * eapply plus_left'; unfold stepf.
+           econstructor.
+           eapply plus_one; unfold stepf.
+           econstructor.
+           eapply eval_Etempvar; eauto.
+           simpl in *.
+           rewrite Hdouble.
+           rewrite Cop.cast_val_casted; eauto.
+           { constructor. }
+           rewrite blocks_of_env_preserved; eauto.
+           eauto.
+         * inv BS_MODEL. econstructor; eauto.
+           simpl. econstructor; congruence.
+      }
+      {
         econstructor.
-        eapply plus_one; unfold stepf.
-        econstructor.
-        eapply eval_Etempvar; eauto.
-        simpl in *.
-        admit. (*I think I need to strengthen this argument*)
-        rewrite blocks_of_env_preserved; eauto.
-        simpl; congruence.
-      * (* eapply match_regular_states_model. *) (* need to pop off this continuation before getting to the match_return_state_model but not sure how *)
-        eapply match_return_state_model.
-        admit. (* now, I think because I didn't pop off the kcall, we have a funny state here that doesn't make sense *)
-        simpl in *.
-        eapply match_Kcall; auto.
-        congruence.
+        split.
+         * eapply plus_left'; unfold stepf.
+           econstructor.
+           eapply plus_one; unfold stepf.
+           econstructor.
+           eapply eval_Etempvar; eauto.
+           simpl in *.
+           rewrite Hdouble.
+           rewrite Cop.cast_val_casted; eauto.
+           { constructor. }
+           rewrite blocks_of_env_preserved; eauto.
+           eauto.
+         * inv BS_MODEL. econstructor; eauto.
+           simpl. eapply match_Kcall; eauto. congruence.
+      }
   - (* step_skip_break_switch *)
     simpl; intros; inv MS; simpl in *; monadInv TRS.
     + (* other *)
@@ -1121,7 +1143,7 @@ Proof.
         { apply match_temps_set_opttemp; auto. }
         monadInv H6.
         inversion H9.
-        ** (* Kstop *) econstructor.
+        ** (* Kstop *) econstructor. congruence.
         ** (* Kseq *) econstructor; eauto.
            (* we don't have a link from match_cont (fn_blocktype f) to (get_blockstate Other)*)
            (* what we need is to loosen get_blockstate to be an inductive type that introduces that bt <> BTModel, I think *)
@@ -1129,8 +1151,9 @@ Proof.
         ** (* Kloop1 *) econstructor; eauto. admit.
         ** (* Kloop2 *) econstructor; eauto. admit.
         ** (* Kswitch *) econstructor; eauto. admit.
-        ** (* Kcall *) econstructor; eauto.
-        ** (* Kcall to Kseq *) econstructor; eauto. (* here, I think the above solution would fix this as well *) admit.
+        ** (* Kcall *) econstructor; eauto. admit.
+        ** (* Kcall to Kseq *) econstructor; eauto. (* here, I think the above solution would fix this as well *)
+        ** admit.
       * discriminate.
     + (* model *)
       simpl in *.
@@ -1258,7 +1281,10 @@ Lemma final_states_simulation:
   forall S R r ,
   match_states S R -> CStanSemanticsTarget.final_state S r -> final_state R r.
 Proof.
-  intros. inv H0. inv H; inv MCONT; constructor.
+  intros. inv H0. inv H.
+  * inv MCONT; try congruence. constructor.
+    simpl in H. congruence.
+  * inv MCONT; try congruence.
 Qed.
 
 Theorem transf_program_correct:
