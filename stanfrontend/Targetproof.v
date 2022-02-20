@@ -1164,46 +1164,21 @@ Proof.
     * discriminate.
   - (* step_target *)
     intros; inv MS; monadInv TRS; monadInv EQ; monadInv EQ0; simpl in *.
-    + (* other *) discriminate.
-    + (* model *)
-      admit.
-      (*
-      econstructor. split. eapply plus_left'. unfold stepf.
-      eapply step_set.
-      eapply eval_expr_correct.
-      admit.
-      eauto.
-      simpl in *.
-      admit.
-      (* need to review the workshop sequences module... *)
-
-
-
-
-      econstructor. split. eapply plus_one. unfold stepf.
-      eapply step_set.
-      eapply eval_expr_correct.
-      admit. (*not sure how to do this one*)
-      admit.
-
-
-
-
-
-      inv H.
-      (* step the expression *)
-      monadInv EQ.
-        eapply step_assign; eauto.
-        eapply eval_lvalue_correct; eauto.
-        (* assert (eval_lvalue tge e le (Evar (prog_target prog) tdouble )). *)
-      (*   eapply eval_expr_correct; eauto. *)
-      (* inv H2. *)
-      (* eapply assign_loc_value; eauto. *)
-      (* eapply assign_loc_copy; try (rewrite comp_env_preserved); eauto. *)
-      (* eapply match_regular_states; eauto. *)
-
-       *)
-
+    { (* other *) discriminate. }
+    econstructor. split. eapply plus_one; unfold stepf.
+    { eapply step_set.
+      econstructor.
+      { econstructor. eauto. }
+      { eapply eval_expr_correct; simpl; eauto.
+        simpl. congruence. }
+      simpl.
+      erewrite <-types_correct; eauto.
+      rewrite H2.
+      unfold Cop.sem_add; econstructor.
+    }
+    eapply match_regular_states_model; eauto.
+    { rewrite PTree.gss. congruence. }
+    apply match_temps_assign_tgt; eauto.
 Admitted.
 
 (*
@@ -1254,9 +1229,7 @@ Lemma final_states_simulation:
   match_states S R -> CStanSemanticsTarget.final_state S r -> final_state R r.
 Proof.
   intros. inv H0. inv H.
-  * inv MCONT; try congruence. constructor.
-    simpl in H. congruence.
-  * inv MCONT; try congruence.
+  inv MCONT; try congruence. constructor.
 Qed.
 
 Theorem transf_program_correct:

@@ -277,13 +277,14 @@ Inductive step: state -> trace -> state -> Prop :=
       step (Returnstate v (Kcall optid f e le ta_caller k) m ta)
         E0 (State f Sskip k e (CStanSemanticsBackend.set_opttemp optid v le) m ta_caller)
 
-  | step_target: forall f a k e le m bs ta v ta',
+  | step_target: forall f a k e le m bs ta v ta' attr,
       eval_expr e le m bs a v ->
       bs = Model ta ->
       v = Vfloat ta' ->
+      (* TODO: WARNING: should we assume it's a Tfloat 64? Or do we need to handle casting? *)
+      typeof a = Tfloat F64 attr ->
       step (State f (Starget a) k e le m bs)
         E0 (State f Sskip k e le m (Model (Float.add ta ta')))
-
   .
 End SEMANTICS.
 
