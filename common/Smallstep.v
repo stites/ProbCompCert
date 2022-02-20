@@ -167,6 +167,17 @@ Proof.
   intros. eapply plus_left; eauto. eapply star_three; eauto.
 Qed.
 
+Lemma plus_five:
+  forall ge s1 t1 s2 t2 s3 t3 s4 t4 s5 t5 s6 t,
+  step ge s1 t1 s2 -> step ge s2 t2 s3 ->
+  step ge s3 t3 s4 -> step ge s4 t4 s5 ->
+  step ge s5 t5 s6 ->
+  t = t1 ** t2 ** t3 ** t4 ** t5 ->
+  plus ge s1 t s6.
+Proof.
+  intros. eapply plus_left; eauto. eapply star_four; eauto.
+Qed.
+
 Lemma plus_star:
   forall ge s1 t s2, plus ge s1 t s2 -> star ge s1 t s2.
 Proof.

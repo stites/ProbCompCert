@@ -28,52 +28,62 @@ Let tge := globalenv tprog.
 Definition match_temps tgt (le1 le2: temp_env) : Prop :=
   (forall i v, i <> tgt -> le1!i = Some v -> le2!i = Some v).
 
+Definition match_bs tgt bs (tle: temp_env) : Prop :=
+  match bs with
+  | CStanSemanticsTarget.Other => True
+  | CStanSemanticsTarget.Model ta => tle!tgt = Some (Vfloat ta)
+  end.
+
 Definition get_blockstate (bs : CStanSemanticsTarget.block_state) : blocktype :=
 match bs with
 | CStanSemanticsTarget.Other => BTOther
 | CStanSemanticsTarget.Model f => BTModel
 end.
 
+
 (** Matching continuations *)
-Inductive match_cont : blocktype -> cont -> cont -> Prop :=
+Inductive match_cont : blocktype -> CStanSemanticsTarget.cont -> cont -> Prop :=
   | match_Kstop: forall bt,
       bt <> BTModel ->
-      match_cont bt Kstop Kstop
+      match_cont bt CStanSemanticsTarget.Kstop Kstop
   | match_Kstop_model: forall bt,
       bt = BTModel ->
-      match_cont bt Kstop
+      match_cont bt CStanSemanticsTarget.Kstop
                         (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) Kstop)
   | match_Kseq: forall s k ts tk bt ,
       transf_statement (prog_target prog) s = OK ts ->
       match_cont bt k tk ->
-      match_cont bt (Kseq s k) (Kseq ts tk)
+      match_cont bt (CStanSemanticsTarget.Kseq s k) (Kseq ts tk)
   | match_Kloop1: forall s1 s2 k ts1 ts2 tk bt,
       transf_statement (prog_target prog) s1 = OK ts1 ->
       transf_statement (prog_target prog) s2 = OK ts2 ->
       match_cont bt k tk ->
-      match_cont bt (Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
+      match_cont bt (CStanSemanticsTarget.Kloop1 s1 s2 k) (Kloop1 ts1 ts2 tk)
   | match_Kloop2: forall s1 s2 k ts1 ts2 tk bt ,
       transf_statement (prog_target prog) s1 = OK ts1 ->
       transf_statement (prog_target prog) s2 = OK ts2 ->
       match_cont bt k tk ->
-      match_cont bt (Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
+      match_cont bt (CStanSemanticsTarget.Kloop2 s1 s2 k) (Kloop2 ts1 ts2 tk)
   | match_Kswitch: forall k tk bt ,
       match_cont bt k tk ->
-      match_cont bt (Kswitch k) (Kswitch tk)
-  | match_Kcall: forall optid fn e le k tfn tle tk bt,
+      match_cont bt (CStanSemanticsTarget.Kswitch k) (Kswitch tk)
+  | match_Kcall: forall optid fn e le k tfn tle tk bt bs,
       transf_function (prog_target prog) fn = OK tfn ->
       match_temps (prog_target prog) le tle ->
+      match_bs (prog_target prog) bs tle ->
       bt <> BTModel ->
       match_cont fn.(fn_blocktype) k tk ->
-      match_cont bt (Kcall optid fn e le k)
+      match_cont bt (CStanSemanticsTarget.Kcall optid fn e le bs k)
                         (Kcall optid tfn e tle tk)
-  | match_Kcall_model: forall optid fn e le k tfn tle tk bt,
+  | match_Kcall_model: forall optid fn e le k tfn tle tk bs bt,
       transf_function (prog_target prog) fn = OK tfn ->
       match_temps (prog_target prog) le tle ->
+      match_bs (prog_target prog) bs tle ->
       bt = BTModel ->
       match_cont fn.(fn_blocktype) k tk ->
-      match_cont bt (Kcall optid fn e le k)
-                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble))) (Kcall optid tfn e tle tk))
+      match_cont bt (CStanSemanticsTarget.Kcall optid fn e le bs k)
+                        (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble)))
+                              (Kcall optid tfn e tle tk))
 .
 
 Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.state -> Prop :=
@@ -82,17 +92,17 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       (TRF: transf_function (prog_target prog) f = OK tf)
       (TRS: transf_statement (prog_target prog) s = OK ts)
       (BS_OTHER: bs = CStanSemanticsTarget.Other)
-      (BS_SYNC: f.(fn_blocktype) = BTOther)
+      (BS_SYNC: f.(fn_blocktype) <> BTModel)
       (MTMP: match_temps (prog_target prog) le tle)
       (MCONT: match_cont (get_blockstate bs) k tk),
       match_states (CStanSemanticsTarget.State f s k e le m bs)
                    (CStanSemanticsBackend.State tf ts tk e tle m)
   | match_call_state:
-      forall fd vargs k m tfd tk bs
+      forall fd vargs k m tfd tk
       (TRFD: transf_fundef (prog_target prog) fd = OK tfd)
-      (* (GET_FN: (exists e tl r cc, fd = External e tl r cc) \/ (exists fn, fd = Internal fn /\ fn.(fn_blocktype) <> BTModel)) *)
+      (CALLCONT: CStanSemanticsTarget.is_call_cont k)
       (MCONT: match_cont BTOther k tk),
-      match_states (CStanSemanticsTarget.Callstate fd vargs k m bs)
+      match_states (CStanSemanticsTarget.Callstate fd vargs k m)
                    (CStanSemanticsBackend.Callstate tfd vargs tk m)
   | match_return_state:
       forall v k m tk bs
@@ -105,11 +115,9 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       forall f s k e le m tf ts tk tle bs ta
       (TRF: transf_function (prog_target prog) f = OK tf)
       (TRS: transf_statement (prog_target prog) s = OK ts)
-      (* (TREPI: exists a, transf_etarget_expr (prog_target prog) a = OK (Etempvar (prog_target prog) tdouble)) *)
-      (* (TCAST:  Cop.sem_cast (Vfloat ta) tdouble (fn_return tf) m = Some (Vfloat ta)) *)
       (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
       (BS_SYNC: f.(fn_blocktype) = BTModel)
-      (TAR_MATCH: tle!(prog_target prog) = Some (Vfloat ta)) (* FIXME: needs to access e, but also lookup block in memory*)
+      (TAR_MATCH: tle!(prog_target prog) = Some (Vfloat ta))
       (MTMP: match_temps (prog_target prog) le tle)
       (MCONT: match_cont (get_blockstate bs) k tk),
       match_states (CStanSemanticsTarget.State f s k e le m bs)
@@ -400,7 +408,7 @@ Lemma match_cont_call_cont:
   forall bt k tk
   (MCONT: match_cont bt k tk)
   (BTOTHER: bt <> BTModel),
-  match_cont bt (call_cont k) (call_cont tk) .
+  match_cont bt (CStanSemanticsTarget.call_cont k) (call_cont tk) .
 Proof.
   induction 1; simpl; auto; intros; econstructor; eauto.
 Qed.
@@ -481,6 +489,20 @@ Qed.
 (*   simpl. *)
 (*   inv H0. *)
 (* Admitted. *)
+
+
+Lemma match_cont_all_other bt bt0 k tk:
+  match_cont bt0 k tk ->
+  bt <> BTModel ->
+  bt0 <> BTModel ->
+  match_cont bt k tk.
+Proof.
+  induction 1; intros; eauto; try (econstructor; eauto; fail); congruence.
+Qed.
+
+Lemma match_temps_refl tgt le:
+  match_temps tgt le le.
+Proof. intros i; eauto. Qed.
 
 Lemma step_simulation:
   forall S1 t S2, CStanSemanticsTarget.stepf ge S1 t S2 ->
@@ -571,8 +593,9 @@ Proof.
       eauto. eauto. eauto.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
-
-      econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
+      { econstructor; eauto. }
+      econstructor; eauto. simpl; auto. congruence.
+      eapply match_cont_all_other; eauto. congruence.
     + (* model *)
       exploit eval_expr_correct; eauto; simpl; auto; intro.
       exploit eval_exprlist_correct_simple; eauto; simpl; auto. intro tvargs.
@@ -582,6 +605,7 @@ Proof.
       eauto. eauto. eauto.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
+      { econstructor; eauto. }
       econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
 
   - (* builtin *)
@@ -1062,57 +1086,54 @@ Proof.
     (* other-only *)
     intros; simpl; intros; inv MS; simpl in *.
     monadInv TRFD.
-    exists (State x (fn_body x) tk e (create_undef_temps (fn_temps x)) m1).
-    (* econstructor. *)
-    split. eapply plus_one; unfold stepf.
-    eapply step_internal_function.
-    inversion H.
-    assert (tr_function f x).
-      intros; monadInv EQ.
-      econstructor; eauto.
-    inv H4.
-    econstructor; try (rewrite H7); try (rewrite H8); monadInv EQ; eauto.
-    eapply alloc_variables_preserved; eauto.
-    eapply bind_parameters_preserved; eauto.
-    assert (create_undef_temps (fn_temps x) = le). {
-      (* lost information about (le = create_undef_temps (fn_temps x)) *)
-      admit.
-    }.
-    admit.
-    (* rewrite H1. *)
-    (* induction (get_blockstate ta). *)
-    (* apply get_blockstate in ta. *)
-    (* eapply match_regular_states; eauto. *)
-    (* admit. (* transf_statement *) *)
-
-    (* admit. (* transf_statement *) *)
-    (* (* Search create_undef_temps. *) *)
-    (* (* eapply match_regular_states; eauto. *) *)
-    (* admit. *)
-
+    inv H. monadInv EQ; simpl.
+    assert (transf_model_body (prog_target prog) (fn_blocktype f) x0 = x0) as Hother.
+    { destruct (fn_blocktype f); eauto; congruence. }
+    { rewrite Hother.
+      eexists.
+      split.
+      { apply plus_one. unfold stepf.
+        econstructor; eauto.
+        econstructor; eauto.
+        eapply alloc_variables_preserved; eauto.
+        eapply bind_parameters_preserved; eauto. }
+      { econstructor; simpl; auto.
+        * unfold transf_function; rewrite EQ0; simpl. rewrite Hother. auto.
+        * apply match_temps_refl.
+      }
+    }
   - (* step_internal_function_model *)
-    (* model-only *)
     intros; simpl; intros; inv MS; simpl in *.
     monadInv TRFD.
-    econstructor.
-    split. eapply plus_one; unfold stepf.
-    eapply step_internal_function.
-    inversion H.
-    assert (tr_function f x).
-      intros; monadInv EQ.
+    inv H. monadInv EQ; simpl.
+    monadInv EQ0.
+    eexists. split.
+    simpl. unfold add_prelude_epilogue. simpl.
+    eapply plus_five.
+    { eapply step_internal_function; eauto.
       econstructor; eauto.
-    inv H4.
-    econstructor; try (rewrite H7); try (rewrite H8); monadInv EQ; eauto.
-    eapply alloc_variables_preserved; eauto.
-    eapply bind_parameters_preserved; eauto.
-    (* lost information about (le = create_undef_temps (fn_temps x)) *)
-    (* Search create_undef_temps. *)
-    (* eapply match_regular_states_model; eauto. *)
-    admit.
-
+      eapply alloc_variables_preserved; eauto.
+      eapply bind_parameters_preserved; eauto. }
+    rewrite H0. simpl.
+    { econstructor; eauto. }
+    { econstructor; eauto.
+      econstructor; eauto. }
+    { econstructor; eauto. }
+    { econstructor; eauto. }
+    { eauto. }
+    eapply match_regular_states_model; eauto.
+    { unfold transf_function, transf_statement.
+      rewrite EQ; simpl. rewrite EQ1; simpl.
+      rewrite H0. eauto. }
+    { unfold transf_statement.
+      rewrite EQ; simpl. rewrite EQ1; simpl. eauto. }
+    { rewrite PTree.gss. auto. }
+    { apply match_temps_assign_tgt; eauto. apply match_temps_refl. }
+    destruct k; try inv CALLCONT.
+    * simpl. inversion MCONT; try congruence. econstructor; eauto.
+    * simpl. inversion MCONT; try congruence. econstructor; eauto.
   - (* step_external_function *)
     intros.
-    destruct ta.
     * (* model *)
       inv MS.
       monadInv TRFD.
@@ -1124,6 +1145,7 @@ Proof.
       simpl.
       auto.
       admit. (* needed to do inversion, maybe on MCONT, much earlier to propagate the block_state *)
+      (*
     * (* model *)
       inv MS.
       monadInv TRFD.
@@ -1132,6 +1154,7 @@ Proof.
       unfold transf_external in EQ.
       induction ef; monadInv EQ; eauto.
       eapply match_return_state; eauto.
+       *)
 
   - (* step_returnstate *)
     intros. inv MS.
@@ -1140,7 +1163,10 @@ Proof.
       * econstructor. split. apply plus_one. eapply step_returnstate.
         eapply match_regular_states; eauto. (* lost the fn_blocktype too early *)
         admit.
+        admit.
         { apply match_temps_set_opttemp; auto. }
+        admit.
+        (*
         monadInv H6.
         inversion H9.
         ** (* Kstop *) econstructor. congruence.
@@ -1154,6 +1180,7 @@ Proof.
         ** (* Kcall *) econstructor; eauto. admit.
         ** (* Kcall to Kseq *) econstructor; eauto. (* here, I think the above solution would fix this as well *)
         ** admit.
+        *)
       * discriminate.
     + (* model *)
       simpl in *.
@@ -1177,6 +1204,7 @@ Proof.
         admit. (* hmm... I guess the continuation doesn't add any additional context *)
                (* about setting the ident in this goal.... *)
         simpl in *.
+        admit.
         apply (match_temps_set_opttemp); eauto.
         admit. (* and, again, lost that blocktype f = BTModel *)
 

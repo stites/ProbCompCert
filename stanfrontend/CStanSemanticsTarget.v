@@ -13,7 +13,6 @@ Require Import Ctypes.
 Require Import Cop.
 
 Require Import CStan.
-Require Import CStanCont.
 Require CStanSemanticsBackend.
 
 Section SEMANTICS.
@@ -111,6 +110,19 @@ End EXPR.
 
 (** Pop continuation until a call or stop *)
 
+Inductive cont: Type :=
+  | Kstop: cont
+  | Kseq: statement -> cont -> cont       (**r [Kseq s2 k] = after [s1] in [s1;s2] *)
+  | Kloop1: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s1] in [Sloop s1 s2] *)
+  | Kloop2: statement -> statement -> cont -> cont (**r [Kloop1 s1 s2 k] = after [s2] in [Sloop s1 s2] *)
+  | Kswitch: cont -> cont       (**r catches [break] statements arising out of [switch] *)
+  | Kcall: option ident ->                  (**r where to store result *)
+           function ->                      (**r calling function *)
+           env ->                           (**r local env of calling function *)
+           temp_env ->                      (**r temporary env of calling function *)
+           block_state ->                   (**r block state of calling function *)
+           cont -> cont.
+
 Fixpoint call_cont (k: cont) : cont :=
   match k with
   | Kseq s k => call_cont k
@@ -123,7 +135,7 @@ Fixpoint call_cont (k: cont) : cont :=
 Definition is_call_cont (k: cont) : Prop :=
   match k with
   | Kstop => True
-  | Kcall _ _ _ _ _ => True
+  | Kcall _ _ _ _ _ _ => True
   | _ => False
   end.
 
@@ -141,7 +153,6 @@ Inductive state: Type :=
       (args: list val)
       (k: cont)
       (m: mem)
-      (ta: block_state) : state
   | Returnstate                         (**r returning from a function *)
       (res: val)
       (k: cont)
@@ -169,7 +180,7 @@ Inductive step: state -> trace -> state -> Prop :=
       Genv.find_funct ge vf = Some fd ->
       type_of_fundef fd = Tfunction tyargs tyres cconv ->
       step (State f (Scall optid a al) k e le m ta)
-        E0 (Callstate fd vargs (Kcall optid f e le k) m ta)
+        E0 (Callstate fd vargs (Kcall optid f e le ta k) m)
   | step_builtin:   forall f optid ef tyargs al k e le m ta vargs t vres m',
       eval_exprlist e le m ta al tyargs vargs ->
       external_call ef ge vargs m t vres m' ->
@@ -246,25 +257,25 @@ Inductive step: state -> trace -> state -> Prop :=
   (*     step (Callstate (Internal f) vargs k m ta) *)
   (*       E0 (State f f.(fn_body) k e le m1 ta) *)
 
-  | step_internal_function: forall f vargs k m e le m1 ta,
+  | step_internal_function: forall f vargs k m e le m1,
       function_entry f vargs m e le m1 ->
       f.(fn_blocktype) <> CStan.BTModel ->
-      step (Callstate (Internal f) vargs k m ta)
-        E0 (State f f.(fn_body) k e le m1 ta)
+      step (Callstate (Internal f) vargs k m)
+        E0 (State f f.(fn_body) k e le m1 Other)
 
   | step_internal_function_model: forall f vargs k m e le m1,
       function_entry f vargs m e le m1 ->
       f.(fn_blocktype) = CStan.BTModel ->
-      step (Callstate (Internal f) vargs k m Other)
+      step (Callstate (Internal f) vargs k m)
         E0 (State f f.(fn_body) k e le m1 (Model (Float.of_int (Int.repr  0))))
 
-  | step_external_function: forall ef targs tres cconv vargs k m vres t m' ta,
+  | step_external_function: forall ef targs tres cconv vargs k m vres t m',
       external_call ef ge vargs m t vres m' ->
-      step (Callstate (External ef targs tres cconv) vargs k m ta)
-         t (Returnstate vres k m' ta)
-  | step_returnstate: forall v optid f e le k m ta,
-      step (Returnstate v (Kcall optid f e le k) m ta)
-        E0 (State f Sskip k e (CStanSemanticsBackend.set_opttemp optid v le) m ta)
+      step (Callstate (External ef targs tres cconv) vargs k m)
+         t (Returnstate vres k m' Other)
+  | step_returnstate: forall v optid f e le k m ta_caller ta,
+      step (Returnstate v (Kcall optid f e le ta_caller k) m ta)
+        E0 (State f Sskip k e (CStanSemanticsBackend.set_opttemp optid v le) m ta_caller)
 
   | step_target: forall f a k e le m bs ta v ta',
       eval_expr e le m bs a v ->
@@ -293,7 +304,7 @@ Inductive initial_state (p: program): state -> Prop :=
       Genv.find_symbol ge p.(prog_main) = Some b ->
       Genv.find_funct_ptr ge b = Some f ->
       type_of_fundef f = Tfunction Tnil type_int32s cc_default ->
-      initial_state p (Callstate f nil Kstop m0 Other).
+      initial_state p (Callstate f nil Kstop m0).
 
 Inductive final_state: state -> int -> Prop :=
   | final_state_data_intro: forall r m,
