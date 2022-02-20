@@ -473,20 +473,6 @@ Proof.
   rewrite <- H; eauto.
 Qed.
 
-(* Lemma seq_both_transf_statement: *)
-(*   forall s0 s1 sfin *)
-(*   (STARGET: transf_starget_statement s0 = OK s1) *)
-(*   (ETARGET: transf_etarget_statement (prog_target prog) s1 = OK sfin) *)
-(*   , transf_statement (prog_target prog) s0 = OK sfin. *)
-(* Proof. *)
-(*   intros. *)
-(*   inv STARGET. *)
-(*   inv ETARGET. *)
-(*   simpl. *)
-(*   inv H0. *)
-(* Admitted. *)
-
-
 Lemma match_cont_all_other bt bt0 k tk:
   match_cont bt0 k tk ->
   bt <> BTModel ->
@@ -1181,48 +1167,44 @@ Proof.
     apply match_temps_assign_tgt; eauto.
 Admitted.
 
-(*
 Lemma function_ptr_translated:
-(*   forall m0 *)
-(*     (b: block) (f: CStan.fundef) *)
-(*     (tgt: AST.ident) *)
-(*   (H0 : Genv.init_mem prog = Some m0) *)
-(*   (H1 : Genv.find_symbol ge (CStan.prog_main prog) = Some b) *)
-(*   (H2 : Genv.find_funct_ptr ge b = Some f) *)
-(*   (H3 : CStan.type_of_fundef f = Tfunction Tnil type_int32s AST.cc_default) *)
-(*   , Genv.find_funct_ptr ge b = Some f -> *)
-(*   exists tf, Genv.find_funct_ptr ge b = Some tf /\ transf_fundef prog tgt f = OK tf. *)
-(* Proof. *)
-(*   intros. *)
-(*   admit. *)
-(* Admitted. *)
-(*   (* edestruct (Genv.find_funct_ptr_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto. *) *)
-(* (* Qed. *) *)
-*)
+  forall m0
+    (b: block) (f: CStan.fundef)
+  (H0 : Genv.init_mem prog = Some m0)
+  (H1 : Genv.find_symbol ge (CStan.prog_main prog) = Some b)
+  (H2 : Genv.find_funct_ptr ge b = Some f)
+  (H3 : CStan.type_of_fundef f = Tfunction Tnil type_int32s AST.cc_default)
+  , Genv.find_funct_ptr ge b = Some f ->
+  exists tf, Genv.find_funct_ptr tge b = Some tf /\ transf_fundef (prog_target prog) f = OK tf.
+Proof.
+  intros.
+  edestruct (Genv.find_funct_ptr_match (proj1 TRANSL)) as (ctx' & tf & A & B & C'); eauto.
+Qed.
 
 Lemma initial_states_simulation:
   forall S, CStanSemanticsTarget.initial_state prog S ->
   exists R, CStanSemanticsBackend.initial_state tprog R /\ match_states S R.
 Proof.
   intros. inv H.
-  (* exploit function_ptr_translated; eauto. *)
-  exists (CStanSemanticsBackend.Callstate f nil Kstop m0).
+  exploit function_ptr_translated; eauto.
+  intros (tf&?&?); eauto.
+  exists (CStanSemanticsBackend.Callstate tf nil Kstop m0).
   split.
-  eapply CStanSemanticsBackend.initial_state_data_intro; eauto.
   inv H0.
-Admitted.
-(*   erewrite <- (Genv.init_mem_match (proj1 TRANSL)); eauto. *)
-(*   replace (prog_main tprog) with (CStan.prog_main prog). *)
-(*   rewrite <- H1. apply symbols_preserved. *)
-(*   generalize (match_program_main (proj1 TRANSL)). *)
-(*   unfold AST.prog_main. *)
-(*   unfold CStan.program_of_program. *)
-(*   simpl; eauto. *)
-(*   exploit type_of_fundef_preserved; eauto. *)
-(*   intro FDTY. rewrite FDTY; eauto. *)
-(*   econstructor; eauto. *)
-(*   eapply match_Kstop. *)
-(* Qed. *)
+  eapply CStanSemanticsBackend.initial_state_data_intro; eauto.
+  erewrite <- (Genv.init_mem_match (proj1 TRANSL)); eauto.
+  replace (prog_main tprog) with (CStan.prog_main prog).
+  rewrite <- H1. apply symbols_preserved.
+  generalize (match_program_main (proj1 TRANSL)).
+  unfold AST.prog_main.
+  unfold CStan.program_of_program.
+  simpl; eauto.
+  exploit type_of_fundef_preserved; eauto.
+  intro FDTY. rewrite FDTY; eauto.
+  econstructor; eauto.
+  { econstructor. }
+  eapply match_Kstop; congruence.
+Qed.
 
 Lemma final_states_simulation:
   forall S R r ,
