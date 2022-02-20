@@ -28,10 +28,10 @@ Let tge := globalenv tprog.
 Definition match_temps tgt (le1 le2: temp_env) : Prop :=
   (forall i v, i <> tgt -> le1!i = Some v -> le2!i = Some v).
 
-Definition match_bs tgt bs (tle: temp_env) : Prop :=
+Definition match_bs tgt bs bt (tle: temp_env) : Prop :=
   match bs with
-  | CStanSemanticsTarget.Other => True
-  | CStanSemanticsTarget.Model ta => tle!tgt = Some (Vfloat ta)
+  | CStanSemanticsTarget.Other => bt <> BTModel
+  | CStanSemanticsTarget.Model ta => bt = BTModel /\ tle!tgt = Some (Vfloat ta)
   end.
 
 Definition get_blockstate (bs : CStanSemanticsTarget.block_state) : blocktype :=
@@ -70,16 +70,18 @@ Inductive match_cont : blocktype -> CStanSemanticsTarget.cont -> cont -> Prop :=
   | match_Kcall: forall optid fn e le k tfn tle tk bt bs,
       transf_function (prog_target prog) fn = OK tfn ->
       match_temps (prog_target prog) le tle ->
-      match_bs (prog_target prog) bs tle ->
+      match_bs (prog_target prog) bs fn.(fn_blocktype) tle ->
       bt <> BTModel ->
+      optid <> Some (prog_target prog) ->
       match_cont fn.(fn_blocktype) k tk ->
       match_cont bt (CStanSemanticsTarget.Kcall optid fn e le bs k)
                         (Kcall optid tfn e tle tk)
   | match_Kcall_model: forall optid fn e le k tfn tle tk bs bt,
       transf_function (prog_target prog) fn = OK tfn ->
       match_temps (prog_target prog) le tle ->
-      match_bs (prog_target prog) bs tle ->
+      match_bs (prog_target prog) bs (fn.(fn_blocktype)) tle ->
       bt = BTModel ->
+      optid <> Some (prog_target prog) ->
       match_cont fn.(fn_blocktype) k tk ->
       match_cont bt (CStanSemanticsTarget.Kcall optid fn e le bs k)
                         (Kseq (Sreturn (Some (Etempvar (prog_target prog) tdouble)))
@@ -101,13 +103,13 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
       forall fd vargs k m tfd tk
       (TRFD: transf_fundef (prog_target prog) fd = OK tfd)
       (CALLCONT: CStanSemanticsTarget.is_call_cont k)
+      (* BTOther is not quite right here. *)
       (MCONT: match_cont BTOther k tk),
       match_states (CStanSemanticsTarget.Callstate fd vargs k m)
                    (CStanSemanticsBackend.Callstate tfd vargs tk m)
   | match_return_state:
       forall v k m tk bs
-      (BS_OTHER: bs = CStanSemanticsTarget.Other)
-      (MCONT: match_cont (get_blockstate bs) k tk),
+      (MCONT: match_cont BTOther k tk),
       match_states (CStanSemanticsTarget.Returnstate v k m bs)
                    (CStanSemanticsBackend.Returnstate v tk m)
 
@@ -132,12 +134,6 @@ Inductive match_states: CStanSemanticsTarget.state -> CStanSemanticsBackend.stat
   (*     (MCONT: match_cont (get_blockstate bs) k tk), *)
   (*     match_states (CStanSemanticsTarget.Callstate fd vargs k m bs) *)
   (*                  (CStanSemanticsBackend.Callstate tfd vargs tk m) *)
-  | match_return_state_model:
-      forall v k m tk bs ta
-      (BS_MODEL: bs = CStanSemanticsTarget.Model ta)
-      (MCONT: match_cont (get_blockstate bs) k tk),
-      match_states (CStanSemanticsTarget.Returnstate v k m bs)
-                   (CStanSemanticsBackend.Returnstate v tk m)
 .
 
 (** * Relational specification of the transformation *)
@@ -583,8 +579,16 @@ Proof.
       apply match_temps_assign; auto.
 
   - (* call *)
-    simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
-    + (* other *)
+    simpl; intros; inv MS; simpl in *.
+
+    + monadInv TRS.  monadInv EQ.
+      assert (OK (Scall optid x0 x1) = OK x /\ optid <> Some (prog_target prog)) as (EQ'&Hnoset).
+      { destruct optid.
+        { destruct (Pos.eqb_spec i (prog_target prog)); try monadInv EQ3; []. split; congruence. }
+        { split; congruence. }
+      }
+      monadInv EQ'.
+      monadInv EQ0.
       exploit eval_expr_correct; eauto; simpl; auto; intro.
       exploit eval_exprlist_correct_simple; eauto; simpl; auto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
@@ -596,7 +600,14 @@ Proof.
       { econstructor; eauto. }
       econstructor; eauto. simpl; auto. congruence.
       eapply match_cont_all_other; eauto. congruence.
-    + (* model *)
+    + monadInv TRS.  monadInv EQ.
+      assert (OK (Scall optid x0 x1) = OK x /\ optid <> Some (prog_target prog)) as (EQ'&Hnoset).
+      { destruct optid.
+        { destruct (Pos.eqb_spec i (prog_target prog)); try monadInv EQ3; []. split; congruence. }
+        { split; congruence. }
+      }
+      monadInv EQ'.
+      monadInv EQ0.
       exploit eval_expr_correct; eauto; simpl; auto; intro.
       exploit eval_exprlist_correct_simple; eauto; simpl; auto. intro tvargs.
       exploit functions_translated; eauto. intros [tfd [P Q]].
@@ -606,8 +617,9 @@ Proof.
       rewrite (type_of_fundef_preserved fd _); eauto.
       eapply match_call_state; eauto.
       { econstructor; eauto. }
-      econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
-
+      econstructor; eauto. simpl. split; congruence.
+      { congruence. }
+      rewrite BS_SYNC; auto.
   - (* builtin *)
     simpl; intros; inv MS; unfold transf_statement in TRS; monadInv TRS.
     * monadInv EQ.
@@ -936,13 +948,7 @@ Proof.
       eapply match_return_state; eauto.
       eapply match_cont_call_cont; eauto.
       simpl. congruence.
-    + (* model *)
-      econstructor.
-      split. eapply plus_one; unfold stepf.
-      eapply step_return_0; eauto. rewrite blocks_of_env_preserved. eauto.
-      eapply match_return_state_model; eauto.
-      eapply match_cont_call_cont; eauto.
-
+    + congruence.
   - (* step_return_1 *)
     (* intros; inv MS. *)
     simpl; intros; inv MS; simpl in *.
@@ -1134,90 +1140,28 @@ Proof.
     * simpl. inversion MCONT; try congruence. econstructor; eauto.
   - (* step_external_function *)
     intros.
-    * (* model *)
-      inv MS.
-      monadInv TRFD.
-      exists (Returnstate vres tk m').
-      split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
-      unfold transf_external in EQ.
-      induction ef; monadInv EQ; eauto.
-      eapply match_return_state_model; eauto.
-      simpl.
-      auto.
-      admit. (* needed to do inversion, maybe on MCONT, much earlier to propagate the block_state *)
-      (*
-    * (* model *)
-      inv MS.
-      monadInv TRFD.
-      exists (Returnstate vres tk m').
-      split. eapply plus_one. eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
-      unfold transf_external in EQ.
-      induction ef; monadInv EQ; eauto.
-      eapply match_return_state; eauto.
-       *)
-
+    inv MS.
+    monadInv TRFD.
+    exists (Returnstate vres tk m').
+    split. eapply plus_one.
+    eapply step_external_function. eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+    unfold transf_external in EQ.
+    induction ef; monadInv EQ; eauto.
+    eapply match_return_state; eauto.
   - (* step_returnstate *)
     intros. inv MS.
-    + (* other *)
-      inv MCONT.
-      * econstructor. split. apply plus_one. eapply step_returnstate.
-        eapply match_regular_states; eauto. (* lost the fn_blocktype too early *)
-        admit.
-        admit.
-        { apply match_temps_set_opttemp; auto. }
-        admit.
-        (*
-        monadInv H6.
-        inversion H9.
-        ** (* Kstop *) econstructor. congruence.
-        ** (* Kseq *) econstructor; eauto.
-           (* we don't have a link from match_cont (fn_blocktype f) to (get_blockstate Other)*)
-           (* what we need is to loosen get_blockstate to be an inductive type that introduces that bt <> BTModel, I think *)
-           admit.
-        ** (* Kloop1 *) econstructor; eauto. admit.
-        ** (* Kloop2 *) econstructor; eauto. admit.
-        ** (* Kswitch *) econstructor; eauto. admit.
-        ** (* Kcall *) econstructor; eauto. admit.
-        ** (* Kcall to Kseq *) econstructor; eauto. (* here, I think the above solution would fix this as well *)
-        ** admit.
-        *)
-      * discriminate.
-    + (* model *)
-      simpl in *.
-      inv MCONT.
-      * simpl in H7. congruence.
-      * simpl in *.
-        econstructor. split.
-        (* we are in the returnstate of the model. Kcall will continue in the outer function. *)
-        (* We want to step through the known continuation of the model's Kseq to get to the  *)
-        (* final return of the prog_target prog but we get an error of not finding the correct *)
-        eapply plus_left'. unfold stepf.
-        admit. (* We need a way to have something like a step_return_1_model otherwise we can't unify *)
-                (* stepping through the continuation here, I think. *)
-        eapply plus_one. unfold stepf.
-        eapply step_returnstate.
-        admit. (* everything gets messy here. eapply step_returnstate makes sense, but *)
-               (* gives me this ridiculous statement E0 = Eapp _ E0 ... I need to review eventing *)
-        eapply match_regular_states_model; eauto.
-        admit. (* lost the blocktype f = BTModel *)
-        (* Search set_opttemp. *)
-        admit. (* hmm... I guess the continuation doesn't add any additional context *)
-               (* about setting the ident in this goal.... *)
-        simpl in *.
-        admit.
-        apply (match_temps_set_opttemp); eauto.
-        admit. (* and, again, lost that blocktype f = BTModel *)
-
-        (* (* now deal with the epilouge *) *)
-        (* * inv MCONT; simpl in *. *)
-        (* ** admit. *)
-        (* ** eapply match_regular_states_model; eauto. *)
-        (* *** rewrite H6. *)
-        (*   admit. (* transf_function (prog_target prog) f = OK ? *) *)
-        (* *** admit. (* transf_statement (prog_target prog) Sskip = OK ? *) *)
-        (* *** admit. (* fn_blocktype f = BTModel *) *)
-        (* *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *) *)
-        (* *** admit. (* (set_opttemp optid v le) ! (prog_target prog) = Some (Vfloat ta0) *) *)
+    (* other *)
+    inv MCONT.
+    * econstructor. split. apply plus_one. eapply step_returnstate.
+      destruct ta_caller.
+      ** destruct H9. eapply match_regular_states_model; eauto.
+         destruct optid; auto. simpl. rewrite PTree.gso; auto. congruence.
+         { apply match_temps_set_opttemp; auto. }
+         simpl. rewrite <-H. auto.
+      ** simpl in H9. eapply match_regular_states; eauto.
+         { apply match_temps_set_opttemp; auto. }
+         simpl. eapply match_cont_all_other; eauto.
+    * discriminate.
   - (* step_target *)
     intros; inv MS; monadInv TRS; monadInv EQ; monadInv EQ0; simpl in *.
     + (* other *) discriminate.

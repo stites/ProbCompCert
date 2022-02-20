@@ -162,7 +162,13 @@ match s with
   | Scall oi e le =>
     do e <- transf_etarget_expr t e;
     do le <- res_mmap (transf_etarget_expr t) le;
-    OK (Scall oi e le)
+    match oi with
+    | None => OK (Scall oi e le)
+    | Some i =>
+      if Pos.eqb i t
+      then Error (msg "cannot set the target identifier")
+      else OK (Scall oi e le)
+    end
   | Sbuiltin oi ef lt le =>
     do le <- res_mmap (transf_etarget_expr t) le;
     match oi with
