@@ -580,10 +580,50 @@ Proof.
       econstructor; eauto. simpl. congruence. rewrite BS_SYNC; auto.
 
   - (* builtin *)
-    simpl; intros; inv MS; simpl in *; try (monadInv TRS; monadInv EQ; monadInv EQ0).
-    admit.
-    admit.
-
+    simpl; intros; inv MS; unfold transf_statement in TRS; monadInv TRS.
+    * monadInv EQ.
+      destruct optid.
+      ** destruct (Pos.eqb_spec i (prog_target prog)); try monadInv EQ2; [].
+         monadInv EQ0.
+         exists (State tf Sskip tk e (set_opttemp (Some i) vres tle) m').
+         split. eapply plus_one. unfold stepf.
+         eapply step_builtin.
+         eapply eval_exprlist_correct_simple; eauto.
+         { simpl; auto. }
+         eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+         eapply match_regular_states; eauto.
+         { apply match_temps_set_opttemp; auto. }
+      ** exists (State tf Sskip tk e (set_opttemp None vres tle) m').
+         try monadInv EQ2.
+         monadInv EQ0.
+         split. eapply plus_one. unfold stepf.
+         eapply step_builtin.
+         eapply eval_exprlist_correct_simple; eauto.
+         { simpl; auto. }
+         eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+         eapply match_regular_states; eauto.
+    * monadInv EQ.
+      destruct optid.
+      ** destruct (Pos.eqb_spec i (prog_target prog)); try monadInv EQ2; [].
+         monadInv EQ0.
+         exists (State tf Sskip tk e (set_opttemp (Some i) vres tle) m').
+         split. eapply plus_one. unfold stepf.
+         eapply step_builtin.
+         eapply eval_exprlist_correct_simple; eauto.
+         { simpl; auto. }
+         eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+         eapply match_regular_states_model; eauto.
+         { simpl. rewrite PTree.gso; auto. }
+         { apply match_temps_set_opttemp; auto. }
+      ** exists (State tf Sskip tk e (set_opttemp None vres tle) m').
+         try monadInv EQ2.
+         monadInv EQ0.
+         split. eapply plus_one. unfold stepf.
+         eapply step_builtin.
+         eapply eval_exprlist_correct_simple; eauto.
+         { simpl; auto. }
+         eapply Events.external_call_symbols_preserved; eauto. apply senv_preserved.
+         eapply match_regular_states_model; eauto.
   - (* step_seq *)
     simpl; intros; inv MS; simpl in *.
     + (* other *)

@@ -165,7 +165,13 @@ match s with
     OK (Scall oi e le)
   | Sbuiltin oi ef lt le =>
     do le <- res_mmap (transf_etarget_expr t) le;
-    OK (Sbuiltin oi ef lt le)
+    match oi with
+    | None => OK (Sbuiltin oi ef lt le)
+    | Some i =>
+      if Pos.eqb i t
+      then Error (msg "cannot set the target identifier")
+      else OK (Sbuiltin oi ef lt le)
+    end
   | Ssequence s0 s1 =>
     do s0 <- transf_etarget_statement t s0;
     do s1 <- transf_etarget_statement t s1;
