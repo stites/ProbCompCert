@@ -38,37 +38,32 @@ int main(int argc, char* argv[]) {
   print_data(&observation);
 
   // parameters();
-  init_parameters(&state);
+  state = init_parameters(&state);
+
+  void* pi = get_state();
+  printf("initial state    : ");
+  print_params(pi);
+
 
   for (int i = 0; i < n; ++i) {
 
     void* pi = get_state();
-    printf("get pi\n");
-    print_params(pi);
-
+    printf("get pi           : "); print_params(pi);
     transformed_parameters(pi);
-    printf("transformed\n");
-    print_params(pi);
+    printf("transformed      : "); print_params(pi);
     double lp_parameters = model(pi);
 
     void* newpi = propose(pi);
-    printf("proposed, newpi is:\n");
-    print_params(newpi);
-
-
-    struct Params* ca = (struct Params*) newpi;
-
-    // transformed_parameters(newpi);
-    // printf("transformed_parameters, newpi is:\n");
-    print_params(newpi);
+    printf("proposed    newpi: "); print_params(newpi);
+    transformed_parameters(newpi);
+    printf("transformed newpi: "); print_params(newpi);
     double lp_candidate = model(newpi);
-    printf("finished model, newpi is:\n");
-    print_params(newpi);
-    double u = ((double) rand() / RAND_MAX);
+    double lu = log((double) rand() / RAND_MAX);
 
-    if (u <= lp_candidate - lp_parameters) {
-      printf("setting state... newpi is:\n");
-      print_params(newpi);
+    printf("lu <= lp_candidate - lp_parameters: %i = %f <= %f - %f \n", lu <= lp_candidate - lp_parameters, lu, lp_candidate, lp_parameters);
+    if (lu <= lp_candidate - lp_parameters) {
+      printf("--------------------------\n");
+      printf("setting state... newpi is: "); print_params(newpi);
       set_state(newpi);
       printf("setting state in iteration %d. target log_prob: %f\n", i+1, lp_candidate); // 1-index iterations
       print_params(&state);
