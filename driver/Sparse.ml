@@ -572,9 +572,23 @@ let renderParameters struct_type struct_vars =
     (* ("  struct " ^ struct_type ^ "* "^ret^";"); *)
   ] @ (List.map renderField struct_vars) @ [
     ("  return &"^ret^";");
+
+let renderTransformedParameters struct_type struct_vars =
+  let ret = "o" in
+  let renderFieldTransform (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with
+    | (t, [], _)              -> ("  "^ret^"->" ^ v ^" = exp("^ret^"->" ^ v ^");")
+    | _ -> raise (NIY_elab "renderParameters.renderField: incomplete for this type")
+  in
+  String.concat "\n" ([
+    ("void transformed_parameters (void* opaque) {");
+    ("  struct " ^ struct_type ^ "* "^ret^" = (struct " ^ struct_type ^ "*) opaque;");
+  ] @ (List.map renderFieldTransform struct_vars) @ [
     "}";
     "";
   ])
+
 
 let renderPropose global_state struct_type struct_vars =
   let proposeField (var, p, t) =
@@ -695,6 +709,7 @@ let printPreludeFile sourcefile data_basics param_basics =
     "#include <stdio.h>";
     "#include <unistd.h>";
     "#include <string.h>";
+    "#include <math.h>";
     "#include \"stanlib.h\"";
     (* strdup is not standard *)
     (* but ccomp doesn't permit for "#define _POSIX_C_SOURCE >= 200809L"; *)
@@ -708,6 +723,7 @@ let printPreludeFile sourcefile data_basics param_basics =
     renderGetAndSet "state" "Params";
     renderPropose "state" "Params" param_basics;
     renderParameters "Params" param_basics;
+    renderTransformedParameters "Params" param_basics;
     renderDataLoaderFunctions data_basics;
     renderCLILoader data_basics;
   ]);
@@ -854,9 +870,10 @@ let elaborate (sourcefile : string) (p: Stan.program) =
     let (id_params,f_params) = declareFundef "parameters" (maybe [] (List.map initOneVariable) p) None [] in
     let functions = (id_params,f_params) :: functions in
 
+    (* FIXME: remove? *)
     IdxHashtbl.clear index_set;
     let (id_tr_params,f_tr_params) = declareFundef "transformed_parameters" (get_code tp) None [] in
-    let functions = (id_tr_params,f_tr_params) :: functions in
+    (* let functions = (id_tr_params,f_tr_params) :: functions in *)
 
     IdxHashtbl.clear index_set;
     (* let target_arg = ((Stypes.Aauto_diffable, StanE.Breal), "target") in
