@@ -516,7 +516,7 @@ let renderPrintStruct name vs =
   in
   let range n = List.map (fun x -> x - 1) (List.init n Int.succ) in
   let loopTmpl1 t size = "[" ^ (String.concat ", " (List.map (fun _ -> typeTmpl t) (range size))) ^ "]\\n" in
-  let loopVars1 v size = (String.concat ", " (List.map (fun i -> index1 v i) (range size))) in
+  let loopVars1 v size = (String.concat ",\n    " (List.map (fun i -> index1 v i) (range size))) in
   let loopPrinter1 v t size = "printf(\"" ^ v ^ " = " ^ loopTmpl1 t size ^ "\", " ^ loopVars1 v size ^ ");" in
 
   let printField (var, p, t) =
@@ -534,12 +534,16 @@ let renderPrintStruct name vs =
   ])
 
 
+let renderGlobalStruct global_name struct_type is_ptr =
+  "struct " ^ struct_type ^ (if is_ptr then "*" else "") ^" "^ global_name ^";"
+
 let renderGetAndSet global_name struct_type =
   String.concat "\n" ([
-    ("struct " ^ struct_type ^ " "^ global_name ^";");
     "";
-    ("void* get_" ^ global_name ^ " () {");
-    ("  return (void*) &"^ global_name ^";");
+    "void* get_" ^ global_name ^ " () {";
+    "  return (void*) &" ^ global_name ^ ";"; (* FIXME: this "return "*)
+    (* "  void* o = (void*\) " ^ global_name ^ ";"; *)
+    (* "  return o;"; *)
     "}";
     "";
     ("void set_" ^ global_name ^ " (void* opaque) {");
@@ -554,9 +558,8 @@ let renderGetAndSet global_name struct_type =
 (*   candidate.mu = state.mu + uniform_sample(0,1); *)
 (* } *)
 
-
 let renderParameters struct_type struct_vars =
-  let ret = "ret" in
+  let ret = "s" in
   let renderField (var, p, t) =
     let v = Camlcoq.extern_atom p in
     match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with
@@ -566,12 +569,14 @@ let renderParameters struct_type struct_vars =
     | _ -> raise (NIY_elab "renderParameters.renderField: incomplete for this type")
   in
   String.concat "\n" ([
-    ("void* init_parameters (void* opaque) {");
-     "  struct " ^ struct_type ^ "* "^ret^" = malloc(sizeof(struct Params));";
-    (* ("  struct " ^ struct_type ^ "* o = (struct Params*\) opaque;"); *)
-    (* ("  struct " ^ struct_type ^ "* "^ret^";"); *)
+    "void init_parameters () {";
+    "  struct " ^ struct_type ^ "* "^ret^" = malloc(sizeof(struct " ^ struct_type ^ "));";
   ] @ (List.map renderField struct_vars) @ [
-    ("  return &"^ret^";");
+    ("  state = *"^ret^";");
+    (* ("  return "^ret^";"); *)
+    "}";
+    "";
+  ])
 
 let renderTransformedParameters struct_type struct_vars =
   let ret = "o" in
@@ -594,7 +599,13 @@ let renderPropose global_state struct_type struct_vars =
   let proposeField (var, p, t) =
     let v = Camlcoq.extern_atom p in
     match (t, var.Stan.vd_dims) with
-    | (t, [])                   -> ("  double eps = my_randn(0.0,1.0);\n c->" ^ v ^" = s->" ^ v ^" + eps;\n printf(\"eps: %f\\ns->"^ v ^": %f\\n\", eps, s->" ^ v ^"); printf(\"c->"^ v ^": %f\\n\", c->" ^ v ^");")
+    | (t, [])                   ->
+      "  " ^ (String.concat "\n  " [
+          "double eps = my_randn(0.0,1.0);";
+           "c->" ^ v ^" = s->" ^ v ^" + eps;";
+           "printf(\"eps: %f\\ns->"^ v ^": %f\\n\", eps, s->" ^ v ^");";
+           "printf(\"c->"^ v ^": %f\\n\", c->" ^ v ^");";
+      ])
     | _ -> raise (NIY_elab "renderPropose.proposeField: incomplete for this type")
   in
   String.concat "\n" ([
@@ -693,7 +704,34 @@ let renderCLILoader vs =
   ] @ (List.mapi runLoader vs) @ [
     "}\n"
   ])
-
+let printPreludeHeader sourcefile data_basics param_basics =
+  let sourceDir = Filename.dirname sourcefile in
+  let sourceName = Filename.basename sourcefile in
+  let preludeName = Filename.chop_extension sourceName in
+  let file = sourceDir ^ "/" ^ preludeName ^ "_prelude.h" in
+  Printf.fprintf stdout "Generating: %s\n" file;
+  let ohc = open_out file in
+  Printf.fprintf ohc "%s\n" (String.concat "\n" [
+    "#ifndef RUNTIME_H";
+    "#define RUNTIME_H";
+    renderStruct "Data" data_basics;
+    "extern "^(renderGlobalStruct "observations" "Data" false)^"\n";
+    renderStruct "Params" param_basics;
+    "extern "^(renderGlobalStruct "state" "Params" false)^"\n";
+    "";
+    "void print_data(void *);";
+    "void print_params(void*);";
+    "void* get_state();";
+    "void set_state(void*);";
+    "void load_from_cli(void* opaque, char *files[]);";
+    "void init_parameters();";
+    "void transformed_parameters(void*);";
+    "void transformed_data();";
+    "void* propose(void *);";
+    "";
+    "#endif";
+  ]);
+  close_out ohc
 
 let printPreludeFile sourcefile data_basics param_basics =
   let sourceDir = Filename.dirname sourcefile in
@@ -701,8 +739,7 @@ let printPreludeFile sourcefile data_basics param_basics =
   let preludeName = Filename.chop_extension sourceName in
   let file = sourceDir ^ "/" ^ preludeName ^ "_prelude.c" in
   let oc = open_out file in
-  let so = stdout in
-  Printf.fprintf so "Generating: %s\n" file;
+  Printf.fprintf stdout "Generating: %s\n" file;
 
   Printf.fprintf oc "%s\n" (String.concat "\n" [
     "#include <stdlib.h>";
@@ -711,13 +748,17 @@ let printPreludeFile sourcefile data_basics param_basics =
     "#include <string.h>";
     "#include <math.h>";
     "#include \"stanlib.h\"";
+    "#include \""^preludeName^"_prelude.h\"";
+    "";
     (* strdup is not standard *)
     (* but ccomp doesn't permit for "#define _POSIX_C_SOURCE >= 200809L"; *)
     "extern char* strdup(const char*);";
+
     "";
-    renderStruct "Data" data_basics;
+    renderGlobalStruct "observations" "Data" false;
+    renderGlobalStruct "state" "Params" false;
+    (* file scope declarations: *)
     renderPrintStruct "Data" data_basics;
-    renderStruct "Params" param_basics;
     renderPrintStruct "Params" param_basics;
     renderGetAndSet "observations" "Data";
     renderGetAndSet "state" "Params";
@@ -729,109 +770,33 @@ let printPreludeFile sourcefile data_basics param_basics =
   ]);
   close_out oc
 
-let renderRuntimeFile data_basics param_basics =
-  String.concat "\n" [
-    "#include <stdlib.h>";
-    "#include <math.h>";
-    "#include <stdio.h>";
-    "#include \"stanlib.h\"";
-    "";
-    renderStruct "Data" data_basics;
-    renderStruct "Params" param_basics;
-    "struct Data observation;";
-    "void print_data(void *);";
-    "";
-    "struct Params state;";
-    "struct Params candidate;";
-    "void print_params(void*);";
-    "";
-    "void* get_state();";
-    "void set_state(void*);";
-    "";
-    "void load_from_cli(void* opaque, char *files[]);";
-    "void data();";
-    "void transformed_data();";
-    "void parameters();";
-    "void* init_parameters(void* p);";
-    "void transformed_parameters(void* p);";
-    "double model(void* p);";
-    "void generated_quantities();";
-    "";
-    "struct Params propose(void * state);";
-    "";
-    "int main(int argc, char* argv[]) {";
-    "  if (argc == 1) {";
-    "    printf(\"One argument required: number of iterations\n\");";
-    "    printf(\"optionally, csv files of data in order of declaration\n\");";
-    "    exit(1);";
-    "  }";
-    "  int n = atoi(argv[1]);";
-    "";
-    "  //data();";
-    "  load_from_cli(observation, argv+2);";
-    "  transformed_data();";
-    "  print_data(observation);";
-    "";
-    "  // parameters();";
-    "  init_parameters(state);";
-    "";
-    "  for (int i = 0; i < n; ++i) {";
-    "";
-    "    void* pi = &state; // get_state();";
-    "    printf(\"get pi\n\");";
-    "    print_params(pi);";
-    "";
-    "    transformed_parameters(pi);";
-    "    printf(\"transformed\n\");";
-    "    print_params(pi);";
-    "    double lp_parameters = model(pi);";
-    "";
-    "    structParams _newpi = propose(pi);";
-    "    void* newpi = &_newpi;";
-    "    printf(\"proposed, newpi is:\n\");";
-    "    print_params(newpi);";
-    "";
-    "";
-    "    // struct Params* ca = (struct Params*) newpi;";
-    "";
-    "    // transformed_parameters(newpi);";
-    "    // printf(\"transformed_parameters, newpi is:\n\");";
-    "    print_params(newpi);";
-    "    double lp_candidate = model(newpi);";
-    "    printf(\"finished model, newpi is:\n\");";
-    "    print_params(newpi);";
-    "    double u = ((double) rand() / RAND_MAX);";
-    "";
-    "    if (u <= lp_candidate - lp_parameters) {";
-    "      printf(\"setting state... newpi is:\n\");";
-    "      print_params(newpi);";
-    "      set_state(newpi);";
-    "      printf(\"setting state in iteration %d. target log_prob: %f\n\", i+1, lp_candidate); // 1-index iterations";
-    "      print_params(&state);";
-    "    }";
-    "";
-    "    generated_quantities();";
-    "  }";
-    "";
-    "  printf(\"\n...completed execution!\");";
-    "  printf(\"\n\nSummary:\n\t\");";
-    "  print_params(&state);";
-    "  printf(\"\n\");";
-    "  return 0;";
-    ""  ;
-    "}";
-  ]
-
 let printRuntimeFile sourcefile data_basics param_basics =
   let sourceDir = Filename.dirname sourcefile in
   let sourceName = Filename.basename sourcefile in
   let preludeName = Filename.chop_extension sourceName in
-  let file = sourceDir ^ "/" ^ preludeName ^ "_runtime.c" in
-  let oc = open_out file in
-  let so = stdout in
-  Printf.fprintf so "Generating: %s\n" file;
-  Printf.fprintf oc "%s\n" (renderRuntimeFile data_basics param_basics)
 
+  (* now append the header to imports and add the template for runtime.c *)
+  let file = sourceDir ^ "/" ^ preludeName ^ "_runtime.c" in
+  Printf.fprintf stdout "Generating: %s\n" file;
+  let oc = open_out file in
+  Printf.fprintf oc "#include \"%s_prelude.h\"\n" preludeName;
+  let template_file = "./Runtime.c" in  (* FIXME: replace with static asset *)
+  let ic = open_in template_file in
+  try
+    while true do
+      let line = input_line ic in (* read line, discard \n *)
+      Printf.fprintf oc "%s\n" line;
+    done
+  with e ->                     (* some unexpected exception occurs *)
+    match e with
+    | End_of_file ->
+        close_in ic;                 (* close the input channel *)
+        close_out oc                 (* flush and close the channel *)
+    | _ ->
+        close_in_noerr ic;          (* emergency closing *)
+        close_out_noerr oc;          (* emergency closing *)
+        raise e                     (* exit with error: files are closed but
+                                     channels are not flushed *)
 
 let elaborate (sourcefile : string) (p: Stan.program) =
   match p with
@@ -854,7 +819,9 @@ let elaborate (sourcefile : string) (p: Stan.program) =
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
 
+    printPreludeHeader sourcefile data_basics param_basics;
     printPreludeFile sourcefile data_basics param_basics;
+    printRuntimeFile sourcefile data_basics param_basics;
 
     let functions = [] in
 

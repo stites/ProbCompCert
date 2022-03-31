@@ -32,11 +32,11 @@ echo_and_run ccomp -g3 -I${stan_dir} -c ${parent_dir}/${name}_prelude.c
 # FIXME: getting an undefined symbol with ccomp -- not sure what happened all of a sudden
 echo_and_run gcc -g3 -c stanlib.c -lm
 
-# runtime is dependent on libstan, temporarily.
-echo_and_run ccomp -g3 -I${stan_dir}  -c Runtime.c
+# compile generated printing functions
+echo_and_run ccomp -g3 -I${stan_dir} -c ${parent_dir}/${name}_runtime.c
 
 # compile the final binary
-echo_and_run ccomp -g3 -L${stan_dir} -L../out/lib/compcert -lm stanlib.o ${name}_prelude.o ${name}.o Runtime.o -o runit
+echo_and_run ccomp -g3 -L${stan_dir} -L../out/lib/compcert -lm stanlib.o ${name}_prelude.o ${name}.o ${name}_runtime.o -o runit
 
 # tell the user what to do next
 echo "compiled! ./stanfrontend/runit INT"

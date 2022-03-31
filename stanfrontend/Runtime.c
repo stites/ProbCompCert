@@ -3,22 +3,20 @@
 #include <stdio.h>
 #include "stanlib.h"
 
-void* observation;
-void print_data(void *);
+/* struct Data* observations; */
+/* struct Params* state; */
 
-void* state;
-void* candidate;
-void print_params(void*);
+/* void* candidate; */
 
 void* get_state();
 void set_state(void*);
 
-void load_from_cli(void* opaque, char *files[]);
-void data();
-void transformed_data();
-void parameters();
-void* init_parameters(void* p);
-void transformed_parameters(void* p);
+/* void load_from_cli(void* opaque, char *files[]); */
+/* void data(); */
+/* void transformed_data(); */
+/* void parameters(); */
+/* void init_parameters(); */
+/* void transformed_parameters(void* p); */
 double model(void* p);
 void generated_quantities();
 
@@ -33,12 +31,12 @@ int main(int argc, char* argv[]) {
   int n = atoi(argv[1]);
 
   //data();
-  load_from_cli(&observation, argv+2);
+  load_from_cli(&observations, argv+2);
   transformed_data();
-  print_data(&observation);
+  print_data(&observations);
 
   // parameters();
-  state = init_parameters(&state);
+  init_parameters();
 
   void* pi = get_state();
   printf("initial state    : ");
@@ -66,7 +64,7 @@ int main(int argc, char* argv[]) {
       printf("setting state... newpi is: "); print_params(newpi);
       set_state(newpi);
       printf("setting state in iteration %d. target log_prob: %f\n", i+1, lp_candidate); // 1-index iterations
-      print_params(&state);
+      print_params(&pi);
     }
 
     generated_quantities();
@@ -74,7 +72,7 @@ int main(int argc, char* argv[]) {
 
   printf("\n...completed execution!");
   printf("\n\nSummary:\n\t");
-  print_params(&state);
+  print_params(&pi);
   printf("\n");
   return 0;
   
