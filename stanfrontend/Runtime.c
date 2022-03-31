@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 
   //data();
   load_from_cli(&observations, argv+2);
-  transformed_data();
+  transformed_data(&observations);
   print_data(&observations);
 
   // parameters();

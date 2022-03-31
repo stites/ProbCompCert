@@ -579,21 +579,36 @@ let renderParameters struct_type struct_vars =
   ])
 
 let renderTransformedParameters struct_type struct_vars =
-  let ret = "o" in
-  let renderFieldTransform (var, p, t) =
-    let v = Camlcoq.extern_atom p in
-    match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with
-    | (t, [], _)              -> ("  "^ret^"->" ^ v ^" = exp("^ret^"->" ^ v ^");")
-    | _ -> raise (NIY_elab "renderParameters.renderField: incomplete for this type")
-  in
+  (* let ret = "o" in *)
+  (* let renderFieldTransform (var, p, t) = *)
+  (*   let v = Camlcoq.extern_atom p in *)
+  (*   match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with *)
+  (*   | (t, [], _)              -> ("  "^ret^"->" ^ v ^" = exp("^ret^"->" ^ v ^");") *)
+  (*   | _ -> raise (NIY_elab "renderParameters.renderField: incomplete for this type") *)
+  (* in *)
   String.concat "\n" ([
     ("void transformed_parameters (void* opaque) {");
-    ("  struct " ^ struct_type ^ "* "^ret^" = (struct " ^ struct_type ^ "*) opaque;");
-  ] @ (List.map renderFieldTransform struct_vars) @ [
+    (* ("  struct " ^ struct_type ^ "* "^ret^" = (struct " ^ struct_type ^ "*\) opaque;"); *)
+  (* ] @ (List.map renderFieldTransform struct_vars) @ [ *)
     "}";
     "";
   ])
 
+let renderTransformedData struct_type struct_vars =
+  (* let ret = "o" in *)
+  (* let renderFieldTransform (var, p, t) = *)
+  (*   let v = Camlcoq.extern_atom p in *)
+  (*   match (t, var.Stan.vd_dims, var.Stan.vd_constraint) with *)
+  (*   | (t, [], _)              -> ("  "^ret^"->" ^ v ^" = exp("^ret^"->" ^ v ^");") *)
+  (*   | _ -> raise (NIY_elab ("render"^struct_type^".renderField: incomplete for this type")) *)
+  (* in *)
+  String.concat "\n" ([
+    ("void transformed_data (void* opaque) {");
+    (* ("  struct " ^ struct_type ^ "* "^ret^" = (struct " ^ struct_type ^ "*\) opaque;"); *)
+  (* ] @ (List.map renderFieldTransform struct_vars) @ [ *)
+    "}";
+    "";
+  ])
 
 let renderPropose global_state struct_type struct_vars =
   let proposeField (var, p, t) =
@@ -726,7 +741,7 @@ let printPreludeHeader sourcefile data_basics param_basics =
     "void load_from_cli(void* opaque, char *files[]);";
     "void init_parameters();";
     "void transformed_parameters(void*);";
-    "void transformed_data();";
+    "void transformed_data(void *);";
     "void* propose(void *);";
     "";
     "#endif";
@@ -765,6 +780,7 @@ let printPreludeFile sourcefile data_basics param_basics =
     renderPropose "state" "Params" param_basics;
     renderParameters "Params" param_basics;
     renderTransformedParameters "Params" param_basics;
+    renderTransformedData "Data" data_basics;
     renderDataLoaderFunctions data_basics;
     renderCLILoader data_basics;
   ]);
@@ -825,14 +841,17 @@ let elaborate (sourcefile : string) (p: Stan.program) =
 
     let functions = [] in
 
+    (* FIXME: remove? *)
     IdxHashtbl.clear index_set;
     let (id_data,f_data) = declareFundef "data" (maybe [] (List.map initOneVariable) d) None [] in
     let functions = (id_data,f_data) :: functions in
 
+    (* FIXME: remove? *)
     IdxHashtbl.clear index_set;
     let (id_tr_data,f_tr_data) = declareFundef "transformed_data" (get_code td) None [] in
-    let functions = (id_tr_data,f_tr_data) :: functions in
+    (* let functions = (id_tr_data,f_tr_data) :: functions in *)
 
+    (* FIXME: remove? *)
     IdxHashtbl.clear index_set;
     let (id_params,f_params) = declareFundef "parameters" (maybe [] (List.map initOneVariable) p) None [] in
     let functions = (id_params,f_params) :: functions in
