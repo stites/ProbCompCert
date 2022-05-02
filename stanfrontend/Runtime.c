@@ -7,11 +7,12 @@ void* observation;
 void print_data(void *);
 
 void* state;
-void print_state(void*);
+void print_params(void*);
 
 void* get_state();
 void set_state(void*);
 
+void load_from_cli(void* opaque, char *files[]);
 void data();
 void transformed_data();
 void parameters();
@@ -24,17 +25,19 @@ void* propose();
 int main(int argc, char* argv[]) {
   if (argc == 1) {
     printf("One argument required: number of iterations\n");
+    printf("optionally, csv files of data in order of declaration\n");
     exit(1);
   }
   int n = atoi(argv[1]);
 
+  load_from_cli(&observation, argv+2);
   //data();
   transformed_data();
   print_data(&observation);
 
   parameters();
 
-  print_state(&state);
+  print_params(&state);
   for (int i = 0; i < n; ++i) {
 
     void* pi = get_state();
@@ -54,16 +57,15 @@ int main(int argc, char* argv[]) {
     if (u <= lp_candidate - lp_parameters) {
       set_state(newpi);
       printf("setting state in iteration %d. target log_prob: %f\n", i+1, lp_candidate); // 1-index iterations
-      // printf("setting state in iteration %d: ", i+1); // 1-index iterations
-      // print_state(&state);
+      print_params(&state);
     }
 
     generated_quantities();
   }
 
   printf("\n...completed execution!");
-  // printf("\n\nSummary:\n\t");
-  // print_state(&state);
+  printf("\n\nSummary:\n\t");
+  print_params(&state);
   printf("\n");
   return 0;
   

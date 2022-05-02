@@ -477,6 +477,141 @@ let initOneVariable var =
       end
     end
 
+let basicToCString v btype dims =
+  match (btype, dims) with
+  | (StanE.Bint, []) -> "int " ^ v
+  | (StanE.Bint, [Stan.Econst_int sz]) -> "int " ^ v ^ "["^ sz ^"]"
+  | (StanE.Bint, [Stan.Econst_int r;Stan.Econst_int c]) -> "int " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+  | (StanE.Breal, [Stan.Econst_int sz]) -> "double " ^ v ^ "["^ sz ^"]"
+  | (StanE.Breal, [Stan.Econst_int r;Stan.Econst_int c]) -> "double " ^ v ^ "[" ^ r ^ "][" ^ c ^ "]"
+  | (StanE.Breal, []) -> "double " ^ v
+  (* default type for vectors, rows, and arrays are all double *)
+  | (StanE.Bvector sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+  | (StanE.Brow sz, _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string sz) ^ "]"
+  | (StanE.Bmatrix (r, c), _) -> "double " ^ v ^ "[" ^ (Camlcoq.Z.to_string r) ^ "][" ^ (Camlcoq.Z.to_string c) ^ "]"
+  | _ -> raise (NIY_elab "type translation not valid when declaring a struct")
+
+let printStruct name vs =
+  let printField (v, p, t) = "  " ^ basicToCString (Camlcoq.extern_atom p) t v.Stan.vd_dims ^ ";" in
+
+  String.concat "\n" ([
+    "struct " ^ name ^ " {"
+  ] @ (List.map printField vs) @ [
+    "};\n"
+  ])
+
+let printPrintStruct name vs =
+  let field var = "s->" ^ var in
+  let index1 v ix = field v ^ "["^ string_of_int ix ^"]" in
+
+  let printer str var = "printf(\"" ^ str ^ "\", " ^ field var ^ ");" in
+  let typeTmpl t =
+     match t with
+    | StanE.Bint -> "%z"
+    | StanE.Breal -> "%f"
+    | StanE.Bvector _ -> "%f"
+    | StanE.Brow _ -> "%f"
+    | StanE.Bmatrix _ -> "%f"
+    | _ -> raise (NIY_elab "invalid type")
+  in
+  let range n = List.map (fun x -> x - 1) (List.init n Int.succ) in
+  let loopTmpl1 t size = "[" ^ (String.concat ", " (List.map (fun _ -> typeTmpl t) (range size))) ^ "]\\n" in
+  let loopVars1 v size = (String.concat ", " (List.map (fun i -> index1 v i) (range size))) in
+  let loopPrinter1 v t size = "printf(\"" ^ v ^ " = " ^ loopTmpl1 t size ^ "\", " ^ loopVars1 v size ^ ");" in
+
+  let printField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims) with
+    | (t, [])                   -> ("  " ^ printer (v ^" = "^typeTmpl t^"\\n") v)
+    | (t, [Stan.Econst_int sz]) -> ("  " ^ loopPrinter1 v t (int_of_string sz))
+    | _ -> raise (NIY_elab "printing incomplete for this type")
+  in
+  String.concat "\n" ([
+    ("void print_" ^ String.lowercase_ascii name ^ " (void* opaque) {");
+    ("  struct " ^ name ^ "* s = (struct " ^ name ^ "*) opaque;");
+  ] @ (List.map printField vs) @ [
+    "}\n"
+  ])
+
+let printDataLoaderFunctions vs =
+  let parseType t =
+     match t with
+    | StanE.Bint -> "atof"
+    | StanE.Breal -> "atoll"
+    | StanE.Bvector _ -> "atoll"
+    | StanE.Brow _ -> "atoll"
+    | StanE.Bmatrix _ -> "atoll"
+    | _ -> raise (NIY_elab "invalid type")
+  in
+
+  let loadField (var, p, t) =
+    let v = Camlcoq.extern_atom p in
+    match (t, var.Stan.vd_dims) with
+    | (t, [Stan.Econst_int sz]) ->
+      String.concat "\n" [
+        "  if (0 == access(f, 0))";
+        "  {";
+        "      FILE *fp = fopen(f, \"r\" );";
+        "      char line[1024];";
+        "      int num = 0;";
+        "      while (fgets(line, 1024, fp))";
+        "      {";
+        "        char* tmp = strdup(line);";
+        "        const char* tok;";
+        "        for (tok = strtok(line, \",\");";
+        "          tok && *tok;";
+        "          tok = strtok(NULL, \",\\n\"))";
+        "        {";
+        "            " ^ "d->" ^v ^ "[num] = " ^ parseType t ^ "(tok);";
+        "            num++;";
+        "        }";
+        "        free(tmp);";
+        "      }";
+        "      fclose(fp);";
+        "  } else { printf(\"csv file not found for data field: "^ v ^"\\n\");}";
+      ]
+    | _ -> raise (NIY_elab "data loading incomplete for this type")
+  in
+
+  let printLoader (var, p, t) = let v = Camlcoq.extern_atom p in
+    String.concat "\n" [
+    "void load_" ^ v ^ " (void* opaque, char* f) {";
+    "  struct Data* d = (struct Data*) opaque;";
+    loadField (var, p, t);
+    "}";
+  ] in
+  String.concat "\n" (List.map printLoader vs)
+
+let printCLILoader vs =
+  let runLoader ix (var, p, t) =
+    "  load_" ^ Camlcoq.extern_atom p ^ "(opaque, files[" ^ string_of_int (ix) ^ "]);"
+  in
+  String.concat "\n" ([
+    ("void load_from_cli (void* opaque, char *files[]) {");
+  ] @ (List.mapi runLoader vs) @ [
+    "}\n"
+  ])
+
+
+let printPreludeFile file data_basics param_basics =
+  let oc = open_out file in
+  (* let oc = stdout in *)
+  Printf.fprintf oc "%s\n" (String.concat "\n" [
+    "#include <stdlib.h>";
+    "#include <stdio.h>";
+    "#include <unistd.h>";
+    "#include <string.h>";
+    "";
+    printStruct "Data" data_basics;
+    printPrintStruct "Data" data_basics;
+    printStruct "Params" param_basics;
+    printPrintStruct "Params" param_basics;
+    printDataLoaderFunctions data_basics;
+    printCLILoader data_basics;
+  ]);
+  close_out oc
+
+
 let elaborate (p: Stan.program) =
   match p with
     { Stan.pr_functions=f;
@@ -497,6 +632,8 @@ let elaborate (p: Stan.program) =
     let param_basics = List.map mkLocal (unop p) in
     let param_variables = List.map mkVariableFromLocal param_basics in
     let param_fields = List.map (fun tpl -> match tpl with (_, l, r) -> (l, r)) param_basics in
+
+    printPreludeFile "prelude.c" data_basics param_basics;
 
     let functions = [] in
 
@@ -541,13 +678,13 @@ let elaborate (p: Stan.program) =
     let (id_set,f_set) = declareFundef "set_state" [Stan.Sskip] None [] in
     let functions = (id_set,f_set) :: functions in
 
-    IdxHashtbl.clear index_set;
-    let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in
-    let functions = (id_print, f_print) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print,f_print) = declareFundef "print_state" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print, f_print) :: functions in *)
 
-    IdxHashtbl.clear index_set;
-    let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in
-    let functions = (id_print_data, f_print_data) :: functions in
+    (* IdxHashtbl.clear index_set; *)
+    (* let (id_print_data,f_print_data) = declareFundef "print_data" [Stan.Sskip] None [] in *)
+    (* let functions = (id_print_data, f_print_data) :: functions in *)
 
     IdxHashtbl.clear index_set;
     let (id_set_data,f_set_data) = declareFundef "set_data" [Stan.Sskip] None [] in
