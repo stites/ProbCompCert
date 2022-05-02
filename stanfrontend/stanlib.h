@@ -9,6 +9,7 @@ double bernoulli_sample(double p);
 double bernoulli_lpmf(int x, double p);
 
 double normal_sample(double mu, double sigma);
+double randn(double mu, double sigma);
 
 double logit(double p);
 double expit(double a);
