@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - pcp
-      - macosx
+      - ci-admits
   pull_request:
     branches:
       - pcp
@@ -24,7 +24,9 @@ jobs:
           curl   -L -o ripgrep.deb https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep_13.0.0_amd64.deb
           sudo dpkg -i ripgrep.deb
           rg --version
-      - run: ./.bin/find-stan-admits
+
+        # admits are acceptable in the codebase at this stage of development
+      - run: ./.bin/find-stan-admits || true
 
   build-simple:
     strategy:
