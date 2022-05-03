@@ -86,10 +86,10 @@ jobs:
           make -j
 
       - name: Build stanfrontend/tests/simple/simple.stan
+        continue-on-error: true
         run: |
           eval $(opam env);
 
-          # install bin and lib outputs to ./out, then run `make -j install`, otherwise:
           sudo make -j install
 
           # *_runtime.c and *_prelude.c generation requires being in stanfrontend
@@ -125,11 +125,13 @@ jobs:
           fi
 
       - name: Run compiled binary
+        continue-on-error: true
         run: |
           echo $PWD
           ./stanfrontend/runit 100
 
       - name: Build stanfrontend/tests/classics/coin_flip.stan
+        continue-on-error: true
         run: |
           eval $(opam env);
 
@@ -143,3 +145,12 @@ jobs:
           ccomp -I. -c tests/classics/coin_flip_prelude.c
           ccomp -I. -c tests/classics/coin_flip_runtime.c
           ccomp stanlib.o coin_flip_prelude.o coin_flip.o coin_flip_runtime.o -lm -o runit
+
+      - name: test that ccompstan script works on stanfrontend/tests/simple/simple.stan
+        continue-on-error: true
+        run: |
+          eval $(opam env);
+
+          sudo make -j install
+
+          ./.bin/ccompstan stanfrontend/tests/simple/simple.stan
