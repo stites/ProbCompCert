@@ -133,7 +133,6 @@ jobs:
         run: |
           eval $(opam env);
 
-          # install bin and lib outputs to ./out
           sudo make -j install
 
           # this is important for looking up ./Runtime.c file (see FIXME in printRuntimeFile)
@@ -143,4 +142,4 @@ jobs:
           ccomp -c coin_flip.s
           ccomp -I. -c tests/classics/coin_flip_prelude.c
           ccomp -I. -c tests/classics/coin_flip_runtime.c
-          ccomp -L./out/lib/ccompcert stanlib.o coin_flip_prelude.o coin_flip.o coin_flip_runtime.o -lm -o runit
+          ccomp stanlib.o coin_flip_prelude.o coin_flip.o coin_flip_runtime.o -lm -o runit
